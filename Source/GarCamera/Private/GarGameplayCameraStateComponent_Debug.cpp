@@ -1,0 +1,260 @@
+#include "GarGameplayCameraStateComponent.h"
+
+#include "DisplayDebugHelpers.h"
+#include "Animation/AnimInstance.h"
+#include "Camera/CameraComponent.h"
+#include "Engine/Canvas.h"
+#include "Engine/Engine.h"
+#include "GarCharacter.h"
+#include "GarConstants.h"
+#include "GarCameraConstants.h"
+#include "Utility/GarMath.h"
+#include "Utility/GarUtility.h"
+
+#define LOCTEXT_NAMESPACE "GarGameplayCameraStateComponentDebug"
+
+#if !UE_BUILD_SHIPPING
+void UGarGameplayCameraStateComponent::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& Unused, float& VerticalLocation)
+{
+	const auto Scale{FMath::Min(Canvas->SizeX / (1280.0f * Canvas->GetDPIScale()), Canvas->SizeY / (720.0f * Canvas->GetDPIScale()))};
+
+	const auto RowOffset{12.0f * Scale};
+	const auto ColumnOffset{200.0f * Scale};
+
+	auto MaxVerticalLocation{VerticalLocation};
+	auto HorizontalLocation{5.0f * Scale};
+
+	static const auto StateHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraState (Shift + 7)")})};
+	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraTraces (Shift + 8)")})};
+
+	if (!DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraCurvesDebugDisplayName()) &&
+	    !DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraTracesDebugDisplayName()))
+	{
+		if (!DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::StateDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::MantlingDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
+		{
+			return;
+		}
+
+		DisplayDebugHeader(Canvas, StateHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
+		VerticalLocation += RowOffset;
+		DisplayDebugHeader(Canvas, TracesHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
+		VerticalLocation += RowOffset;
+		return;
+	}
+
+	const auto InitialVerticalLocation{VerticalLocation};
+
+	if (DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraCurvesDebugDisplayName()))
+	{
+		DisplayDebugHeader(Canvas, StateHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
+		DisplayDebugState(Canvas, Scale, HorizontalLocation, VerticalLocation);
+
+		MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation + RowOffset);
+		VerticalLocation = InitialVerticalLocation;
+		HorizontalLocation += ColumnOffset;
+	}
+	else
+	{
+		DisplayDebugHeader(Canvas, StateHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
+
+		VerticalLocation += RowOffset;
+	}
+
+	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
+
+	if (DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraTracesDebugDisplayName()))
+	{
+		DisplayDebugHeader(Canvas, TracesHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
+		DisplayDebugTraces(Canvas, Scale, HorizontalLocation, VerticalLocation);
+	}
+	else
+	{
+		DisplayDebugHeader(Canvas, TracesHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
+	}
+
+	VerticalLocation += RowOffset;
+	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
+
+	VerticalLocation = MaxVerticalLocation;
+}
+
+void UGarGameplayCameraStateComponent::DisplayDebugHeader(const UCanvas* Canvas, const FText& HeaderText, const FLinearColor& HeaderColor,
+														 const float Scale, const float HorizontalLocation, float& VerticalLocation)
+{
+	FCanvasTextItem Text{
+		{HorizontalLocation, VerticalLocation},
+		HeaderText,
+		GEngine->GetMediumFont(),
+		HeaderColor
+	};
+
+	Text.Scale = {Scale, Scale};
+	Text.EnableShadow(FLinearColor::Black);
+
+	Text.Draw(Canvas->Canvas);
+
+	VerticalLocation += 15.0f * Scale;
+}
+
+void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, const float Scale, const float HorizontalLocation, float& VerticalLocation) const
+{
+	VerticalLocation += 4.0f * Scale;
+
+	TStringBuilder<256> DebugStringBuilder;
+
+	FCanvasTextItem Text{
+		FVector2D::ZeroVector,
+		FText::GetEmpty(),
+		GEngine->GetSmallFont(),
+		FLinearColor::White
+	};
+
+	Text.Scale = {Scale * 0.75f, Scale * 0.75f};
+	Text.EnableShadow(FLinearColor::Black);
+
+	const auto RowOffset{12.0f * Scale};
+	const auto ColumnOffset{145.0f * Scale};
+
+	static const auto ViewModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ViewMode), false))
+	};
+
+	Text.Text = ViewModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ViewMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto DesiredViewModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredViewMode), false))
+	};
+
+	Text.Text = DesiredViewModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredViewMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto ConfirmedDesiredViewModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ConfirmedDesiredViewMode), false))
+	};
+
+	Text.Text = ConfirmedDesiredViewModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ConfirmedDesiredViewMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto PreviousConfirmedDesiredViewModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousConfirmedDesiredViewMode), false))
+	};
+
+	Text.Text = PreviousConfirmedDesiredViewModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousConfirmedDesiredViewMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto ShoulderModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ShoulderMode), false))
+	};
+
+	Text.Text = ShoulderModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ShoulderMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto PreviousShoulderModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousShoulderMode), false))
+	};
+
+	Text.Text = PreviousShoulderModeText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousShoulderMode).ToString(), false));
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	VerticalLocation += RowOffset;
+
+	static const auto FirstPersonFactorText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, FirstPersonFactor), false))
+	};
+
+	Text.Text = FirstPersonFactorText;
+	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+
+	DebugStringBuilder.Appendf(TEXT("%.2f"), FirstPersonFactor);
+
+	Text.Text = FText::AsCultureInvariant(FString{ DebugStringBuilder });
+	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+
+	DebugStringBuilder.Reset();
+
+	VerticalLocation += RowOffset;
+}
+
+void UGarGameplayCameraStateComponent::DisplayDebugTraces(const UCanvas* Canvas, const float Scale,
+														 const float HorizontalLocation, float& VerticalLocation) const
+{
+	VerticalLocation += 4.0f * Scale;
+
+	TStringBuilder<256> DebugStringBuilder;
+
+	FCanvasTextItem Text{
+		FVector2D::ZeroVector,
+		FText::GetEmpty(),
+		GEngine->GetMediumFont(),
+		FLinearColor::White
+	};
+
+	Text.Scale = {Scale * 0.75f, Scale * 0.75f};
+	Text.EnableShadow(FLinearColor::Black);
+
+	const auto RowOffset{12.0f * Scale};
+
+	static const auto BlockingGeometryAdjustmentText{LOCTEXT("BlockingGeometryAdjustment", "Blocking Geometry Adjustment")};
+
+	Text.SetColor({0.0f, 0.75f, 1.0f});
+
+	Text.Text = BlockingGeometryAdjustmentText;
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+	VerticalLocation += RowOffset;
+
+	static const auto CameraTraceNoHitText{LOCTEXT("CameraTraceNoHit", "Camera Trace (No Hit)")};
+
+	Text.SetColor(FLinearColor::Green);
+
+	Text.Text = CameraTraceNoHitText;
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+	VerticalLocation += RowOffset;
+
+	static const auto CameraTraceBlockingHitText{LOCTEXT("CameraTraceBlockingHit", "Camera Trace (Blocking Hit)")};
+
+	Text.SetColor(FLinearColor::Red);
+
+	Text.Text = CameraTraceBlockingHitText;
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+	VerticalLocation += RowOffset;
+}
+#endif // !UE_BUILD_SHIPPING
+
+#undef LOCTEXT_NAMESPACE

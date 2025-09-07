@@ -1,0 +1,260 @@
+Epic Content License Agreement
+
+This Epic Content License Agreement (“Agreement”) applies to your use of certain digital content made available to you by Epic (“Licensed Content”). All Licensed Content you download or use is governed by this Agreement.
+
+This Agreement is a legal document detailing your rights and obligations related to using Licensed Content. By downloading or using Licensed Content, you are agreeing to be bound by the terms of this Agreement. You enter into this agreement with each Content Licensor whose Licensed Content you download or use. If you do not or cannot agree to the terms of this Agreement, do not complete a download or use Licensed Content.
+
+When we say, “you,” “your,” or “yourself,” we mean you as an individual or the legal entity exercising rights under this Agreement through you. When we say “Content Licensor,” “we” or “us,” we are referring to Epic, unless a party other than Epic is identified as the Content Licensor when you access Licensed Content. When we say “Epic” we are referring to the Epic entity for your region, as detailed in Section 9.
+
+PLEASE READ THIS AGREEMENT CAREFULLY. IT CONTAINS A CLASS-ACTION WAIVER PROVISION. IF YOU ACCEPT THIS AGREEMENT, YOU AND EPIC AGREE TO RESOLVE DISPUTES ONLY IN YOUR INDIVIDUAL CAPACITIES AND NOT AS PART OF A CLASS ACTION (SEE SECTION 15). YOU HAVE A TIME-LIMITED RIGHT TO OPT OUT OF THIS WAIVER. BY AGREEING TO THE TERMS OF THIS AGREEMENT, YOU ARE ALSO AGREEING TO CONTRACTUAL TERMS THAT WILL LIMIT SOME OF YOUR LEGAL RIGHTS, INCLUDING A DISCLAIMER OF WARRANTY, AN EXCLUSION OF CERTAIN KINDS OF DAMAGES, AND A LIMITATION OF LIABILITY.
+
+Table of Contents
+
+The Licensed Content
+1. What Content Is Being Licensed to You
+2. How You Can Use the Licensed Content
+3. How You Can Share Projects You’ve Made with the Licensed Content
+4. How You Can Share the Licensed Content When It Isn’t Part of a Project
+5. Other Restrictions on Your Use of Licensed Content
+6. Who Owns What
+
+Our Relationship
+7. The Agreement Between You and the Content Licensor
+8. Who are You?
+9. Who is Epic?
+10. Privacy
+
+Other Rights and Obligations
+11. Disclaimers
+12. Limitation of Liability
+13. Indemnification
+14. Governing Law and Jurisdiction
+15. No Class Actions
+16. Miscellaneous
+17. Artificial Intelligence
+
+The Licensed Content
+
+1. What Content Is Being Licensed to You
+Licensed Content includes any content that is made available to you by a Content Licensor under the terms of this Agreement. This includes, for example, content made available to you by Epic through the Unreal Engine Marketplace, Learn tab of the Epic Games Launcher, and the Quixel Megascans library.
+
+2. How You Can Use the Licensed Content
+We grant you a non-exclusive, non-transferable, non-sublicensable license to privately use, reproduce, display, perform, and modify the Licensed Content in accordance with the terms of this Agreement (the “License”). This means that as long as you are not violating this Agreement, such as by using the Licensed Content in violation of any applicable law or regulation or for any unlawful purpose, you can privately use the Licensed Content however you want. If you want to share the Licensed Content or anything you make with it, Sections 3 and 4 addresses when and how you can do that.
+
+3. How You Can Share Projects You’ve Made with the Licensed Content
+If you develop projects that combine the Licensed Content with any other software or content, regardless of how much or little of the Licensed Content is used (collectively “Projects”), you may only Distribute those Projects as expressly permitted under this Agreement.
+
+“Distribute” means, with respect to a Project, to provide or otherwise make a copy of the Project available publicly or to any other person or entity or make the Project’s functionality available on a network.
+
+a. Use by End Users, Publishers, and Distributors
+You may Distribute Licensed Content incorporated in object code format only as an inseparable part of a Project to end users.
+
+When you Distribute a Project to end users, you may permit end users to use, reproduce, display and publicly perform the Licensed Content, solely (1) as incorporated in the Project in object code as an inseparable part of the Project, (2) to the extent necessary for end users to make permitted uses of the Project, and (3) pursuant to an end user license agreement that explicitly disclaims any representations, warranties, conditions, and liabilities related to the Licensed Content. You may permit your publishers and distributors to market and Distribute a Project on your behalf, but only to the extent that you are permitted to make such Distribution yourself under this Section 3, and such Distribution will be subject to the terms of this Agreement.
+
+This means, for example, you may Distribute software applications (such as video games) that include Licensed Content to the general public, whether directly by you or through a distributor or publisher.
+
+b. Linear Media (e.g., Rendered Video Files)
+You may freely Distribute Licensed Content incorporated into rendered linear media products.
+
+This means, for example, you may freely Distribute rendered video files (e.g., broadcast or streamed video files, cartoons, or movies) or images created using Licensed Content.
+
+4. How You Can Share the Licensed Content When It Isn’t Part of a Project
+Except as otherwise stated in the Service-Specific Terms (as defined in Section 7), you may not Distribute Licensed Content in source format to third parties except to employees, affiliates, and contractors who are utilizing the Licensed Content in good faith to develop a Project on your behalf. Those employees, affiliates, and contractors you share Licensed Content with are not permitted to further Distribute the Licensed Content (including as incorporated in a Project) and must delete the Licensed Content once it is no longer needed for developing a Project on your behalf. You are responsible for ensuring that any employees, affiliates, or contractors you share Licensed Content with comply with the terms of this Agreement.
+
+5. Other Restrictions on Your Use of Licensed Content
+a. UE-Only Content
+“UE-Only Content” means Licensed Content that is designated as only permitted for use in conjunction with Unreal Engine and Unreal Engine-based products as designated by Epic, such as Twinmotion.
+
+b. Non-Compatible Licenses
+You may not, and may not permit others to, combine, Distribute, or otherwise use Licensed Content with any code or other content which is covered by a license that would directly or indirectly require that all or part of any Licensed Content be governed under any terms other than those of this Agreement (those licenses, the “Non-Compatible Licenses”). This means, for example, that you may not combine Licensed Content with code or content that is licensed under any of the following licenses: GNU General Public License (GPL), Lesser GPL (LGPL) (unless you are merely dynamically linking a shared library), or Creative Commons Attribution-ShareAlike License.
+
+c. General Restrictions
+You may not:
+i. attempt to reverse engineer, decompile, translate, disassemble, or derive source code from Licensed Content;
+ii. sell, rent, lease, or transfer Licensed Content on a “stand-alone basis” (Projects must reasonably add value beyond the value of the Licensed Content, and the Licensed Content must be merely a component of the Project and not the primary focus of the Project);
+iii. except as permitted under Section 4, allow any third party to use or access Licensed Content for the purpose of creating content (including, without limitation, for the purpose of using Licensed Content in world- or level-editing tools, modeling tools, or user-generated content) for distribution to the public; provided, however, this restriction does not apply to UE-Only Content;
+iv. use Licensed Content in violation of applicable law;
+v. use Licensed Content in any manner which violates the rights of a third party;
+vi. remove, disable, circumvent, or modify any proprietary notice or label included in Licensed Content;
+vii. except where explicitly allowed by this Agreement, collect, aggregate, mine, scrape, or otherwise use any Licensed Content for the purposes of publishing, selling, distributing or otherwise making the content available to others to use, download or copy;
+viii. collect, aggregate, mine, scrape or otherwise use NoAI Content (i) in datasets utilized by Generative AI Programs; (ii) in the development of Generative AI Programs; or (iii) as inputs to Generative AI Programs.
+
+6. Who Owns What
+As between you and us, you own all rights, other than rights in the Licensed Content or as stated in the Service-Specific Terms (as defined in Section 7), in the Projects you develop under this agreement, and we or our licensors own all title, ownership rights, and intellectual property rights in the Licensed Content.
+
+All rights granted to you under this Agreement are granted by the License only and not by sale, and all of those rights are limited by and subject to the terms of this Agreement. No license or other right will be created hereunder by implication, estoppel, or otherwise. Any attempted sublicense that is not consistent with the terms of this Agreement will be null and void.
+
+Our Relationship
+
+7. The Agreement Between You and the Content Licensor
+a. Content Licensor
+Unless the Epic services identify that a party other than Epic is making Licensed Content available to you when you initially access Licensed Content, Epic is the Content Licensor for that Licensed Content.
+
+b. Amendments
+If we make changes to this Agreement, you are not required to accept the amended Agreement, and this Agreement will continue to govern your use of any Licensed Content you already have access to.
+
+However, if we make changes to this Agreement, you will not be allowed to access certain Epic services or download new Licensed Content unless you have accepted the amended Agreement. If we make changes, Epic will provide you with notice, such as by sending an email or giving you notice when you next log into an Epic service. Any such amendment will only be effective when communicated to you by Epic.
+
+If you accept an amended Agreement, the amended terms will apply to your use of Licensed Content including Licensed Content that you downloaded under any prior version of this Agreement.
+
+c. Service-Specific Terms
+Additional terms and conditions may apply to your use of certain Licensed Content. Those additional terms are set forth in the service-specific terms attached as addenda to this Agreement (“Service-Specific Terms”). You agree to comply with these Service-Specific Terms as part of this Agreement. If there is a conflict between Service-Specific Terms and other parts of this Agreement, Service-Specific Terms will control for that conflict with regard to the Licensed Content that is subject to the Service-Specific Terms.
+
+d. Alternative Terms
+With respect to your rights and obligations related to Licensed Content, this Agreement supersedes any prior Unreal Engine End User License Agreement For Publishing or Unreal Engine End User License Agreement For Creators you may have. Those agreements will continue to survive only to the extent that you continue to have rights and obligations under them related to Unreal Engine code and related content that is copied to your computer when you install Unreal Engine. Once you have also agreed to the Unreal Engine End User License Agreement (unrealengine.com/eula), those agreements will be superseded completely.
+
+This Agreement, however, does not supersede, amend or otherwise affect other agreements you may have with Epic. For example, if Epic grants you a license to use Licensed Content to develop one or more products under a custom license, that custom license and not this Agreement governs your use of the Licensed Content.
+
+e. Notice
+Where this Agreement calls for notice from us, including written notice, we may provide notice to you through the Epic services or by any email address that you’ve provided to Epic. Our notices, when provided to you through the Epic services, will be effective when you access the Epic services, and when sent to you by email, will be effective when they are sent.
+
+8. Who are You?
+a. You
+If you use the Licensed Content on behalf of another person or entity, (i) all references to “you” throughout this Agreement will include, and this Agreement will be binding on, that person or entity, (ii) you represent that you are authorized to accept this Agreement on that person’s or entity’s behalf, and (iii) in the event you violate this Agreement, that person or entity agrees to be responsible to us.
+
+b. Eligibility for This Agreement
+If you are under the age of legal majority where you live or otherwise require the consent of a parent or legal guardian to enter into this Agreement under applicable law, you may use the Licensed Content only under the supervision of a parent or legal guardian who also agrees to be bound by this Agreement.
+
+You are not eligible to enter into this Agreement and may not download or use the Licensed Content if you are, or are acting on behalf of any person or entity that is (i) on the Specially Designated Nationals and Blocked Persons List or other similar lists maintained by any U.S. government entity pursuant to economic sanctions laws or (ii) located in, organized in, or ordinarily resident in any country or territory that is subject to a U.S. embargo, in each case unless your use of the Licensed Content is authorized by U.S. law.
+
+
+c. Epic Account
+In order to access and download the Licensed Content, you must first set up an account with us, which will be governed by Epic’s Terms of Service (epicgames.com/tos).
+
+The License (as defined in Section 2) permits use of the Licensed Content only by individuals who have accessed it by using a valid user account (“Users”). If you are an individual, you are the User. If you are a legal entity, the individual employees or agents exercising your rights under this Agreement are Users. When exercising a legal entity’s rights under this Agreement, Users are not required to accept this Agreement as individuals. The User may store the Licensed Content on any of the User’s computers, but the Licensed Content cannot be shared with others except as described in this Agreement.
+
+d. Use by Educational Institutions
+As an exception to the above requirement that only Users may make use of the Licensed Content, if you are an educational institution, like a school or a library, you may store Licensed Content on any of your computers, and you may allow all users of those computers to use the Licensed Content under the License on those computers. However, those users are not authorized under your License to Distribute the Licensed Content (including as incorporated in a Project). For that, they must obtain a license of their own.
+
+9. Who is Epic?
+The Epic entity entering into this Agreement with you corresponds to where you live, as set forth below:
+
+If you live (or if the primary place of business of the entity on whose behalf you are using the Licensed Technology is):
+In the United States of America the Epic entity entering into this Agreement with you is Epic Games, Inc.
+Outside of the United States of America the Epic entity entering into this Agreement with you is Epic Games Commerce, GmbH.
+
+10. Privacy
+Your privacy is important to Epic. Please review our Privacy Policy (epicgames.com/privacypolicy). It describes how Epic may collect, use, and share information when you use Licensed Content.
+
+Other Rights and Obligations
+
+11. Disclaimers
+
+Nothing in this Agreement will prejudice any statutory rights that you have that may not be waived. Some countries, states, provinces or other jurisdictions do not allow the exclusion of certain warranties or the limitation of liability as stated in this and the next sections, so the below terms may not fully apply to you. In those jurisdictions, the exclusions and limitations below apply only to the extent permitted by the applicable laws of such jurisdictions.
+
+THE LICENSED CONTENT IS PROVIDED BY THE CONTENT LICENSOR ON AN “AS IS” AND “AS AVAILABLE” BASIS. NONE OF THE CONTENT LICENSOR, ITS AFFILIATES, LICENSORS, AND SERVICE PROVIDERS, AND, IF EPIC IS NOT THE CONTENT LICENSOR, EPIC (“CONTENT LICENSOR PARTIES”) MAKE ANY REPRESENTATIONS OR WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, REGARDING THE LICENSED CONTENT. YOUR USE OF THE LICENSED CONTENT IS AT YOUR SOLE RISK. TO THE FULL EXTENT PERMISSIBLE BY APPLICABLE LAW, THE CONTENT LICENSOR PARTIES DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING IMPLIED OR STATUTORY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE OR NONINFRINGEMENT. THE CONTENT LICENSOR PARTIES DO NOT WARRANT THAT THE LICENSED CONTENT IS FREE OF VIRUSES OR OTHER HARMFUL COMPONENTS. THE PARTIES ACKNOWLEDGE AND AGREE THAT THE FOREGOING WARRANTY DISCLAIMERS WERE AN ESSENTIAL ELEMENT IN SETTING CONSIDERATION UNDER THIS AGREEMENT.
+
+12. Limitation of Liability
+TO THE FULL EXTENT PERMITTED BY APPLICABLE LAW, THE CONTENT LICENSOR PARTIES WILL NOT BE LIABLE FOR ANY LOSS OF PROFITS OR ANY INDIRECT, INCIDENTAL, PUNITIVE, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT. FURTHER, TO THE FULL EXTENT PERMITTED BY APPLICABLE LAW, THE CONTENT LICENSOR PARTIES’ AGGREGATE LIABILITY ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT WILL NOT EXCEED THE GREATER OF $1,000 AND THE TOTAL AMOUNTS YOU HAVE PAID (IF ANY) FOR LICENSED CONTENT UNDER THIS AGREEMENT DURING THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENTS GIVING RISE TO SUCH LIABILITY. SEEKING DAMAGES AS LIMITED BY THIS SECTION 12 SHALL BE YOUR SOLE AND EXCLUSIVE REMEDY FOR ANY ACT OR OMISSION OF THE CONTENT LICENSOR PARTIES. THE PARTIES ACKNOWLEDGE AND AGREE THAT THESE LIMITATIONS OF LIABILITY AND EXCLUSIONS OF POTENTIAL DAMAGES WERE AN ESSENTIAL ELEMENT IN SETTING CONSIDERATION UNDER THIS AGREEMENT.
+
+13. Indemnification
+This section only applies to the extent allowed by the applicable laws of your jurisdiction. If the applicable laws of your jurisdiction do not allow you to enter into the indemnification obligation below, then you assume, to the extent permitted by the applicable laws of your jurisdiction, all liabilities, damages, judgements, awards, losses, costs, expenses, and fees (including reasonable attorney and expert witness fees) that are the stated subject matter of the indemnification obligation below.
+
+You agree to indemnify and hold harmless the Content Licensor Parties from and against all liabilities, damages, judgments, awards, losses, costs, expenses, and fees (including reasonable attorney and expert witness fees) arising out of or in connection with any third-party claims, demands, or actions (i) that, if true, would involve a breach by you of this Agreement (including, without limitation, any distribution or sublicensing of the Licensed Content in violation of this Agreement) or (ii) related to your Project or your exercise of the License (except to the extent the third party is alleging your authorized use of unmodified Epic developed Licensed Content originally provided to you by Epic under this Agreement infringes any patent, trademark, or copyright).
+
+14. Governing Law and Jurisdiction
+Any dispute or claim by you arising out of or related to this Agreement will be governed by North Carolina law, exclusive of its choice of law rules. You and Epic agree to submit to the exclusive jurisdiction of the Superior Court of Wake County, North Carolina, or, if federal court jurisdiction exists, the United States District Court for the Eastern District of North Carolina. You and Epic agree to waive any jurisdictional, venue, or inconvenient forum objections to such courts (without affecting either party’s rights to remove a case to federal court if permissible), as well as any right to a jury trial. The Convention on Contracts for the International Sale of Goods will not apply. Any law or regulation which provides that the language of a contract will be construed against the drafter will not apply to this Agreement. This paragraph will be interpreted as broadly as applicable law permits.
+
+15. No Class Actions
+To the maximum extent permitted by applicable law, you and Content Licensor agree to only bring disputes arising out of or related to this Agreement in an individual capacity and will not:
+● seek to bring, join, or participate in any class or representative action, collective or class-wide arbitration, or any other action where another individual or entity acts in a representative capacity (e.g., private attorney general actions); or
+● consolidate or combine individual proceedings or permit another to do so without the express consent of all parties to this Agreement.
+
+You have the right to opt-out of this class action waiver within 30 days of the date on which you first accepted this Agreement. To exercise this right, you must send written notice of your decision to the following address: Epic Games, Inc., Legal Department, ATTN: CLASS ACTION OPT-OUT, Box 254, 2474 Walnut Street, Cary, North Carolina, 27518, U.S.A. Your notice must include your name, mailing address, and account name, and state that you wish to opt-out of this class action waiver. To be effective, this notice must be received by Epic and postmarked or deposited within 30 days of the date on which you first accepted this Agreement unless a longer period is required by applicable law. You are responsible for ensuring that Epic receives your opt-out notice, so you may wish to send it by a means that provides for a delivery receipt.
+
+16. Miscellaneous
+a. U.S. Government Matters; Export Control
+The Licensed Content is a “Commercial Item” (as defined at 48 C.F.R. §2.101), consisting of “Commercial Computer Software” and “Commercial Computer Software Documentation” (as used in 48 C.F.R. §12.212 or 48 C.F.R. §227.7202, as applicable). The Licensed Content will only be licensed to U.S. Government end users as Commercial Items and with only those rights as are granted to other licensees under this Agreement.
+
+You understand and agree that the Licensed Content may not be used, accessed, downloaded, or otherwise exported, reexported, or transferred in violation of applicable export control, economic sanctions, and import laws and regulations, such as the U.S. Export Administration Regulations and U.S. Department of the Treasury’s Office of Foreign Assets Control regulations.
+
+b. No Assignment
+You may not assign your rights or obligations under this Agreement, including any rights to use the Licensed Content. Any attempted assignment in violation of the foregoing will be void. We may assign this Agreement, in whole or in part, with or without notice to you.
+
+c. Relationship of the Parties
+The relationship between you and Content Licensor will be that of independent signatories, and nothing in this Agreement will be construed to constitute either party an agent of the other party. Without limiting the foregoing, neither party will have authority to act for or to bind the other party in any way, including to make representations or warranties or to execute agreements on behalf of the other party. This Agreement will not be construed to create an association, joint venture, or partnership between the parties or to impose any partnership obligation or liability upon any party.
+
+d. Language
+To the fullest extent permitted by applicable law, the controlling language for this Agreement is English. It is the express wish of the parties that this Agreement and all related documents have been drawn up in English. Any translation has been provided for your convenience.
+
+e. No Waiver; Severability
+Any act by Epic to exercise, or failure or delay in exercise of, any of its rights under this Agreement, at law or in equity will not be deemed a waiver of those or any other rights or remedies available in contract, at law or in equity. Unless otherwise stated in this Agreement, if any term of this Agreement is held by a court or tribunal of competent jurisdiction to be unenforceable, the term will be enforced to the maximum extent permissible and the remaining terms of this Agreement will remain in full force and effect. You agree that this Agreement does not confer any rights or remedies on any person other than the parties to this Agreement, except as expressly stated. Epic’s obligations are subject to existing laws and legal process, and Epic may comply with law enforcement or regulatory requests or requirements despite any contrary term in this Agreement.
+
+f. Third Party Beneficiaries
+If Epic is not the Content Licensor, Epic is a third party beneficiary to this Agreement.
+
+g. Survival
+Upon conclusion of this Agreement, all rights and remedies of the Content Licensor will survive. Additionally, if Epic is not the Content Licensor, all rights and remedies of Epic will also survive.
+
+h. Entire Agreement
+This Agreement and any document or information referred to in this Agreement constitute the entire agreement between you and the Content Licensor relating to the subject matter covered by this Agreement. All other communications, proposals, and representations with respect to the subject matter covered by this Agreement are excluded.
+
+17. Artificial Intelligence
+We care about protecting creators and providing the tools to protect their creations. Any Licensed Content that has been tagged, labeled, or otherwise marked “NoAI” via the functionality provided by the platform will be known as “NoAI Content.”
+
+For purposes of this Agreement, “Generative AI Programs” means artificial intelligence, machine learning, deep learning, neural networks, or similar technologies designed to automate the generation of or aid in the creation of new content, including but not limited to audio, visual, or text-based content. You shall not collect, aggregate, mine, scrape, or otherwise use NoAI Content (i) in datasets utilized by Generative AI Programs; (ii) in the development of Generative AI Programs; or (iii) as inputs to Generative AI Programs.
+
+Epic agrees, whether or not Licensed Content is NoAI Content, that it will not use Licensed Content or license Licensed Content to third parties for use in connection with Generative AI Programs, unless that Licensed Content is owned by Epic.
+
+Service-Specific Terms
+
+Marketplace Content Addendum
+This Marketplace Content Addendum governs your use of code, artwork, and other content made available through the Unreal Engine Marketplace (“Marketplace Content”).
+
+1. Marketplace Plug-ins
+This section of the Marketplace Content Addendum governs your use of Licensed Content that is identified in the unreal Engine Marketplace as being a code plugin (“Plugins”).
+
+Plugins contain code that is based upon or relies on Epic’s proprietary computer software program known as Unreal Engine (“Engine Code”). Engine Code is not part of the Licensed Content and is instead licensed to you by Epic as Licensed Technology under the terms of the Unreal Engine End User License Agreement (unrealengine.com/eula) (“Unreal Engine Agreement”), which you agree to by downloading or using Plugins. As such, any use you make of Plugins must also comply with the Unreal Engine Agreement. Use of Engine Code could require you to pay royalties to Epic. However, as described more fully in the Unreal Engine Agreement, you will never owe Epic royalty payments under that agreement unless a product directly generates more than $1,000,000 USD in gross revenue, and some uses of Engine Code, such as creating rendered video files, will never require you to pay royalties.
+
+Plugins may be offered to you on a per user basis. Such Plugins may only be used by the number of users that you have purchased licenses for. Distribution of Plugins in source format to your employees, affiliates and contractors is permitted so long as use by those employees, affiliates and contractors does not cause you to exceed the number of paid users you have purchased for the Plugin. Any such Distributions will be subject to the terms of Section 4 of the Agreement. Additionally, any Projects you incorporate Plugins into may only be Distributed as Engine Tools under the Unreal Engine Agreement.
+
+
+Megascans Content Addendum
+This Megascans Content Addendum governs your use of 2D and 3D scanned objects and other materials made available through the Megascans Library (“Megascans Content”). Your right to use and share Megascans Content depends on what, if any, Megascans plan your account was enrolled in at the time you accessed the Licensed Content and whether you qualified for your Megascans plan at that time.
+
+1. License Plans
+a. Personal Plan
+Megascans Content that you acquire from Epic while your account is enrolled in a personal plan for which you qualify may be used as any other Licensed Content. Such Megascans Content, however, may not be distributed in source format to anyone else.
+
+You qualify for a personal plan only if you are an individual and either (i) use Megascans Content only for your personal purposes and not for any business or other commercial purpose or (ii) generate less than $100,000 USD in annual gross revenue. For purposes of this calculation, revenue includes any advances received or other funds raised. However, individuals who start on a personal plan will not be ineligible for the plan unless and until they generate more than $100,000 USD in annual gross revenue for two consecutive years.
+
+b. Indie Plan
+Megascans Content that you acquire from Epic while your account is enrolled in an indie plan for which you qualify may be used and shared as any other Licensed Content.
+
+You qualify for an indie plan only if you, together with any controlling entity and other entities under common control with you, (i) generate less than $2,000,000 USD per year in annual gross revenue and (ii) are not affiliated with or funded by a publisher owned or controlled studio. For purposes of this calculation revenue includes any advances received or other funds raised.
+
+c. Unreal Engine Plan (UE-Only Content)
+Megascans Content that you acquire from Epic while your account is enrolled in an Unreal Engine plan may only be used and shared as UE-Only Content.
+
+You qualify for an Unreal Engine plan if you have entered into an Unreal Engine End User License Agreement with Epic that is still active and valid.
+
+d. Educational Plan
+Megascans Content that an educational institution approved by Epic acquires under an account enrolled in an educational plan (“Educational Assets”) may only be used for non-commercial, educational purposes. You may deploy Educational Assets on computers in labs, classrooms, and other physical educational environments under your control and may allow Educational Assets to be accessed on a file server by students and instructors through a local area network or through a secure virtual private network (VPN) connection employing industry standard encryption and protection mechanisms. You may not and may not allow others to sell, license, or otherwise commercially use or exploit any Projects or services containing Educational Assets.
+
+e. Free Assets
+Megascans Content that you acquire from Epic under an account not enrolled in a Megascans plan may only be used for your internal evaluation purposes. Such Megascans Content may not be distributed to any party, either in source format or as part of a Project.
+
+MetaHuman Content Addendum
+This MetaHuman Content Addendum governs your use of digital human characters made available through MetaHuman Creator that you download (“MetaHuman Content”). “MetaHuman Creator” is Epic’s proprietary software, development tools, and platforms that enable the creation and animation of digital characters and their face, body, and clothing meshes and textures, hairstyle assets, body rigs, face rigs, and other features. MetaHuman Content includes both digital human characters created by your use of MetaHuman Creator and digital human characters created by or on behalf of Epic.
+
+1. UE-Only Content
+MetaHuman Content that you acquire may only be used and shared as UE-Only Content.
+
+2. Who Owns What
+As between you and Epic, you own your copyrights, trademark rights and publicity rights in scans and/or other assets you upload to MetaHuman Creator, including those embodied in MetaHuman Content. You also own the copyright interest you acquire in the depiction of rendered MetaHuman Content in Projects.
+
+For avoidance of doubt, Epic exclusively owns and will retain ownership of copyrights, patent rights and other intellectual property rights in MetaHuman Creator and Rig Logic, including as embodied in MetaHuman Content. Epic does not assign or transfer ownership of any rights in or relating to MetaHuman Creator or Rig Logic to you. “Rig Logic” is Epic’s proprietary facial animation technology applied to and embedded in MetaHuman Content that includes sets of rules that help face rigs achieve a more life-like performance.
+
+
+Tools Addendum
+This Tools Addendum governs your use of tools that are made available to you in connection with Licensed Content (“Tools”). Tools include Bridge, a tool for accessing and managing your Megascans and MetaHumans Content, and Mixer, a texturing tool that can be used with Megascans Content.
+
+1. How You Can Use Tools
+You may only use Tools privately to assist you in creating Projects. No part of Tools may be incorporated into your Projects, however, and you may not modify or Distribute Tools, except as permitted under Section 4 of this Agreement.
+
+2. Beta Tools
+Some Tools may be provided to you as part of a public or private beta program (“Beta Tools”). Such Beta Tools will be labeled as Beta.
+
+For Beta Tools, the following limitation of liability replaces Section 12 of the Epic Content License Agreement:
+
+TO THE FULL EXTENT PERMITTED BY APPLICABLE LAW, THE CONTENT LICENSOR PARTIES WILL NOT BE LIABLE FOR ANY LOSS OF PROFITS OR ANY INDIRECT, INCIDENTAL, PUNITIVE, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT. FURTHER, TO THE FULL EXTENT PERMITTED BY APPLICABLE LAW, THE CONTENT LICENSOR PARTIES’ AGGREGATE LIABILITY ARISING OUT OF OR IN CONNECTION WITH YOUR DOWNLOAD OR USE OF BETA TOOLS WILL NOT EXCEED $500. SEEKING DAMAGES AS LIMITED BY THIS SECTION 2 OF THE TOOLS ADDENDUM SHALL BE YOUR SOLE AND EXCLUSIVE REMEDY FOR ANY ACT OR OMISSION OF THE CONTENT LICENSOR PARTIES RELATED TO BETA TOOLS. THE PARTIES ACKNOWLEDGE AND AGREE THAT THESE LIMITATIONS OF LIABILITY AND EXCLUSIONS OF POTENTIAL DAMAGES WERE AN ESSENTIAL ELEMENT IN SETTING CONSIDERATION UNDER THIS AGREEMENT.
