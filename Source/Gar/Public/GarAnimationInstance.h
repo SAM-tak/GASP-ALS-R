@@ -17,6 +17,7 @@
 #include "GarAnimationInstance.generated.h"
 
 struct FGarFootLimitsSettings;
+class UGarAnimationInstanceSettings;
 class UGarLinkedAnimationInstance;
 class UGarLayeringAnimInstance;
 class UGarViewAnimInstance;
@@ -141,10 +142,6 @@ protected:
 
 protected:
 	UFUNCTION(BlueprintPure, Category = "GAR|Animation Instance",
-		Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "Setting"))
-	UGarAnimationInstanceSettings* GetSettingsUnsafe() const;
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Animation Instance",
 		Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "Rig Input"))
 	FGarControlRigInput GetControlRigInput() const;
 
@@ -175,8 +172,6 @@ private:
 	// Grounded
 
 public:
-	void SetGroundedEntryMode(const FGameplayTag& NewGroundedEntryMode, float STartPosition);
-
 	const FGarGroundedState& GetGroundedState() const;
 
 protected:
@@ -317,11 +312,6 @@ public:
 inline const FGameplayTagContainer& UGarAnimationInstance::GetCurrentGameplayTags() const
 {
 	return CurrentGameplayTags;
-}
-
-inline UGarAnimationInstanceSettings* UGarAnimationInstance::GetSettingsUnsafe() const
-{
-	return Settings;
 }
 
 inline UGarViewAnimInstance* UGarAnimationInstance::GetViewAnimInstance() const

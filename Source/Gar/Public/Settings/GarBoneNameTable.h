@@ -19,7 +19,7 @@ public:
 	FName HeadBoneName{TEXTVIEW("head")};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	FName SpineTopBoneName{TEXTVIEW("spine_03")};
+	FName SpineTopBoneName{TEXTVIEW("spine_05")};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	FName FootLeftBoneName{TEXTVIEW("foot_l")};

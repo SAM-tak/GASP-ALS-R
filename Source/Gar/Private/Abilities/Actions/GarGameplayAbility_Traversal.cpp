@@ -138,13 +138,7 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	                            FCollisionShape::MakeCapsule(TraceCapsuleRadius, ForwardTraceCapsuleHalfHeight),
 	                            {ForwardTraceTag, false, Character}, TraversalTraceResponses);
 
-	Params.TargetPrimitive = ForwardTraceHit.GetComponent();
-
-	if (!ForwardTraceHit.IsValidBlockingHit() ||
-	    !Params.TargetPrimitive.IsValid() ||
-		Params.TargetPrimitive->GetComponentVelocity().SizeSquared() > FMath::Square(TargetPrimitiveSpeedThreshold) ||
-	    !Params.TargetPrimitive->CanCharacterStepUp(Character) ||
-		Character->GetCharacterMovement()->IsWalkable(ForwardTraceHit))
+	if (!ForwardTraceHit.IsValidBlockingHit())
 	{
 #if ENABLE_DRAW_DEBUG
 		if (bDisplayDebug)
@@ -224,6 +218,29 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	World->SweepSingleByChannel(DownwardTraceHit, DownwardTraceStart, DownwardTraceEnd, FQuat::Identity,
 	                            TraversalTraceChannel, FCollisionShape::MakeSphere(TraceCapsuleRadius),
 	                            {DownwardTraceTag, false, Character}, TraversalTraceResponses);
+
+	auto TargetPrimitive{DownwardTraceHit.GetComponent()};
+
+	if (!DownwardTraceHit.IsValidBlockingHit() ||
+		HasNonTraversalTag(DownwardTraceHit) ||
+	    !IsValid(TargetPrimitive) ||
+		TargetPrimitive->GetComponentVelocity().SizeSquared() > FMath::Square(TargetPrimitiveSpeedThreshold) ||
+	    !TargetPrimitive->CanCharacterStepUp(Character) ||
+		Character->GetCharacterMovement()->IsWalkable(ForwardTraceHit))
+	{
+#if ENABLE_DRAW_DEBUG
+		if (bDisplayDebug)
+		{
+			UGarUtility::DrawDebugSweepSingleCapsuleAlternative(World, ForwardTraceStart, ForwardTraceEnd, TraceCapsuleRadius,
+			                                                    ForwardTraceCapsuleHalfHeight, false, ForwardTraceHit, {0.0f, 0.25f, 1.0f},
+			                                                    {0.0f, 0.75f, 1.0f}, TraceSettings.bDrawFailedTraces ? 5.0f : 0.0f);
+		}
+#endif
+
+		return false;
+	}
+
+	Params.TargetPrimitive = TargetPrimitive;
 
 	const auto SlopeAngleCos{UE_REAL_TO_FLOAT(DownwardTraceHit.ImpactNormal.Z)};
 
@@ -422,6 +439,21 @@ void UGarGameplayAbility_Traversal::ChooseCandidate_Implementation
 void UGarGameplayAbility_Traversal::CommitParameters(const FGameplayAbilitySpecHandle Handle, const FGarTraversalParameters& Parameters) const
 {
 	ParameterMap.Add(Handle, Parameters);
+}
+
+bool UGarGameplayAbility_Traversal::HasNonTraversalTag(const FHitResult& HitResult) const
+{
+	auto* Actor{HitResult.GetActor()};
+	if (IsValid(Actor) && Actor->ActorHasTag(ExcludeTargetTag))
+	{
+		return true;
+	}
+	auto* Component{HitResult.GetComponent()};
+	if (IsValid(Component) && Component->ComponentHasTag(ExcludeTargetTag))
+	{
+		return true;
+	}
+	return false;
 }
 
 void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

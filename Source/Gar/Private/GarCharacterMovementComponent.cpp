@@ -214,8 +214,18 @@ bool UGarCharacterMovementComponent::CanEditChange(const FProperty* Property) co
 }
 #endif
 
+void UGarCharacterMovementComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+	if (IsValid(MovementSettings))
+	{
+		RefreshGaitSettings();
+	}
+}
+
 void UGarCharacterMovementComponent::BeginPlay()
 {
+	ensure(IsValid(MovementSettings));
 	ensureMsgf(!bUseControllerDesiredRotation && !bOrientRotationToMovement,
 			   TEXT("These settings are not allowed and must be turned off!"));
 
@@ -937,15 +947,6 @@ void UGarCharacterMovementComponent::MoveAutonomous(const float ClientTimeStamp,
 
 		PreviousControlRotation = NewControlRotation;
 	}
-}
-
-void UGarCharacterMovementComponent::SetMovementSettings(UGarMovementSettings* NewMovementSettings)
-{
-	ensure(IsValid(NewMovementSettings));
-
-	MovementSettings = NewMovementSettings;
-
-	RefreshGaitSettings();
 }
 
 void UGarCharacterMovementComponent::RefreshGaitSettings()

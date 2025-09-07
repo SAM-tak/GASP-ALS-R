@@ -1592,7 +1592,3 @@ float UGarAnimationInstance::GetCurveValueClamped01(const FName& CurveName) cons
 {
 	return UGarMath::Clamp01(GetCurveValue(CurveName));
 }
-
-void UGarAnimationInstance::SetGroundedEntryMode(const FGameplayTag& NewGroundedEntryMode, float NewStartPosition)
-{
-}

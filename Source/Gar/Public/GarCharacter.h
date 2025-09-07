@@ -11,14 +11,10 @@
 #include "Abilities/GarAbilitySet.h"
 #include "GarCharacter.generated.h"
 
-struct FGarMantlingParameters;
-struct FGarMantlingTraceSettings;
-class UGarCharacterMovementComponent;
 class UGarCharacterSettings;
-class UGarPhysicalAnimationComponent;
-class UGarMovementSettings;
 class UGarAnimationInstance;
-class UGarMantlingSettings;
+class UGarCharacterMovementComponent;
+class UGarPhysicalAnimationComponent;
 class UGarAbilitySystemComponent;
 class UGarMotionWarpingComponent;
 
@@ -32,7 +28,7 @@ DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnRefresh, float);
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnChangeGameplayTag, const FGameplayTag &);
 
-UCLASS(Abstract, AutoExpandCategories = ("Gar Character|Settings"))
+UCLASS(Abstract, AutoExpandCategories = ("GarCharacter|Settings"))
 class GAR_API AGarCharacter : public ACharacter, public IAbilitySystemInterface, public IGameplayCueInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
@@ -40,79 +36,76 @@ class GAR_API AGarCharacter : public ACharacter, public IAbilitySystemInterface,
 	friend UGarPhysicalAnimationComponent;
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "Gar Character|State", Transient)
-	TObjectPtr<UGarCharacterMovementComponent> GarCharacterMovement;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Gar Character|State", Transient)
-	TWeakObjectPtr<UGarAnimationInstance> AnimationInstance;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
 	TObjectPtr<UGarPhysicalAnimationComponent> PhysicalAnimation;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
 	TObjectPtr<UGarAbilitySystemComponent> AbilitySystem;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
 	TObjectPtr<UGarMotionWarpingComponent> MotionWarping;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	TObjectPtr<UGarCharacterSettings> Settings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings")
-	TObjectPtr<UGarMovementSettings> MovementSettings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gar Character|Settings")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbilitySystem|Settings")
 	TObjectPtr<UGarAbilitySet> AbilitySet;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings|Desired State", Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
 	FGameplayTag DesiredRotationMode{GarDesiredRotationModeTags::ViewDirection};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings|Desired State", Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
 	FGameplayTag DesiredStance{GarDesiredStanceTags::Standing};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings|Desired State", Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
 	FGameplayTag DesiredGait{GarDesiredGaitTags::Running};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
 	FGameplayTag OverlayMode{GarOverlayModeTags::Default};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	TWeakObjectPtr<UGarCharacterMovementComponent> GarCharacterMovement;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	TWeakObjectPtr<UGarAnimationInstance> AnimationInstance;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag Stance{GarStanceTags::Standing};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag Gait{GarGaitTags::Walking};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag ViewMode{GarViewModeTags::ThirdPerson};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGarMovementBaseState MovementBase;
 
 	// Replicated raw view rotation. Depending on the context, this rotation can be in world space, or in movement
 	// base space. In most cases, it is better to use FGarViewState::Rotation to take advantage of network smoothing.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient, ReplicatedUsing = OnReplicated_ReplicatedViewRotation)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, ReplicatedUsing = OnReplicated_ReplicatedViewRotation)
 	FRotator ReplicatedViewRotation{ForceInit};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGarViewState ViewState;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient, Replicated)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
 	FVector_NetQuantizeNormal InputDirection;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient, Replicated,
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated,
 			  Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
 	float DesiredVelocityYawAngle;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGarLocomotionState LocomotionState;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gar Character|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FRotator PendingFocalRotationRelativeAdjustment{ForceInit};
 
 	FTimerHandle BrakingFrictionFactorResetTimer;
@@ -130,7 +123,7 @@ public:
 
 	virtual void PostInitializeComponents() override;
 
-	FORCEINLINE UGarCharacterMovementComponent* GetGarCharacterMovement() const { return GarCharacterMovement; }
+	FORCEINLINE UGarCharacterMovementComponent* GetGarCharacterMovement() const { return GarCharacterMovement.Get(); }
 
 	FORCEINLINE UGarAnimationInstance* GetGarAnimationInstace() const { return AnimationInstance.Get(); }
 
@@ -523,10 +516,10 @@ public:
 	void K2_OnEndLie(float HalfHeightAdjust, float ScaledHalfHeightAdjust);
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gar Character|Settings", Meta = (ForceUnits = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings", Meta = (ForceUnits = "s"))
 	float CapsuleUpdateSpeed;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Gar Character|State", replicatedUsing = OnRep_IsLied)
+	UPROPERTY(BlueprintReadOnly, Category = "GarCharacter|State", replicatedUsing = OnRep_IsLied)
 	uint32 bIsLied : 1;
 
 private:

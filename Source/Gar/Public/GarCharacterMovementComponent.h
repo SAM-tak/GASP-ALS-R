@@ -107,13 +107,11 @@ class GAR_API UGarCharacterMovementComponent : public UCharacterMovementComponen
 	friend FGarSavedMove;
 
 protected:
-	FGarCharacterNetworkMoveDataContainer MoveDataContainer;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|Settings")
+	TObjectPtr<UGarMovementSettings> MovementSettings;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NavMovement|MovementCapabilities", meta = (DisplayName = "Can Lie"))
 	uint8 NavAgentProps_bCanLie : 1{true};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
-	TObjectPtr<UGarMovementSettings> MovementSettings;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	FGarMovementGaitSettings GaitSettings;
@@ -144,6 +142,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	uint8 bPrePenetrationAdjustmentVelocityValid : 1 {false};
 
+protected:
+	FGarCharacterNetworkMoveDataContainer MoveDataContainer;
+
 public:
 	FGarPhysicsRotationDelegate OnPhysicsRotation;
 
@@ -151,6 +152,8 @@ public:
 #if WITH_EDITOR
 	virtual bool CanEditChange(const FProperty* Property) const override;
 #endif
+
+	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
 
@@ -204,9 +207,6 @@ protected:
 	virtual void MoveAutonomous(float ClientTimeStamp, float DeltaTime, uint8 CompressedFlags, const FVector& NewAcceleration) override;
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "GAR|Character Movement")
-	void SetMovementSettings(UGarMovementSettings* NewMovementSettings);
-
 	const FGarMovementGaitSettings& GetGaitSettings() const;
 
 private:

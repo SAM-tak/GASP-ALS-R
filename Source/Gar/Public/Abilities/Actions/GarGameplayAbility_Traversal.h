@@ -106,6 +106,9 @@ class GAR_API UGarGameplayAbility_Traversal : public UGarGameplayAbility_MotionM
 	GENERATED_UCLASS_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
+	FName ExcludeTargetTag{TEXTVIEW("Not Traversable")};
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ClampMax = 180, ForceUnits = "deg"))
 	float TraceAngleThreshold{110.0f};
 
@@ -178,6 +181,8 @@ protected:
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
 	void ChooseCandidate(const FGarTraversalChooserInputs& Input, FGarTraversalChooserOutput& Output, TArray<UAnimMontage*>& OutMontages) const;
+
+	bool HasNonTraversalTag(const FHitResult& HitResult) const;
 
 protected:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

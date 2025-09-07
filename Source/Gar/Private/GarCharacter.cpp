@@ -220,10 +220,6 @@ void AGarCharacter::PostInitializeComponents()
 
 	GetMesh()->AddTickPrerequisiteActor(this);
 
-	// Pass current movement settings to the movement component.
-
-	GarCharacterMovement->SetMovementSettings(MovementSettings);
-
 	AnimationInstance = Cast<UGarAnimationInstance>(GetMesh()->GetAnimInstance());
 
 	// workaround for crash since 5.6
@@ -245,10 +241,10 @@ void AGarCharacter::PostInitializeComponents()
 void AGarCharacter::BeginPlay()
 {
 	if(!ensure(IsValid(Settings))) return;
-	if(!ensure(IsValid(MovementSettings))) return;
-	if(!ensure(AnimationInstance.IsValid())) return;
 	if(!ensure(IsValid(PhysicalAnimation))) return;
 	if(!ensure(IsValid(MotionWarping))) return;
+	if(!ensure(GarCharacterMovement.IsValid())) return;
+	if(!ensure(AnimationInstance.IsValid())) return;
 
 	if(!ensureMsgf(!bUseControllerRotationPitch && !bUseControllerRotationYaw && !bUseControllerRotationRoll,
 					   TEXT("These settings are not allowed and must be turned off!"))) return;
@@ -865,7 +861,7 @@ bool AGarCharacter::CanCrouch() const
 void AGarCharacter::Crouch(bool bClientSimulation)
 {
 	Super::Crouch(bClientSimulation);
-	if (GarCharacterMovement)
+	if (GarCharacterMovement.IsValid())
 	{
 		GarCharacterMovement->bWantsToLie = false;
 	}
@@ -874,7 +870,7 @@ void AGarCharacter::Crouch(bool bClientSimulation)
 void AGarCharacter::UnCrouch(bool bClientSimulation)
 {
 	Super::UnCrouch(bClientSimulation);
-	if (GarCharacterMovement)
+	if (GarCharacterMovement.IsValid())
 	{
 		GarCharacterMovement->bWantsToLie = false;
 	}
@@ -1902,7 +1898,7 @@ bool AGarCharacter::CanLie() const
 
 void AGarCharacter::Lie()
 {
-	if (GarCharacterMovement)
+	if (GarCharacterMovement.IsValid())
 	{
 		if (CanLie())
 		{
@@ -2007,7 +2003,7 @@ void AGarCharacter::SetIsLied(bool bNewIsLied)
 
 void AGarCharacter::OnRep_IsLied()
 {
-	if (IsValid(GarCharacterMovement))
+	if (GarCharacterMovement.IsValid())
 	{
 		if (bIsLied)
 		{
