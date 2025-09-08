@@ -5,8 +5,6 @@
 #include "State/GarControlRigInput.h"
 #include "State/GarFeetState.h"
 #include "State/GarGroundedState.h"
-#include "State/GarInAirState.h"
-#include "State/GarLeanState.h"
 #include "State/GarLocomotionAnimationState.h"
 #include "State/GarMovementBaseState.h"
 #include "State/GarPoseState.h"
@@ -84,9 +82,6 @@ protected:
 	FGarPoseState PoseState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarLeanState LeanState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarLocomotionAnimationState LocomotionState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
@@ -94,9 +89,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarGroundedState GroundedState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarInAirState InAirState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarFeetState FeetState;
@@ -109,9 +101,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarTurnInPlaceState TurnInPlaceState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FHitResult GroundHit;
 
 public:
 	//This is in the process of organizing such that things that are only accessed within each LinkedAnimLayer are defined within the LinkedAnimLayer,
@@ -201,28 +190,6 @@ private:
 	void RefreshStandingPlayRate();
 
 	void RefreshCrouchingPlayRate();
-
-	void RefreshGroundedLeanAmount(const FVector3f& RelativeAccelerationAmount, float DeltaTime);
-
-	void ResetGroundedLeanAmount(float DeltaTime);
-
-	// In Air
-
-public:
-	void Jump();
-
-protected:
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void ResetJumped();
-
-private:
-	void RefreshInAirOnGameThread();
-
-	void RefreshInAir(float DeltaTime);
-
-	void RefreshGroundPredictionAmount();
-
-	void RefreshInAirLeanAmount(float DeltaTime);
 
 	// Feet
 
@@ -347,14 +314,4 @@ inline void UGarAnimationInstance::SetHipsDirection(const EGarHipsDirection NewH
 inline void UGarAnimationInstance::ActivatePivot()
 {
 	GroundedState.bPivotActivationRequested = true;
-}
-
-inline void UGarAnimationInstance::Jump()
-{
-	InAirState.bJumpRequested = true;
-}
-
-inline void UGarAnimationInstance::ResetJumped()
-{
-	InAirState.bJumped = false;
 }

@@ -42,9 +42,6 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
 	void ActivatePivot();
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void ResetJumped();
 };
 
 inline UGarAnimationInstance* UGarLinkedAnimationInstance::GetParentUnsafe() const

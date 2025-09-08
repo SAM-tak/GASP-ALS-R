@@ -1,9 +1,16 @@
 #pragma once
 
-#include "GarInAirRotationMode.h"
 #include "GarViewSettings.h"
 #include "GarGameplayTags.h"
 #include "GarCharacterSettings.generated.h"
+
+UENUM(BlueprintType)
+enum class EGarInAirRotationMode : uint8
+{
+	RotateToVelocityOnJump,
+	KeepRelativeRotation,
+	KeepWorldRotation
+};
 
 UCLASS(Blueprintable, BlueprintType)
 class GAR_API UGarCharacterSettings : public UDataAsset

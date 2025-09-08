@@ -104,8 +104,6 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	RefreshLocomotionOnGameThread();
 	RefreshGroundedOnGameThread();
-	RefreshInAirOnGameThread();
-
 	RefreshFeetOnGameThread();
 }
 
@@ -139,10 +137,7 @@ void UGarAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTim
 	}
 
 	RefreshGrounded(DeltaTime);
-	RefreshInAir(DeltaTime);
-
 	RefreshFeet(DeltaTime);
-
 	RefreshTransitions();
 	RefreshRotateInPlace(DeltaTime);
 	RefreshTurnInPlace(DeltaTime);
@@ -292,7 +287,7 @@ void UGarAnimationInstance::RefreshLocomotionOnGameThread()
 	LocomotionState.bMoving = Locomotion.bMoving;
 
 	LocomotionState.bMovingSmooth = (Locomotion.bHasInput && Locomotion.bHasSpeed) ||
-									Locomotion.Speed > Settings->General.MovingSmoothSpeedThreshold;
+									Locomotion.Speed > Settings->MovingSmoothSpeedThreshold;
 
 	LocomotionState.TargetYawAngle = Locomotion.TargetYawAngle;
 	LocomotionState.Location = Locomotion.Location;
@@ -334,7 +329,6 @@ void UGarAnimationInstance::RefreshGrounded(const float DeltaTime)
 
 	if (!LocomotionState.bMoving)
 	{
-		ResetGroundedLeanAmount(DeltaTime);
 		return;
 	}
 
@@ -368,8 +362,6 @@ void UGarAnimationInstance::RefreshGrounded(const float DeltaTime)
 
 	RefreshStandingPlayRate();
 	RefreshCrouchingPlayRate();
-
-	RefreshGroundedLeanAmount(RelativeAccelerationAmount, DeltaTime);
 }
 
 void UGarAnimationInstance::RefreshMovementDirection()
@@ -534,195 +526,6 @@ void UGarAnimationInstance::RefreshCrouchingPlayRate()
 	GroundedState.CrouchingPlayRate = FMath::Clamp(
 		LocomotionState.Speed / (Settings->Grounded.AnimatedCrouchSpeed * GroundedState.StrideBlendAmount * LocomotionState.Scale),
 		0.0f, 2.0f);
-}
-
-void UGarAnimationInstance::RefreshGroundedLeanAmount(const FVector3f& RelativeAccelerationAmount, const float DeltaTime)
-{
-	if (bPendingUpdate)
-	{
-		LeanState.RightAmount = RelativeAccelerationAmount.Y;
-		LeanState.ForwardAmount = RelativeAccelerationAmount.X;
-	}
-	else
-	{
-		LeanState.RightAmount = FMath::FInterpTo(LeanState.RightAmount, RelativeAccelerationAmount.Y,
-												 DeltaTime, Settings->General.LeanInterpolationSpeed);
-
-		LeanState.ForwardAmount = FMath::FInterpTo(LeanState.ForwardAmount, RelativeAccelerationAmount.X,
-												   DeltaTime, Settings->General.LeanInterpolationSpeed);
-	}
-}
-
-void UGarAnimationInstance::ResetGroundedLeanAmount(const float DeltaTime)
-{
-	if (bPendingUpdate)
-	{
-		LeanState.RightAmount = 0.0f;
-		LeanState.ForwardAmount = 0.0f;
-	}
-	else
-	{
-		LeanState.RightAmount = FMath::FInterpTo(LeanState.RightAmount, 0.0f, DeltaTime, Settings->General.LeanInterpolationSpeed);
-		LeanState.ForwardAmount = FMath::FInterpTo(LeanState.ForwardAmount, 0.0f, DeltaTime, Settings->General.LeanInterpolationSpeed);
-	}
-}
-
-void UGarAnimationInstance::RefreshInAirOnGameThread()
-{
-	check(IsInGameThread())
-
-	InAirState.bJumped = !bPendingUpdate && (InAirState.bJumped || InAirState.bJumpRequested);
-	InAirState.bJumpRequested = false;
-}
-
-void UGarAnimationInstance::RefreshInAir(const float DeltaTime)
-{
-	if (InAirState.bJumped)
-	{
-		static constexpr auto ReferenceSpeed{600.0f};
-		static constexpr auto MinPlayRate{1.2f};
-		static constexpr auto MaxPlayRate{1.5f};
-
-		InAirState.JumpPlayRate = UGarMath::LerpClamped(MinPlayRate, MaxPlayRate, LocomotionState.Speed / ReferenceSpeed);
-	}
-
-	if (!CurrentGameplayTags.HasTag(GarLocomotionModeTags::InAir))
-	{
-		return;
-	}
-
-	// A separate variable for vertical speed is used to determine at what speed the character landed on the ground.
-
-	InAirState.VerticalVelocity = UE_REAL_TO_FLOAT(LocomotionState.Velocity.Z);
-
-	RefreshGroundPredictionAmount();
-
-	RefreshInAirLeanAmount(DeltaTime);
-}
-
-void UGarAnimationInstance::RefreshGroundPredictionAmount()
-{
-	// Calculate the ground prediction weight by tracing in the velocity direction to find a walkable surface the character
-	// is falling toward and getting the "time" (range from 0 to 1, 1 being maximum, 0 being about to ground) till impact.
-	// The ground prediction amount curve is used to control how the time affects the final amount for a smooth blend.
-
-	static constexpr auto VerticalVelocityThreshold{-200.0f};
-
-	if (InAirState.VerticalVelocity > VerticalVelocityThreshold)
-	{
-		InAirState.GroundPredictionAmount = 0.0f;
-		GroundHit.Init();
-		return;
-	}
-
-	const auto AllowanceAmount{1.0f - GetCurveValueClamped01(UGarConstants::GroundPredictionBlockCurveName())};
-	if (AllowanceAmount <= UE_KINDA_SMALL_NUMBER)
-	{
-		InAirState.GroundPredictionAmount = 0.0f;
-		GroundHit.Init();
-		return;
-	}
-
-	const auto SweepStartLocation{LocomotionState.Location};
-
-	static constexpr auto MinVerticalVelocity{-4000.0f};
-	static constexpr auto MaxVerticalVelocity{-200.0f};
-
-	auto VelocityDirection{LocomotionState.Velocity};
-	VelocityDirection.Z = FMath::Clamp(VelocityDirection.Z, MinVerticalVelocity, MaxVerticalVelocity);
-	VelocityDirection.Normalize();
-
-	static constexpr auto MinSweepDistance{150.0f};
-	static constexpr auto MaxSweepDistance{2000.0f};
-
-	const auto SweepVector{
-		VelocityDirection * FMath::GetMappedRangeValueClamped(FVector2f{MaxVerticalVelocity, MinVerticalVelocity},
-															  {MinSweepDistance, MaxSweepDistance},
-															  InAirState.VerticalVelocity) * LocomotionState.Scale
-	};
-	
-	bool bGroundValid{GroundHit.IsValidBlockingHit() && GroundHit.ImpactNormal.Z >= LocomotionState.WalkableFloorZ};
-
-	FTraceDelegate TraceDelegate = FTraceDelegate::CreateWeakLambda(this, [this](const FTraceHandle& Handle, FTraceDatum& Data) mutable
-	{
-		if (Data.OutHits.Num() > 0)
-		{
-			GroundHit = Data.OutHits[0];
-		}
-		else
-		{
-			GroundHit.Init();
-		}
-	});
-	if (IsInGameThread())
-	{
-		GetWorld()->AsyncSweepByChannel(EAsyncTraceType::Single, SweepStartLocation, SweepStartLocation + SweepVector,
-										FQuat::Identity, Settings->InAir.GroundPredictionSweepChannel,
-										FCollisionShape::MakeCapsule(LocomotionState.CapsuleRadius, LocomotionState.CapsuleHalfHeight),
-										{__FUNCTION__, false, Character.Get()}, Settings->InAir.GroundPredictionSweepResponses, &TraceDelegate);
-#if WITH_EDITORONLY_DATA && ENABLE_DRAW_DEBUG
-		if (bDisplayDebugTraces)
-		{
-			UGarUtility::DrawDebugSweepSingleCapsule(GetWorld(), GroundHit.TraceStart, GroundHit.TraceEnd, FRotator::ZeroRotator,
-													 LocomotionState.CapsuleRadius, LocomotionState.CapsuleHalfHeight,
-													 bGroundValid, GroundHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f});
-		}
-#endif
-	}
-	else
-	{
-		RequestQueue.Emplace([this, TraceDelegate, SweepStartLocation, SweepVector
-#if WITH_EDITORONLY_DATA && ENABLE_DRAW_DEBUG
-							, bGroundValid
-#endif
-		]
-		{
-			GetWorld()->AsyncSweepByChannel(EAsyncTraceType::Single, SweepStartLocation, SweepStartLocation + SweepVector,
-											FQuat::Identity, Settings->InAir.GroundPredictionSweepChannel,
-											FCollisionShape::MakeCapsule(LocomotionState.CapsuleRadius, LocomotionState.CapsuleHalfHeight),
-											{__FUNCTION__, false, Character.Get()}, Settings->InAir.GroundPredictionSweepResponses, &TraceDelegate);
-#if WITH_EDITORONLY_DATA && ENABLE_DRAW_DEBUG
-			if (bDisplayDebugTraces)
-			{
-				UGarUtility::DrawDebugSweepSingleCapsule(GetWorld(), GroundHit.TraceStart, GroundHit.TraceEnd, FRotator::ZeroRotator,
-														 LocomotionState.CapsuleRadius, LocomotionState.CapsuleHalfHeight,
-														 bGroundValid, GroundHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f});
-			}
-#endif
-		});
-	}
-
-	InAirState.GroundPredictionAmount = bGroundValid
-										? Settings->InAir.GroundPredictionAmountCurve->GetFloatValue(GroundHit.Time) * AllowanceAmount
-										: 0.0f;
-}
-
-void UGarAnimationInstance::RefreshInAirLeanAmount(const float DeltaTime)
-{
-	// Use the relative velocity direction and amount to determine how much the character should lean
-	// while in air. The lean amount curve gets the vertical velocity and is used as a multiplier to
-	// smoothly reverse the leaning direction when transitioning from moving upwards to moving downwards.
-
-	static constexpr auto ReferenceSpeed{350.0f};
-
-	const auto RelativeVelocity{
-		FVector3f{LocomotionState.RotationQuaternion.UnrotateVector(LocomotionState.Velocity)} /
-		ReferenceSpeed * Settings->InAir.LeanAmountCurve->GetFloatValue(InAirState.VerticalVelocity)
-	};
-
-	if (bPendingUpdate)
-	{
-		LeanState.RightAmount = RelativeVelocity.Y;
-		LeanState.ForwardAmount = RelativeVelocity.X;
-	}
-	else
-	{
-		LeanState.RightAmount = FMath::FInterpTo(LeanState.RightAmount, RelativeVelocity.Y,
-												 DeltaTime, Settings->General.LeanInterpolationSpeed);
-
-		LeanState.ForwardAmount = FMath::FInterpTo(LeanState.ForwardAmount, RelativeVelocity.X,
-												   DeltaTime, Settings->General.LeanInterpolationSpeed);
-	}
 }
 
 bool UGarAnimationInstance::IsFootLockInhibited() const

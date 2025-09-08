@@ -1457,7 +1457,7 @@ void AGarCharacter::Jump()
 	}
 }
 
-void AGarCharacter::OnJumped_Implementation()
+void AGarCharacter::OnJumped_Implementation() // TODO : removal?
 {
 	Super::OnJumped_Implementation();
 
@@ -1471,7 +1471,7 @@ void AGarCharacter::OnJumped_Implementation()
 	}
 }
 
-void AGarCharacter::MulticastOnJumpedNetworked_Implementation()
+void AGarCharacter::MulticastOnJumpedNetworked_Implementation() // TODO : removal?
 {
 	if (GetLocalRole() != ROLE_AutonomousProxy)
 	{
@@ -1479,11 +1479,11 @@ void AGarCharacter::MulticastOnJumpedNetworked_Implementation()
 	}
 }
 
-void AGarCharacter::OnJumpedNetworked()
+void AGarCharacter::OnJumpedNetworked() // TODO : removal?
 {
 	if (AnimationInstance.IsValid())
 	{
-		AnimationInstance->Jump();
+		//AnimationInstance->Jump();
 	}
 }
 

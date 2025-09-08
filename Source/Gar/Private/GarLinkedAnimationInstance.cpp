@@ -72,11 +72,3 @@ void UGarLinkedAnimationInstance::ActivatePivot()
 		Parent->ActivatePivot();
 	}
 }
-
-void UGarLinkedAnimationInstance::ResetJumped()
-{
-	if (Parent.IsValid())
-	{
-		Parent->ResetJumped();
-	}
-}
