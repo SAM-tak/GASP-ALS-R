@@ -1,14 +1,15 @@
-# Game Animation Sample with Overlay Layering and GAS | Unreal Engine 5
+# Game Animation Sample with Modular Overlay Layering and GAS
 
 ## Introduction
 
-This project integrates the ALS Overlay Layering System into the new Unreal Engine Motion Matching Game Animation Sample.
-Advanced Locomotion System (ALS) provides a nice Overlay System that allows us to alter the entire locomotion animation just by applying simple overlay poses. 
+This project integrates the ALS-Refactored Overlay Layering System into the new Unreal Engine Motion Matching Game Animation Sample.
+Advanced Locomotion System (ALS) provides a nice Overlay System that allows us to alter the entire locomotion animation just by applying simple overlay poses.
 
 ## Features
 
 - Game Animation Sample
-- Overlay layering system built with separate Anim Graphs and Linked Layers
+- Modular Overlay layering system built with separate Anim Graphs and Linked Layers and Pawn Component
+- Travarsal Action as Gameplay Ability
 - All overlays from ALS
 - Basic weapon attach system from ALS
 - Basic overlay switcher widget from ALS
@@ -31,7 +32,7 @@ To migrate the GASPALS plugin to your own Unreal Engine project, you can follow 
 
 ## Contributing
 
-Contributions are welcome! I hope that, with the help of the community, we can turn this into a next-gen fully featured locomotion system. 
+Contributions are welcome! I hope that, with the help of the community, we can turn this into a next-gen fully featured locomotion system.
 
 Please follow these steps to contribute:
 
