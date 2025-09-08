@@ -94,6 +94,11 @@ protected:
 	FCameraVariableID EyeLocationVariableId;
 	FCameraVariableID ADSLocationVariableId;
 	FCameraVariableID ADSRotationVariableId;
+	FCameraVariableID BoomOffsetVariableId;
+	FCameraVariableID CenterShoulderOffsetVariableId;
+	FCameraVariableID LeftShoulderOffsetVariableId;
+	FCameraVariableID RightShoulderOffsetVariableId;
+
 	FVector3d BoomOffset{FVector3d::ZeroVector};
 	FVector3d CenterShoulderOffset{FVector3d::ZeroVector};
 	FVector3d LeftShoulderOffset{FVector3d::ZeroVector};

@@ -129,18 +129,22 @@ void UGarGameplayCameraStateComponent::InitializeByCameraVariables(
 	if (IsValid(BoomOffsetVariable))
 	{
 		BoomOffset = BoomOffsetVariable->GetDefaultValue();
+		BoomOffsetVariableId = BoomOffsetVariable->GetVariableID();
 	}
 	if (IsValid(CenterShoulderOffsetVariable))
 	{
 		CenterShoulderOffset = CenterShoulderOffsetVariable->GetDefaultValue();
+		CenterShoulderOffsetVariableId = CenterShoulderOffsetVariable->GetVariableID();
 	}
 	if (IsValid(LeftShoulderOffsetVariable))
 	{
 		LeftShoulderOffset = LeftShoulderOffsetVariable->GetDefaultValue();
+		LeftShoulderOffsetVariableId = LeftShoulderOffsetVariable->GetVariableID();
 	}
 	if (IsValid(RightShoulderOffsetVariable))
 	{
 		RightShoulderOffset = RightShoulderOffsetVariable->GetDefaultValue();
+		RightShoulderOffsetVariableId = RightShoulderOffsetVariable->GetVariableID();
 	}
 }
 
@@ -467,6 +471,23 @@ void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
 	if (ADSRotationVariableId.IsValid())
 	{
 		VariableTable.SetValue<FRotator3d>(ADSRotationVariableId, Rotation);
+	}
+
+	if (BoomOffsetVariableId.IsValid())
+	{
+		VariableTable.SetValue<FVector3d>(BoomOffsetVariableId, BoomOffset);
+	}
+	if (RightShoulderOffsetVariableId.IsValid())
+	{
+		VariableTable.SetValue<FVector3d>(RightShoulderOffsetVariableId, RightShoulderOffset);
+	}
+	if (CenterShoulderOffsetVariableId.IsValid())
+	{
+		VariableTable.SetValue<FVector3d>(CenterShoulderOffsetVariableId, CenterShoulderOffset);
+	}
+	if (LeftShoulderOffsetVariableId.IsValid())
+	{
+		VariableTable.SetValue<FVector3d>(LeftShoulderOffsetVariableId, LeftShoulderOffset);
 	}
 }
 
