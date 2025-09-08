@@ -4,6 +4,8 @@
 #include "GarLinkedAnimationInstance.generated.h"
 
 class AGarCharacter;
+class UGarAnimationInstance;
+class UGarViewAnimInstance;
 
 UCLASS(Abstract)
 class GAR_API UGarLinkedAnimationInstance : public UAnimInstance
@@ -36,6 +38,10 @@ protected:
 	// sure what you're doing, then it's better to access your custom variables through the "Parent" variable.
 	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "Parent"))
 	UGarAnimationInstance* GetParentUnsafe() const;
+
+	// utility for overlays. overlay accesses View->PitchAmount
+	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "View"))
+	UGarViewAnimInstance* GetViewUnsafe() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
 	void SetHipsDirection(EGarHipsDirection NewHipsDirection);

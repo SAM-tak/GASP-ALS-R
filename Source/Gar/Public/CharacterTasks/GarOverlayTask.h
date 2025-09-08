@@ -5,7 +5,7 @@
 #include "GarCharacterTask.h"
 #include "GarOverlayTask.generated.h"
 
-class UGarOverlayAnimInstance;
+class UGarCharacterTaskAnimInstance;
 class UGarOverlayModeComponent;
 
 /**
@@ -20,13 +20,13 @@ class GAR_API UGarOverlayTask : public UGarCharacterTask
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Settings")
-	TSubclassOf<UGarOverlayAnimInstance> OverlayAnimClass;
+	TSubclassOf<UGarCharacterTaskAnimInstance> OverlayAnimClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<UGarOverlayModeComponent> Component;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	TWeakObjectPtr<UGarOverlayAnimInstance> OverlayAnimInstance;
+	TWeakObjectPtr<UGarCharacterTaskAnimInstance> OverlayAnimInstance;
 
 public:
 	virtual void Begin() override;

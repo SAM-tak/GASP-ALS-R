@@ -2,7 +2,7 @@
 
 #include "CharacterTasks/GarOverrideTask.h"
 #include "GarCharacter.h"
-#include "GarCharacterTaskAnimInstance.h"
+#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarOverrideTask)
 

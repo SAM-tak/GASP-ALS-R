@@ -1,7 +1,7 @@
 #include "Components/GarOverlayModeComponent.h"
 
 #include "GarCharacter.h"
-#include "LinkedAnimLayers/GarOverlayAnimInstance.h"
+#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
 #include "CharacterTasks/GarOverlayTask.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"

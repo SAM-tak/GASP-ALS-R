@@ -72,3 +72,8 @@ void UGarLinkedAnimationInstance::ActivatePivot()
 		Parent->ActivatePivot();
 	}
 }
+
+UGarViewAnimInstance* UGarLinkedAnimationInstance::GetViewUnsafe() const
+{
+	return Parent->ViewAnimInstance.Get();
+}
