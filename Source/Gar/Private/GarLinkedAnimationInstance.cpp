@@ -57,22 +57,6 @@ TMap<FName, float>& UGarLinkedAnimationInstance::GetAnimationCurvesFromProxy(EAn
 	return GetProxyOnAnyThread<FGarAnimationInstanceProxy>().GetAnimationCurves(EAnimCurveType::AttributeCurve);
 }
 
-void UGarLinkedAnimationInstance::SetHipsDirection(const EGarHipsDirection NewHipsDirection)
-{
-	if (Parent.IsValid())
-	{
-		Parent->SetHipsDirection(NewHipsDirection);
-	}
-}
-
-void UGarLinkedAnimationInstance::ActivatePivot()
-{
-	if (Parent.IsValid())
-	{
-		Parent->ActivatePivot();
-	}
-}
-
 UGarViewAnimInstance* UGarLinkedAnimationInstance::GetViewUnsafe() const
 {
 	return Parent->ViewAnimInstance.Get();

@@ -143,9 +143,6 @@ public:
 		DisplayName = "Slerp (Skip Normalization)", Meta = (AutoCreateRefTerm = "From, To", ReturnDisplayName = "Direction"))
 	static FVector SlerpSkipNormalization(const FVector& From, const FVector& To, float Alpha);
 
-	UFUNCTION(BlueprintCallable, Category = "GAR|Math|Input", Meta = (ReturnDisplayName = "Direction"))
-	static EGarMovementDirection CalculateMovementDirection(float Angle, float ForwardHalfAngle, float AngleThreshold);
-
 	// Calculates the projection location and direction of the perpendicular to AC through B.
 	UFUNCTION(BlueprintCallable, Category = "GAR|Math|Input",
 		Meta = (AutoCreateRefTerm = "ALocation, BLocation, CLocation", ExpandBoolAsExecs = "ReturnValue"))

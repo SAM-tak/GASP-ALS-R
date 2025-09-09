@@ -41,9 +41,8 @@ void UGarViewAnimInstance::Refresh(const float DeltaTime)
 
 	if (!Parent->bIsActionRunning)
 	{
-		YawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(Rotation.Yaw - Parent->LocomotionState.Rotation.Yaw));
-		PitchAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(Rotation.Pitch - Parent->LocomotionState.Rotation.Pitch));
-
+		YawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(Rotation.Yaw - Parent->CharacterRotation.Yaw));
+		PitchAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(Rotation.Pitch - Parent->CharacterRotation.Pitch));
 		PitchAmount = 0.5f - PitchAngle / 180.0f;
 	}
 
@@ -65,8 +64,8 @@ void UGarViewAnimInstance::Refresh(const float DeltaTime)
 		static constexpr auto InterpolationSpeed{20.0f};
 
 		SpineRotation.SpineAmount = Parent->bPendingUpdate
-			                            ? 1.0f
-			                            : UGarMath::ExponentialDecay(SpineRotation.SpineAmount, 1.0f, DeltaTime, InterpolationSpeed);
+			                        ? 1.0f
+			                        : UGarMath::ExponentialDecay(SpineRotation.SpineAmount, 1.0f, DeltaTime, InterpolationSpeed);
 
 		SpineRotation.TargetYawAngle = YawAngle;
 	}
@@ -75,8 +74,8 @@ void UGarViewAnimInstance::Refresh(const float DeltaTime)
 		static constexpr auto InterpolationSpeed{10.0f};
 
 		SpineRotation.SpineAmount = Parent->bPendingUpdate
-			                            ? 0.0f
-			                            : UGarMath::ExponentialDecay(SpineRotation.SpineAmount, 0.0f, DeltaTime, InterpolationSpeed);
+			                        ? 0.0f
+			                        : UGarMath::ExponentialDecay(SpineRotation.SpineAmount, 0.0f, DeltaTime, InterpolationSpeed);
 	}
 
 	SpineRotation.CurrentYawAngle = UGarMath::LerpAngle(SpineRotation.InitialYawAngle,
@@ -102,7 +101,7 @@ void UGarViewAnimInstance::RefreshLook()
 
 	Look.bReinitializationRequired |= Parent->bPendingUpdate;
 
-	const auto CharacterYawAngle{UE_REAL_TO_FLOAT(Parent->LocomotionState.Rotation.Yaw)};
+	const auto CharacterYawAngle{UE_REAL_TO_FLOAT(Parent->CharacterRotation.Yaw)};
 
 	if (Parent->MovementBase.bHasRelativeRotation)
 	{
@@ -119,9 +118,7 @@ void UGarViewAnimInstance::RefreshLook()
 	{
 		// Look towards input direction.
 
-		TargetYawAngle = FMath::UnwindDegrees(
-			(Parent->LocomotionState.bHasInput ? Parent->LocomotionState.InputYawAngle : Parent->LocomotionState.TargetYawAngle) - CharacterYawAngle);
-
+		TargetYawAngle = FMath::UnwindDegrees((Parent->bHasInput ? Parent->InputYawAngle : Parent->TargetYawAngle) - CharacterYawAngle);
 		TargetPitchAngle = 0.0f;
 		InterpolationSpeed = LookTowardsInputYawAngleInterpolationSpeed;
 	}
@@ -144,12 +141,12 @@ void UGarViewAnimInstance::RefreshLook()
 		const auto CurrentYawAngle{FMath::UnwindDegrees(Look.WorldYawAngle - CharacterYawAngle)};
 		auto DeltaYawAngle{FMath::UnwindDegrees(TargetYawAngle - CurrentYawAngle)};
 
-		if (FMath::Abs(Parent->LocomotionState.YawSpeed) > UE_SMALL_NUMBER && FMath::Abs(TargetYawAngle) > 90.0f)
+		if (FMath::Abs(Parent->YawSpeed) > UE_SMALL_NUMBER && FMath::Abs(TargetYawAngle) > 90.0f)
 		{
 			// When interpolating yaw angle, favor the character rotation direction, over the shortest rotation
 			// direction, so that the rotation of the head remains synchronized with the rotation of the body.
 
-			DeltaYawAngle = Parent->LocomotionState.YawSpeed > 0.0f ? FMath::Abs(DeltaYawAngle) : -FMath::Abs(DeltaYawAngle);
+			DeltaYawAngle = Parent->YawSpeed > 0.0f ? FMath::Abs(DeltaYawAngle) : -FMath::Abs(DeltaYawAngle);
 		}
 
 		const auto InterpolationAmount{UGarMath::ExponentialDecay(GetDeltaSeconds(), InterpolationSpeed)};

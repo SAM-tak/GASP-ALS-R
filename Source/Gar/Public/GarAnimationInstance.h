@@ -4,13 +4,9 @@
 #include "Engine/World.h"
 #include "State/GarControlRigInput.h"
 #include "State/GarFeetState.h"
-#include "State/GarGroundedState.h"
-#include "State/GarLocomotionAnimationState.h"
+#include "State/GarCharacterMovementState.h"
 #include "State/GarMovementBaseState.h"
 #include "State/GarPoseState.h"
-#include "State/GarRotateInPlaceState.h"
-#include "State/GarTransitionsState.h"
-#include "State/GarTurnInPlaceState.h"
 #include "GarGameplayTags.h"
 #include "GarAnimationInstance.generated.h"
 
@@ -18,6 +14,7 @@ struct FGarFootLimitsSettings;
 class UGarAnimationInstanceSettings;
 class UGarLinkedAnimationInstance;
 class UGarLayeringAnimInstance;
+class UGarCharacterMovementState;
 class UGarViewAnimInstance;
 class UGarRagdollingAnimInstance;
 class AGarCharacter;
@@ -73,6 +70,9 @@ protected:
 	FGameplayTagContainer PreviousGameplayTags;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
+	FTransform CharacterTransform;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGameplayTag FaceRotationMode{GarRotationModeTags::ViewDirection};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
@@ -82,25 +82,13 @@ protected:
 	FGarPoseState PoseState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarLocomotionAnimationState LocomotionState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarLocomotionAnimationState PrevLocomotionState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarGroundedState GroundedState;
+	FGarCharacterMovementState CharacterMovement;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarFeetState FeetState;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarTransitionsState TransitionsState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarRotateInPlaceState RotateInPlaceState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarTurnInPlaceState TurnInPlaceState;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Meta = (DeprecatedProperty, DeprecationMessage = "remove later"))
+	uint8 bCharacterMoving : 1{false}; // TODO : remove later
 
 public:
 	//This is in the process of organizing such that things that are only accessed within each LinkedAnimLayer are defined within the LinkedAnimLayer,
@@ -110,6 +98,15 @@ public:
 	FRotator ViewRotation; // in NativeUpdateAnimation ex ViewState.Rotation
 	float ViewYawAngle; // in NativeThreadSafeUpdateAnimation ex ViewState.YawAngle
 	float ViewYawSpeed; // in NativeThreadSafeUpdateAnimation ex ViewState.YawSpeed
+
+	// Former LocomotionAnimationState
+	FRotator CharacterRotation{ForceInit};
+	float CharacterZScale;
+	float InputYawAngle{0.0f};
+	float TargetYawAngle{0.0f};
+	float YawSpeed{0.0f};
+	uint8 bHasInput : 1{false};
+	uint8 bMovingSmooth : 1{false};
 
 	const FGameplayTagContainer& GetCurrentGameplayTags() const;
 
@@ -153,50 +150,12 @@ public:
 
 	UGarViewAnimInstance* GetViewAnimInstance() const;
 
-	// Locomotion
+	// Character Movement
 
 private:
-	void RefreshLocomotionOnGameThread();
-
-	// Grounded
-
-public:
-	const FGarGroundedState& GetGroundedState() const;
-
-protected:
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void SetHipsDirection(EGarHipsDirection NewHipsDirection);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void ActivatePivot();
-
-private:
-	void RefreshGroundedOnGameThread();
-
-	void RefreshGrounded(float DeltaTime);
-
-	void RefreshMovementDirection();
-
-	void RefreshVelocityBlend(float DeltaTime);
-
-	void RefreshRotationYawOffsets();
-
-	void RefreshSprint(const FVector3f& RelativeAccelerationAmount, float DeltaTime);
-
-	void RefreshStrideBlendAmount();
-
-	void RefreshWalkRunBlendAmount();
-
-	void RefreshStandingPlayRate();
-
-	void RefreshCrouchingPlayRate();
+	void RefreshCharacterMovementOnGameThread(float DeltaTime);
 
 	// Feet
-
-public:
-	// If true, the foot locking will be temporarily "paused". This is not the same as a
-	// complete shutdown because the internal state of the foot locking will continue to update.
-	virtual bool IsFootLockInhibited() const;
 
 private:
 	void RefreshFeetOnGameThread();
@@ -216,54 +175,6 @@ private:
 	void RefreshFootOffset(FGarFootState& FootState, float DeltaTime, FVector& FinalLocation, FQuat& FinalRotation) const;
 
 	void LimitFootRotation(const FGarFootLimitsSettings& LimitsSettings, const FQuat& ParentRotation, FQuat& Rotation) const;
-
-	// Transitions
-
-public:
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintThreadSafe))
-	void PlayQuickStopAnimation();
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintThreadSafe))
-	void PlayTransitionAnimation(UAnimSequenceBase* Animation, float BlendInDuration = 0.2f, float BlendOutDuration = 0.2f,
-	                             float PlayRate = 1.0f, float StartTime = 0.0f, bool bFromStandingIdleOnly = false);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintThreadSafe))
-	void PlayTransitionLeftAnimation(float BlendInDuration = 0.2f, float BlendOutDuration = 0.2f, float PlayRate = 1.0f,
-	                                 float StartTime = 0.0f, bool bFromStandingIdleOnly = false);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintThreadSafe))
-	void PlayTransitionRightAnimation(float BlendInDuration = 0.2f, float BlendOutDuration = 0.2f, float PlayRate = 1.0f,
-	                                  float StartTime = 0.0f, bool bFromStandingIdleOnly = false);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Animation Instance", Meta = (BlueprintThreadSafe))
-	void StopTransitionAndTurnInPlaceAnimations(float BlendOutDuration = 0.2f);
-
-private:
-	void RefreshTransitions();
-
-	void RefreshDynamicTransition();
-
-	void PlayQueuedTransitionAnimation();
-
-	void StopQueuedTransitionAndTurnInPlaceAnimations();
-
-	// Rotate In Place
-
-public:
-	virtual bool IsRotateInPlaceAllowed();
-
-private:
-	void RefreshRotateInPlace(float DeltaTime);
-
-	// Turn In Place
-
-public:
-	virtual bool IsTurnInPlaceAllowed();
-
-private:
-	void RefreshTurnInPlace(float DeltaTime);
-
-	void PlayQueuedTurnInPlaceAnimation();
 
 	// Ragdolling
 
@@ -299,19 +210,4 @@ inline void UGarAnimationInstance::MarkPendingUpdate()
 inline void UGarAnimationInstance::MarkTeleported()
 {
 	TeleportedTime = GetWorld()->GetTimeSeconds();
-}
-
-inline const FGarGroundedState& UGarAnimationInstance::GetGroundedState() const
-{
-	return GroundedState;
-}
-
-inline void UGarAnimationInstance::SetHipsDirection(const EGarHipsDirection NewHipsDirection)
-{
-	GroundedState.HipsDirection = NewHipsDirection;
-}
-
-inline void UGarAnimationInstance::ActivatePivot()
-{
-	GroundedState.bPivotActivationRequested = true;
 }

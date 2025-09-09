@@ -36,9 +36,9 @@ void UGarAnimationInstance::NativeBeginPlay()
 {
 	Super::NativeBeginPlay();
 
-	LayeringAnimInstance = Cast<UGarLayeringAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXT("Layering")}));
-	ViewAnimInstance = Cast<UGarViewAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXT("View")}));
-	RagdollingAnimInstance = Cast<UGarRagdollingAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXT("Ragdolling")}));
+	LayeringAnimInstance = Cast<UGarLayeringAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXTVIEW("Layering")}));
+	ViewAnimInstance = Cast<UGarViewAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXTVIEW("View")}));
+	RagdollingAnimInstance = Cast<UGarRagdollingAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXTVIEW("Ragdolling")}));
 
 	ensure(IsValid(Settings));
 	ensure(IsValid(Settings->BoneNameTable));
@@ -85,12 +85,28 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	PreviousGameplayTags = CurrentGameplayTags;
 	Character->GetOwnedGameplayTags(CurrentGameplayTags);
+
+	CharacterTransform = Mesh->GetComponentTransform();
+
 	FaceRotationMode = Character->GetRotationMode();
 	if (FaceRotationMode != GarRotationModeTags::Aiming)
 	{
 		FaceRotationMode = Character->GetDesiredRotationMode();
 	}
 	bIsActionRunning = Character->GetLocomotionAction().IsValid();
+
+	CharacterZScale = UE_REAL_TO_FLOAT(GetSkelMeshComponent()->GetComponentScale().Z);
+
+	const auto& Locomotion{Character->GetLocomotionState()};
+
+	bCharacterMoving = Locomotion.bMoving;
+
+	bMovingSmooth = (Locomotion.bHasInput && Locomotion.bHasSpeed) || Locomotion.Speed > Settings->MovingSmoothSpeedThreshold;
+	bHasInput = Locomotion.bHasInput;
+	InputYawAngle = Locomotion.InputYawAngle;
+	TargetYawAngle = Locomotion.TargetYawAngle;
+	CharacterRotation = Locomotion.Rotation;
+	YawSpeed = Locomotion.YawSpeed;
 
 	RefreshMovementBaseOnGameThread();
 
@@ -102,8 +118,7 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	ViewRotation = View.LookRotation; // same as ViewAnimInstance->Rotation
 	ViewYawSpeed = View.YawSpeed;
 
-	RefreshLocomotionOnGameThread();
-	RefreshGroundedOnGameThread();
+	RefreshCharacterMovementOnGameThread(DeltaTime);
 	RefreshFeetOnGameThread();
 }
 
@@ -136,11 +151,7 @@ void UGarAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTim
 		ViewYawAngle = 0.0f;
 	}
 
-	RefreshGrounded(DeltaTime);
 	RefreshFeet(DeltaTime);
-	RefreshTransitions();
-	RefreshRotateInPlace(DeltaTime);
-	RefreshTurnInPlace(DeltaTime);
 }
 
 void UGarAnimationInstance::NativePostUpdateAnimation()
@@ -155,10 +166,6 @@ void UGarAnimationInstance::NativePostUpdateAnimation()
 	{
 		return;
 	}
-
-	PlayQueuedTransitionAnimation();
-	PlayQueuedTurnInPlaceAnimation();
-	StopQueuedTransitionAndTurnInPlaceAnimations();
 
 	for (const auto& RequestFunction : RequestQueue)
 	{
@@ -178,8 +185,6 @@ FAnimInstanceProxy* UGarAnimationInstance::CreateAnimInstanceProxy()
 FGarControlRigInput UGarAnimationInstance::GetControlRigInput() const
 {
 	return {
-		GroundedState.VelocityBlend.ForwardAmount,
-		GroundedState.VelocityBlend.BackwardAmount,
 		ViewAnimInstance.IsValid() ? ViewAnimInstance->SpineRotation.YawAngle : 0.0f,
 		FeetState.Left.IkRotation,
 		FeetState.Left.IkLocation,
@@ -262,275 +267,25 @@ bool UGarAnimationInstance::IsSpineRotationAllowed()
 	return !CurrentGameplayTags.HasTag(GarRotationModeTags::VelocityDirection);
 }
 
-void UGarAnimationInstance::RefreshLocomotionOnGameThread()
+void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime)
 {
 	check(IsInGameThread())
-
-	const auto& Locomotion{Character->GetLocomotionState()};
-
-	PrevLocomotionState = LocomotionState;
-
-	LocomotionState.bHasInput = Locomotion.bHasInput;
-	LocomotionState.InputYawAngle = Locomotion.InputYawAngle;
-
-	LocomotionState.Speed = Locomotion.Speed;
-	LocomotionState.Velocity = Locomotion.Velocity;
-	LocomotionState.VelocityYawAngle = Locomotion.VelocityYawAngle;
-	LocomotionState.Acceleration = Locomotion.Acceleration;
 
 	const auto* Movement{Character->GetCharacterMovement()};
 
-	LocomotionState.MaxAcceleration = Movement->GetMaxAcceleration();
-	LocomotionState.MaxBrakingDeceleration = Movement->GetMaxBrakingDeceleration();
-	LocomotionState.WalkableFloorZ = Movement->GetWalkableFloorZ();
+	CharacterMovement.Acceleration = Movement->GetCurrentAcceleration();
+	CharacterMovement.MaxAcceleration = Movement->GetMaxAcceleration();
+	CharacterMovement.MaxBrakingDeceleration = Movement->GetMaxBrakingDeceleration();
+	CharacterMovement.VelocityLastFrame = CharacterMovement.Velocity;
+	CharacterMovement.Velocity = Movement->Velocity;
+	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - CharacterMovement.VelocityLastFrame) / FMath::Max(DeltaTime, 0.001f);
 
-	LocomotionState.bMoving = Locomotion.bMoving;
-
-	LocomotionState.bMovingSmooth = (Locomotion.bHasInput && Locomotion.bHasSpeed) ||
-									Locomotion.Speed > Settings->MovingSmoothSpeedThreshold;
-
-	LocomotionState.TargetYawAngle = Locomotion.TargetYawAngle;
-	LocomotionState.Location = Locomotion.Location;
-	LocomotionState.Rotation = Locomotion.Rotation;
-	LocomotionState.RotationQuaternion = Locomotion.RotationQuaternion;
-	LocomotionState.YawSpeed = Locomotion.YawSpeed;
-
-	LocomotionState.Scale = UE_REAL_TO_FLOAT(GetSkelMeshComponent()->GetComponentScale().Z);
-
-	const auto* Capsule{Character->GetCapsuleComponent()};
-
-	LocomotionState.CapsuleRadius = Capsule->GetScaledCapsuleRadius();
-	LocomotionState.CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-}
-
-void UGarAnimationInstance::RefreshGroundedOnGameThread()
-{
-	check(IsInGameThread())
-
-	GroundedState.bPivotActive = GroundedState.bPivotActivationRequested && !bPendingUpdate &&
-								 LocomotionState.Speed < Settings->Grounded.PivotActivationSpeedThreshold;
-
-	GroundedState.bPivotActivationRequested = false;
-}
-
-void UGarAnimationInstance::RefreshGrounded(const float DeltaTime)
-{
-	// Always sample sprint block curve, otherwise issues with inertial blending may occur.
-
-	GroundedState.SprintBlockAmount = GetCurveValueClamped01(UGarConstants::SprintBlockCurveName());
-	GroundedState.HipsDirectionLockAmount = FMath::Clamp(GetCurveValue(UGarConstants::HipsDirectionLockCurveName()), -1.0f, 1.0f);
-
-	if (!CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded))
+	if (FVector2D(CharacterMovement.Velocity).Length() > 5.0f)
 	{
-		GroundedState.VelocityBlend.bReinitializationRequired = true;
-		GroundedState.SprintTime = 0.0f;
-		return;
+		CharacterMovement.LastNonZeroVelocity = CharacterMovement.Velocity;
 	}
 
-	if (!LocomotionState.bMoving)
-	{
-		return;
-	}
-
-	// Calculate the relative acceleration amount. This value represents the current amount of acceleration / deceleration
-	// relative to the character rotation. It is normalized to a range of -1 to 1 so that -1 equals the
-	// max braking deceleration and 1 equals the max acceleration of the character movement component.
-
-	FVector3f RelativeAccelerationAmount;
-
-	if ((LocomotionState.Acceleration | LocomotionState.Velocity) >= 0.0f)
-	{
-		RelativeAccelerationAmount = UGarMath::ClampMagnitude01(
-			FVector3f{LocomotionState.RotationQuaternion.UnrotateVector(LocomotionState.Acceleration)} /
-			LocomotionState.MaxAcceleration);
-	}
-	else
-	{
-		RelativeAccelerationAmount = UGarMath::ClampMagnitude01(
-			FVector3f{LocomotionState.RotationQuaternion.UnrotateVector(LocomotionState.Acceleration)} /
-			LocomotionState.MaxBrakingDeceleration);
-	}
-
-	RefreshMovementDirection();
-	RefreshVelocityBlend(DeltaTime);
-	RefreshRotationYawOffsets();
-
-	RefreshSprint(RelativeAccelerationAmount, DeltaTime);
-
-	RefreshStrideBlendAmount();
-	RefreshWalkRunBlendAmount();
-
-	RefreshStandingPlayRate();
-	RefreshCrouchingPlayRate();
-}
-
-void UGarAnimationInstance::RefreshMovementDirection()
-{
-	// Calculate the movement direction. This value represents the direction the character is moving relative
-	// to the camera and is used in the cycle blending to blend to the appropriate directional states.
-
-	if (CurrentGameplayTags.HasTag(GarGaitTags::Sprinting))
-	{
-		GroundedState.MovementDirection = EGarMovementDirection::Forward;
-		return;
-	}
-
-	static constexpr auto ForwardHalfAngle{70.0f};
-
-	GroundedState.MovementDirection = UGarMath::CalculateMovementDirection(
-		FMath::UnwindDegrees(UE_REAL_TO_FLOAT(LocomotionState.VelocityYawAngle - ViewRotation.Yaw)),
-		ForwardHalfAngle, 5.0f);
-}
-
-void UGarAnimationInstance::RefreshVelocityBlend(const float DeltaTime)
-{
-	GroundedState.VelocityBlend.bReinitializationRequired |= bPendingUpdate;
-
-	// Calculate and interpolate the velocity blend amounts. This value represents the velocity amount of
-	// the character in each direction (normalized so that diagonals equal 0.5 for each direction) and is
-	// used in a blend multi node to produce better directional blending than a standard blend space.
-
-	const auto RelativeVelocityDirection{
-		FVector3f{LocomotionState.RotationQuaternion.UnrotateVector(LocomotionState.Velocity)}.GetSafeNormal()
-	};
-
-	const auto RelativeDirection{
-		RelativeVelocityDirection /
-		(FMath::Abs(RelativeVelocityDirection.X) + FMath::Abs(RelativeVelocityDirection.Y) + FMath::Abs(RelativeVelocityDirection.Z))
-	};
-
-	if (GroundedState.VelocityBlend.bReinitializationRequired)
-	{
-		GroundedState.VelocityBlend.bReinitializationRequired = false;
-
-		GroundedState.VelocityBlend.ForwardAmount = UGarMath::Clamp01(RelativeDirection.X);
-		GroundedState.VelocityBlend.BackwardAmount = FMath::Abs(FMath::Clamp(RelativeDirection.X, -1.0f, 0.0f));
-		GroundedState.VelocityBlend.LeftAmount = FMath::Abs(FMath::Clamp(RelativeDirection.Y, -1.0f, 0.0f));
-		GroundedState.VelocityBlend.RightAmount = UGarMath::Clamp01(RelativeDirection.Y);
-	}
-	else
-	{
-		GroundedState.VelocityBlend.ForwardAmount = FMath::FInterpTo(GroundedState.VelocityBlend.ForwardAmount,
-																	 UGarMath::Clamp01(RelativeDirection.X), DeltaTime,
-																	 Settings->Grounded.VelocityBlendInterpolationSpeed);
-
-		GroundedState.VelocityBlend.BackwardAmount = FMath::FInterpTo(GroundedState.VelocityBlend.BackwardAmount,
-																	  FMath::Abs(FMath::Clamp(RelativeDirection.X, -1.0f, 0.0f)), DeltaTime,
-																	  Settings->Grounded.VelocityBlendInterpolationSpeed);
-
-		GroundedState.VelocityBlend.LeftAmount = FMath::FInterpTo(GroundedState.VelocityBlend.LeftAmount,
-																  FMath::Abs(FMath::Clamp(RelativeDirection.Y, -1.0f, 0.0f)), DeltaTime,
-																  Settings->Grounded.VelocityBlendInterpolationSpeed);
-
-		GroundedState.VelocityBlend.RightAmount = FMath::FInterpTo(GroundedState.VelocityBlend.RightAmount,
-																   UGarMath::Clamp01(RelativeDirection.Y), DeltaTime,
-																   Settings->Grounded.VelocityBlendInterpolationSpeed);
-	}
-}
-
-void UGarAnimationInstance::RefreshRotationYawOffsets()
-{
-	// Set the rotation yaw offsets. These values influence the rotation yaw offset curve in the
-	// animation graph and are used to offset the character's rotation for more natural movement.
-	// The curves allow for fine control over how the offset behaves for each movement direction.
-
-	const auto RotationYawOffset{FMath::UnwindDegrees(UE_REAL_TO_FLOAT(LocomotionState.VelocityYawAngle - ViewRotation.Yaw))};
-
-	GroundedState.RotationYawOffsets.ForwardAngle = Settings->Grounded.RotationYawOffsetForwardCurve->GetFloatValue(RotationYawOffset);
-	GroundedState.RotationYawOffsets.BackwardAngle = Settings->Grounded.RotationYawOffsetBackwardCurve->GetFloatValue(RotationYawOffset);
-	GroundedState.RotationYawOffsets.LeftAngle = Settings->Grounded.RotationYawOffsetLeftCurve->GetFloatValue(RotationYawOffset);
-	GroundedState.RotationYawOffsets.RightAngle = Settings->Grounded.RotationYawOffsetRightCurve->GetFloatValue(RotationYawOffset);
-}
-
-void UGarAnimationInstance::RefreshSprint(const FVector3f& RelativeAccelerationAmount, const float DeltaTime)
-{
-	if (!CurrentGameplayTags.HasTag(GarGaitTags::Sprinting))
-	{
-		GroundedState.SprintTime = 0.0f;
-		GroundedState.SprintAccelerationAmount = 0.0f;
-		return;
-	}
-
-	// Use the relative acceleration as the sprint relative acceleration if less than 0.5 seconds has
-	// elapsed since the start of the sprint, otherwise set the sprint relative acceleration to zero.
-	// This is necessary to apply the acceleration animation only at the beginning of the sprint.
-
-	static constexpr auto TimeThreshold{0.5f};
-
-	GroundedState.SprintTime = bPendingUpdate
-								   ? TimeThreshold
-								   : GroundedState.SprintTime + DeltaTime;
-
-	GroundedState.SprintAccelerationAmount = GroundedState.SprintTime >= TimeThreshold
-												 ? 0.0f
-												 : RelativeAccelerationAmount.X;
-}
-
-void UGarAnimationInstance::RefreshStrideBlendAmount()
-{
-	// Calculate the stride blend amount. This value is used within the blend spaces to scale the stride (distance feet travel)
-	// so that the character can walk or run at different movement speeds. It also allows the walk or run gait animations to
-	// blend independently while still matching the animation speed to the movement speed, preventing the character from needing
-	// to play a half walk + half run blend. The curves are used to map the stride amount to the speed for maximum control.
-
-	const auto Speed{LocomotionState.Speed / LocomotionState.Scale};
-
-	const auto StandingStrideBlend{
-		FMath::Lerp(Settings->Grounded.StrideBlendAmountWalkCurve->GetFloatValue(Speed),
-					Settings->Grounded.StrideBlendAmountRunCurve->GetFloatValue(Speed),
-					PoseState.UnweightedGaitRunningAmount)
-	};
-
-	// Crouching stride blend amount.
-
-	GroundedState.StrideBlendAmount = FMath::Lerp(StandingStrideBlend,
-												  Settings->Grounded.StrideBlendAmountWalkCurve->GetFloatValue(Speed),
-												  PoseState.CrouchingAmount);
-}
-
-void UGarAnimationInstance::RefreshWalkRunBlendAmount()
-{
-	// Calculate the walk run blend amount. This value is used within the blend spaces to blend between walking and running.
-
-	GroundedState.WalkRunBlendAmount = CurrentGameplayTags.HasTag(GarGaitTags::Walking) ? 0.0f : 1.0f;
-}
-
-void UGarAnimationInstance::RefreshStandingPlayRate()
-{
-	// Calculate the standing play rate by dividing the character's speed by the animated speed for each gait.
-	// The interpolation is determined by the gait amount curve that exists on every locomotion cycle so that
-	// the play rate is always in sync with the currently blended animation. The value is also divided by the
-	// stride blend and the capsule scale so that the play rate increases as the stride or scale gets smaller.
-
-	const auto WalkRunSpeedAmount{
-		FMath::Lerp(LocomotionState.Speed / Settings->Grounded.AnimatedWalkSpeed,
-					LocomotionState.Speed / Settings->Grounded.AnimatedRunSpeed,
-					PoseState.UnweightedGaitRunningAmount)
-	};
-
-	const auto WalkRunSprintSpeedAmount{
-		FMath::Lerp(WalkRunSpeedAmount,
-					LocomotionState.Speed / Settings->Grounded.AnimatedSprintSpeed,
-					PoseState.UnweightedGaitSprintingAmount)
-	};
-
-	GroundedState.StandingPlayRate = FMath::Clamp(
-		WalkRunSprintSpeedAmount / (GroundedState.StrideBlendAmount * LocomotionState.Scale), 0.0f, 3.0f);
-}
-
-void UGarAnimationInstance::RefreshCrouchingPlayRate()
-{
-	// Calculate the crouching play rate by dividing the character's speed by the animated speed. This value needs
-	// to be separate from the standing play rate to improve the blend from crouching to standing while in motion.
-
-	GroundedState.CrouchingPlayRate = FMath::Clamp(
-		LocomotionState.Speed / (Settings->Grounded.AnimatedCrouchSpeed * GroundedState.StrideBlendAmount * LocomotionState.Scale),
-		0.0f, 2.0f);
-}
-
-bool UGarAnimationInstance::IsFootLockInhibited() const
-{
-	return RotateInPlaceState.bFootLockInhibited || TurnInPlaceState.bFootLockInhibited;
+	CharacterMovement.WalkableFloorZ = Movement->GetWalkableFloorZ();
 }
 
 void UGarAnimationInstance::RefreshFeetOnGameThread()
@@ -566,10 +321,10 @@ void UGarAnimationInstance::RefreshFeet(const float DeltaTime)
 				Settings->Feet.RightFootLimits, ComponentTransformInverse, DeltaTime);
 
 	FeetState.MinMaxPelvisOffsetZ.X = UE_REAL_TO_FLOAT(
-		FMath::Min(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / LocomotionState.Scale);
+		FMath::Min(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / CharacterZScale);
 
 	FeetState.MinMaxPelvisOffsetZ.Y = UE_REAL_TO_FLOAT(
-		FMath::Max(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / LocomotionState.Scale);
+		FMath::Max(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / CharacterZScale);
 }
 
 void UGarAnimationInstance::RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName,
@@ -661,7 +416,7 @@ void UGarAnimationInstance::RefreshFootLock(FGarFootState& FootState, const FNam
 {
 	auto NewFootLockAmount{GetCurveValueClamped01(FootLockCurveName)};
 
-	if (LocomotionState.bMovingSmooth || !CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded))
+	if (bMovingSmooth || !CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded))
 	{
 		// Smoothly disable foot locking if the character is moving or in the air,
 		// instead of relying on the curve value from the animation blueprint.
@@ -670,12 +425,10 @@ void UGarAnimationInstance::RefreshFootLock(FGarFootState& FootState, const FNam
 		static constexpr auto NotGroundedDecreaseSpeed{0.6f};
 
 		NewFootLockAmount = bPendingUpdate
-								? 0.0f
-								: FMath::Max(0.0f, FMath::Min(NewFootLockAmount,
-															  FootState.LockAmount - DeltaTime *
-															  (LocomotionState.bMovingSmooth
-																   ? MovingDecreaseSpeed
-																   : NotGroundedDecreaseSpeed)));
+							? 0.0f
+							: FMath::Max(0.0f, FMath::Min(NewFootLockAmount,
+															FootState.LockAmount - DeltaTime *
+															(bMovingSmooth ? MovingDecreaseSpeed : NotGroundedDecreaseSpeed)));
 	}
 
 	if (Settings->Feet.bDisableFootLock || !FAnimWeight::IsRelevant(FootState.IkAmount * NewFootLockAmount))
@@ -742,35 +495,14 @@ void UGarAnimationInstance::RefreshFootLock(FGarFootState& FootState, const FNam
 		FootState.LockAmount = NewFootLockAmount;
 	}
 
-	if (IsFootLockInhibited())
+	if (MovementBase.bHasRelativeLocation)
 	{
-		// Inhibition is implemented by temporarily performing all calculations in component space rather
-		// than in world space. So, the feet will still remain locked, but this time relative to the character.
-
-		const auto& ComponentTransform{GetProxyOnAnyThread<FAnimInstanceProxy>().GetComponentTransform()};
-
-		FootState.LockLocation = ComponentTransform.TransformPosition(FootState.LockComponentRelativeLocation);
-		FootState.LockRotation = ComponentTransform.TransformRotation(FootState.LockComponentRelativeRotation);
-
-		if (MovementBase.bHasRelativeLocation)
-		{
-			const auto BaseRotationInverse{MovementBase.Rotation.Inverse()};
-
-			FootState.LockMovementBaseRelativeLocation = BaseRotationInverse.RotateVector(FootState.LockLocation - MovementBase.Location);
-			FootState.LockMovementBaseRelativeRotation = BaseRotationInverse * FootState.LockRotation;
-		}
+		FootState.LockLocation = MovementBase.Location + MovementBase.Rotation.RotateVector(FootState.LockMovementBaseRelativeLocation);
+		FootState.LockRotation = MovementBase.Rotation * FootState.LockMovementBaseRelativeRotation;
 	}
-	else
-	{
-		if (MovementBase.bHasRelativeLocation)
-		{
-			FootState.LockLocation = MovementBase.Location + MovementBase.Rotation.RotateVector(FootState.LockMovementBaseRelativeLocation);
-			FootState.LockRotation = MovementBase.Rotation * FootState.LockMovementBaseRelativeRotation;
-		}
 
-		FootState.LockComponentRelativeLocation = ComponentTransformInverse.TransformPosition(FootState.LockLocation);
-		FootState.LockComponentRelativeRotation = ComponentTransformInverse.TransformRotation(FootState.LockRotation);
-	}
+	FootState.LockComponentRelativeLocation = ComponentTransformInverse.TransformPosition(FootState.LockLocation);
+	FootState.LockComponentRelativeRotation = ComponentTransformInverse.TransformRotation(FootState.LockRotation);
 
 	FinalLocation = FMath::Lerp(FinalLocation, FootState.LockLocation, FootState.LockAmount);
 	FinalRotation = FQuat::Slerp(FinalRotation, FootState.LockRotation, FootState.LockAmount);
@@ -819,7 +551,7 @@ void UGarAnimationInstance::RefreshFootOffset(FGarFootState& FootState, const fl
 		FinalLocation.X, FinalLocation.Y, GetProxyOnAnyThread<FAnimInstanceProxy>().GetComponentTransform().GetLocation().Z
 	};
 	
-	bool bGroundValid{FootState.Hit.IsValidBlockingHit() && FootState.Hit.ImpactNormal.Z >= LocomotionState.WalkableFloorZ};
+	bool bGroundValid{FootState.Hit.IsValidBlockingHit() && FootState.Hit.ImpactNormal.Z >= CharacterMovement.WalkableFloorZ};
 
 	FTraceDelegate TraceDelegate = FTraceDelegate::CreateWeakLambda(this, [&FootState](const FTraceHandle& Handle, FTraceDatum& Data) mutable
 	{
@@ -836,10 +568,10 @@ void UGarAnimationInstance::RefreshFootOffset(FGarFootState& FootState, const fl
 	{
 		GetWorld()->AsyncLineTraceByChannel(EAsyncTraceType::Single,
 											TraceLocation + FVector{
-												0.0f, 0.0f, Settings->Feet.IkTraceDistanceUpward * LocomotionState.Scale
+												0.0f, 0.0f, Settings->Feet.IkTraceDistanceUpward * CharacterZScale
 											},
 											TraceLocation - FVector{
-												0.0f, 0.0f, Settings->Feet.IkTraceDistanceDownward * LocomotionState.Scale
+												0.0f, 0.0f, Settings->Feet.IkTraceDistanceDownward * CharacterZScale
 											},
 											Settings->Feet.IkTraceChannel, {__FUNCTION__, true, Character.Get()},
 											FCollisionResponseParams::DefaultResponseParam, &TraceDelegate);
@@ -862,10 +594,10 @@ void UGarAnimationInstance::RefreshFootOffset(FGarFootState& FootState, const fl
 		{
 			GetWorld()->AsyncLineTraceByChannel(EAsyncTraceType::Single,
 												TraceLocation + FVector{
-													0.0f, 0.0f, Settings->Feet.IkTraceDistanceUpward * LocomotionState.Scale
+													0.0f, 0.0f, Settings->Feet.IkTraceDistanceUpward * CharacterZScale
 												},
 												TraceLocation - FVector{
-													0.0f, 0.0f, Settings->Feet.IkTraceDistanceDownward * LocomotionState.Scale
+													0.0f, 0.0f, Settings->Feet.IkTraceDistanceDownward * CharacterZScale
 												},
 												Settings->Feet.IkTraceChannel, {__FUNCTION__, true, Character.Get()},
 												FCollisionResponseParams::DefaultResponseParam, &TraceDelegate);
@@ -883,7 +615,7 @@ void UGarAnimationInstance::RefreshFootOffset(FGarFootState& FootState, const fl
 	{
 		const auto SlopeAngleCos{UE_REAL_TO_FLOAT(FootState.Hit.ImpactNormal.Z)};
 
-		const auto FootHeight{Settings->Feet.FootHeight * LocomotionState.Scale};
+		const auto FootHeight{Settings->Feet.FootHeight * CharacterZScale};
 		const auto FootHeightOffset{SlopeAngleCos > UE_SMALL_NUMBER ? FootHeight / SlopeAngleCos - FootHeight : 0.0f};
 
 		// Find the difference between the impact location and the expected (flat) floor location.
@@ -967,428 +699,6 @@ void UGarAnimationInstance::LimitFootRotation(const FGarFootLimitsSettings& Limi
 	const FQuat NewTwist(NewTwistX, 0.0f, 0.0f, FMath::Sqrt(FMath::Max(0.0f, 1.0f - NewTwistX * NewTwistX)));
 
 	Rotation = ParentRotation * (NewSwing * NewTwist);
-}
-
-void UGarAnimationInstance::PlayQuickStopAnimation()
-{
-	if (!IsValid(Settings))
-	{
-		return;
-	}
-
-	if (!CurrentGameplayTags.HasTag(GarRotationModeTags::VelocityDirection))
-	{
-		PlayTransitionLeftAnimation(Settings->Transitions.QuickStopBlendInDuration, Settings->Transitions.QuickStopBlendOutDuration,
-									Settings->Transitions.QuickStopPlayRate.X, Settings->Transitions.QuickStopStartTime);
-		return;
-	}
-
-	auto RotationYawAngle{
-		FMath::UnwindDegrees(UE_REAL_TO_FLOAT(
-			(LocomotionState.bHasInput ? LocomotionState.InputYawAngle : LocomotionState.TargetYawAngle) - LocomotionState.Rotation.Yaw))
-	};
-
-	RotationYawAngle = UGarMath::RemapAngleForCounterClockwiseRotation(RotationYawAngle);
-
-	// Scale quick stop animation play rate based on how far the character
-	// is going to rotate. At 180 degrees, the play rate will be maximal.
-
-	if (RotationYawAngle <= 0.0f)
-	{
-		PlayTransitionLeftAnimation(Settings->Transitions.QuickStopBlendInDuration, Settings->Transitions.QuickStopBlendOutDuration,
-									FMath::Lerp(Settings->Transitions.QuickStopPlayRate.X, Settings->Transitions.QuickStopPlayRate.Y,
-												FMath::Abs(RotationYawAngle) / 180.0f), Settings->Transitions.QuickStopStartTime);
-	}
-	else
-	{
-		PlayTransitionRightAnimation(Settings->Transitions.QuickStopBlendInDuration, Settings->Transitions.QuickStopBlendOutDuration,
-									 FMath::Lerp(Settings->Transitions.QuickStopPlayRate.X, Settings->Transitions.QuickStopPlayRate.Y,
-												 FMath::Abs(RotationYawAngle) / 180.0f), Settings->Transitions.QuickStopStartTime);
-	}
-}
-
-void UGarAnimationInstance::PlayTransitionAnimation(UAnimSequenceBase* Animation, const float BlendInDuration, const float BlendOutDuration,
-													const float PlayRate, const float StartTime, const bool bFromStandingIdleOnly)
-{
-	if (bFromStandingIdleOnly && (LocomotionState.bMoving || !CurrentGameplayTags.HasTag(GarStanceTags::Standing)))
-	{
-		return;
-	}
-
-	// Animation montages can't be played in the worker thread, so queue them up to play later in the game thread.
-
-	TransitionsState.QueuedTransitionAnimation = Animation;
-	TransitionsState.QueuedTransitionBlendInDuration = BlendInDuration;
-	TransitionsState.QueuedTransitionBlendOutDuration = BlendOutDuration;
-	TransitionsState.QueuedTransitionPlayRate = PlayRate;
-	TransitionsState.QueuedTransitionStartTime = StartTime;
-
-	if (IsInGameThread())
-	{
-		PlayQueuedTransitionAnimation();
-	}
-}
-
-void UGarAnimationInstance::PlayTransitionLeftAnimation(const float BlendInDuration, const float BlendOutDuration, const float PlayRate,
-														const float StartTime, const bool bFromStandingIdleOnly)
-{
-	if (!IsValid(Settings))
-	{
-		return;
-	}
-
-	PlayTransitionAnimation(CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-								? Settings->Transitions.CrouchingTransitionLeftAnimation
-								: Settings->Transitions.StandingTransitionLeftAnimation,
-							BlendInDuration, BlendOutDuration, PlayRate, StartTime, bFromStandingIdleOnly);
-}
-
-void UGarAnimationInstance::PlayTransitionRightAnimation(const float BlendInDuration, const float BlendOutDuration, const float PlayRate,
-														 const float StartTime, const bool bFromStandingIdleOnly)
-{
-	if (!IsValid(Settings))
-	{
-		return;
-	}
-
-	PlayTransitionAnimation(CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-								? Settings->Transitions.CrouchingTransitionRightAnimation
-								: Settings->Transitions.StandingTransitionRightAnimation,
-							BlendInDuration, BlendOutDuration, PlayRate, StartTime, bFromStandingIdleOnly);
-}
-
-void UGarAnimationInstance::StopTransitionAndTurnInPlaceAnimations(const float BlendOutDuration)
-{
-	TransitionsState.bStopTransitionsQueued = true;
-	TransitionsState.QueuedStopTransitionsBlendOutDuration = BlendOutDuration;
-
-	if (IsInGameThread())
-	{
-		StopQueuedTransitionAndTurnInPlaceAnimations();
-	}
-}
-
-void UGarAnimationInstance::RefreshTransitions()
-{
-	// The allow transitions curve is modified within certain states, so that transitions allowed will be true while in those states.
-
-	TransitionsState.bTransitionsAllowed = FAnimWeight::IsFullWeight(GetCurveValue(UGarConstants::AllowTransitionsCurveName()));
-
-	RefreshDynamicTransition();
-}
-
-void UGarAnimationInstance::RefreshDynamicTransition()
-{
-	if (TransitionsState.DynamicTransitionsFrameDelay > 0)
-	{
-		TransitionsState.DynamicTransitionsFrameDelay -= 1;
-		return;
-	}
-
-	if (!TransitionsState.bTransitionsAllowed || LocomotionState.bMoving || !CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded))
-	{
-		return;
-	}
-
-	// Check each foot to see if the location difference between the foot look and its desired / target location
-	// exceeds a threshold. If it does, play an additive transition animation on that foot. The currently set
-	// transition plays the second half of a 2 foot transition animation, so that only a single foot moves.
-
-	const auto FootLockDistanceThresholdSquared{
-		FMath::Square(Settings->Transitions.DynamicTransitionFootLockDistanceThreshold * LocomotionState.Scale)
-	};
-
-	const auto FootLockLeftDistanceSquared{FVector::DistSquared(FeetState.Left.TargetLocation, FeetState.Left.LockLocation)};
-	const auto FootLockRightDistanceSquared{FVector::DistSquared(FeetState.Right.TargetLocation, FeetState.Right.LockLocation)};
-
-	const auto bTransitionLeftAllowed{
-		FAnimWeight::IsRelevant(FeetState.Left.LockAmount) && FootLockLeftDistanceSquared > FootLockDistanceThresholdSquared
-	};
-
-	const auto bTransitionRightAllowed{
-		FAnimWeight::IsRelevant(FeetState.Right.LockAmount) && FootLockRightDistanceSquared > FootLockDistanceThresholdSquared
-	};
-
-	if (!bTransitionLeftAllowed && !bTransitionRightAllowed)
-	{
-		return;
-	}
-
-	TObjectPtr<UAnimSequenceBase> DynamicTransitionAnimation;
-
-	// If both transitions are allowed, choose the one with a greater lock distance.
-
-	if (!bTransitionLeftAllowed)
-	{
-		DynamicTransitionAnimation = CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-										 ? Settings->Transitions.CrouchingDynamicTransitionRightAnimation
-										 : Settings->Transitions.StandingDynamicTransitionRightAnimation;
-	}
-	else if (!bTransitionRightAllowed)
-	{
-		DynamicTransitionAnimation = CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-										 ? Settings->Transitions.CrouchingDynamicTransitionLeftAnimation
-										 : Settings->Transitions.StandingDynamicTransitionLeftAnimation;
-	}
-	else if (FootLockLeftDistanceSquared >= FootLockRightDistanceSquared)
-	{
-		DynamicTransitionAnimation = CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-										 ? Settings->Transitions.CrouchingDynamicTransitionLeftAnimation
-										 : Settings->Transitions.StandingDynamicTransitionLeftAnimation;
-	}
-	else
-	{
-		DynamicTransitionAnimation = CurrentGameplayTags.HasTag(GarStanceTags::Crouching)
-										 ? Settings->Transitions.CrouchingDynamicTransitionRightAnimation
-										 : Settings->Transitions.StandingDynamicTransitionRightAnimation;
-	}
-
-	if (IsValid(DynamicTransitionAnimation))
-	{
-		// Block next dynamic transitions for about 2 frames to give the animation blueprint some time to properly react to the animation.
-
-		TransitionsState.DynamicTransitionsFrameDelay = 2;
-
-		// Animation montages can't be played in the worker thread, so queue them up to play later in the game thread.
-
-		TransitionsState.QueuedTransitionAnimation = DynamicTransitionAnimation;
-		TransitionsState.QueuedTransitionBlendInDuration = Settings->Transitions.DynamicTransitionBlendDuration;
-		TransitionsState.QueuedTransitionBlendOutDuration = Settings->Transitions.DynamicTransitionBlendDuration;
-		TransitionsState.QueuedTransitionPlayRate = Settings->Transitions.DynamicTransitionPlayRate;
-		TransitionsState.QueuedTransitionStartTime = 0.0f;
-
-		if (IsInGameThread())
-		{
-			PlayQueuedTransitionAnimation();
-		}
-	}
-}
-
-void UGarAnimationInstance::PlayQueuedTransitionAnimation()
-{
-	check(IsInGameThread())
-
-	if (TransitionsState.bStopTransitionsQueued || !IsValid(TransitionsState.QueuedTransitionAnimation))
-	{
-		return;
-	}
-
-	PlaySlotAnimationAsDynamicMontage(TransitionsState.QueuedTransitionAnimation, UGarConstants::TransitionSlotName(),
-									  TransitionsState.QueuedTransitionBlendInDuration, TransitionsState.QueuedTransitionBlendOutDuration,
-									  TransitionsState.QueuedTransitionPlayRate, 1, 0.0f, TransitionsState.QueuedTransitionStartTime);
-
-	TransitionsState.QueuedTransitionAnimation = nullptr;
-	TransitionsState.QueuedTransitionBlendInDuration = 0.0f;
-	TransitionsState.QueuedTransitionBlendOutDuration = 0.0f;
-	TransitionsState.QueuedTransitionPlayRate = 1.0f;
-	TransitionsState.QueuedTransitionStartTime = 0.0f;
-}
-
-void UGarAnimationInstance::StopQueuedTransitionAndTurnInPlaceAnimations()
-{
-	check(IsInGameThread())
-
-	if (!TransitionsState.bStopTransitionsQueued)
-	{
-		return;
-	}
-
-	StopSlotAnimation(TransitionsState.QueuedStopTransitionsBlendOutDuration, UGarConstants::TransitionSlotName());
-	StopSlotAnimation(TransitionsState.QueuedStopTransitionsBlendOutDuration, UGarConstants::TurnInPlaceStandingSlotName());
-	StopSlotAnimation(TransitionsState.QueuedStopTransitionsBlendOutDuration, UGarConstants::TurnInPlaceCrouchingSlotName());
-
-	TransitionsState.bStopTransitionsQueued = false;
-	TransitionsState.QueuedStopTransitionsBlendOutDuration = 0.0f;
-}
-
-bool UGarAnimationInstance::IsRotateInPlaceAllowed()
-{
-	return CurrentGameplayTags.HasTag(GarRotationModeTags::Aiming) || CurrentGameplayTags.HasTag(GarViewModeTags::FirstPerson);
-}
-
-void UGarAnimationInstance::RefreshRotateInPlace(const float DeltaTime)
-{
-	static constexpr auto PlayRateInterpolationSpeed{5.0f};
-
-	// Rotate in place is allowed only if the character is standing still and aiming or in first-person view mode.
-
-	if (LocomotionState.bMoving || !CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded) || !IsRotateInPlaceAllowed())
-	{
-		RotateInPlaceState.bRotatingLeft = false;
-		RotateInPlaceState.bRotatingRight = false;
-
-		RotateInPlaceState.PlayRate = bPendingUpdate
-										  ? Settings->RotateInPlace.PlayRate.X
-										  : FMath::FInterpTo(RotateInPlaceState.PlayRate, Settings->RotateInPlace.PlayRate.X,
-															 DeltaTime, PlayRateInterpolationSpeed);
-
-		RotateInPlaceState.bFootLockInhibited = false;
-		return;
-	}
-
-	// Check if the character should rotate left or right by checking if the view yaw angle exceeds the threshold.
-
-	RotateInPlaceState.bRotatingLeft = ViewYawAngle < -Settings->RotateInPlace.ViewYawAngleThreshold;
-	RotateInPlaceState.bRotatingRight = ViewYawAngle > Settings->RotateInPlace.ViewYawAngleThreshold;
-
-	if (!RotateInPlaceState.bRotatingLeft && !RotateInPlaceState.bRotatingRight)
-	{
-		RotateInPlaceState.PlayRate = bPendingUpdate
-										  ? Settings->RotateInPlace.PlayRate.X
-										  : FMath::FInterpTo(RotateInPlaceState.PlayRate, Settings->RotateInPlace.PlayRate.X,
-															 DeltaTime, PlayRateInterpolationSpeed);
-
-		RotateInPlaceState.bFootLockInhibited = false;
-		return;
-	}
-
-	// If the character should rotate, set the play rate to scale with the view yaw
-	// speed. This makes the character rotate faster when moving the camera faster.
-
-	const auto PlayRate{
-		FMath::GetMappedRangeValueClamped(Settings->RotateInPlace.ReferenceViewYawSpeed,
-										  Settings->RotateInPlace.PlayRate, ViewYawAngle)
-	};
-
-	RotateInPlaceState.PlayRate = bPendingUpdate
-									  ? PlayRate
-									  : FMath::FInterpTo(RotateInPlaceState.PlayRate, PlayRate,
-														 DeltaTime, PlayRateInterpolationSpeed);
-
-	// Inhibit foot locking when rotating at a large angle or rotating too fast, otherwise the legs may twist into a spiral.
-
-	RotateInPlaceState.bFootLockInhibited =
-		Settings->RotateInPlace.bDisableFootLock ||
-		FMath::Abs(ViewYawAngle) > Settings->RotateInPlace.FootLockInhibitionViewYawAngleThreshold ||
-		ViewYawAngle > Settings->RotateInPlace.FootLockInhibitionViewYawSpeedThreshold;
-}
-
-bool UGarAnimationInstance::IsTurnInPlaceAllowed()
-{
-	return CurrentGameplayTags.HasTag(GarRotationModeTags::ViewDirection) && !CurrentGameplayTags.HasTag(GarViewModeTags::FirstPerson);
-}
-
-void UGarAnimationInstance::RefreshTurnInPlace(const float DeltaTime)
-{
-	// Turn in place is allowed only if transitions are allowed, the character
-	// standing still and looking at the camera and not in first-person mode.
-
-	if (LocomotionState.bMoving || !CurrentGameplayTags.HasTag(GarLocomotionModeTags::Grounded) || !IsTurnInPlaceAllowed())
-	{
-		TurnInPlaceState.ActivationDelay = 0.0f;
-		TurnInPlaceState.bFootLockInhibited = false;
-		return;
-	}
-
-	if (!TransitionsState.bTransitionsAllowed)
-	{
-		TurnInPlaceState.ActivationDelay = 0.0f;
-		return;
-	}
-
-	// Check if the view yaw speed is below the threshold and if the view yaw angle is outside the
-	// threshold. If so, begin counting the activation delay time. If not, reset the activation delay
-	// time. This ensures the conditions remain true for a sustained time before turning in place.
-
-	if (ViewYawSpeed >= Settings->TurnInPlace.ViewYawSpeedThreshold ||
-		FMath::Abs(ViewYawAngle) <= Settings->TurnInPlace.ViewYawAngleThreshold)
-	{
-		TurnInPlaceState.ActivationDelay = 0.0f;
-		TurnInPlaceState.bFootLockInhibited = false;
-		return;
-	}
-
-	TurnInPlaceState.ActivationDelay = bPendingUpdate
-										   ? 0.0f
-										   : TurnInPlaceState.ActivationDelay + DeltaTime;
-
-	const auto ActivationDelay{
-		FMath::GetMappedRangeValueClamped({Settings->TurnInPlace.ViewYawAngleThreshold, 180.0f},
-										  Settings->TurnInPlace.ViewYawAngleToActivationDelay,
-										  FMath::Abs(ViewYawAngle))
-	};
-
-	// Check if the activation delay time exceeds the set delay (mapped to the view yaw angle). If so, start a turn in place.
-
-	if (TurnInPlaceState.ActivationDelay <= ActivationDelay)
-	{
-		return;
-	}
-
-	// Select settings based on turn angle and stance.
-
-	UGarTurnInPlaceSettings* TurnInPlaceSettings{nullptr};
-	FName TurnInPlaceSlotName;
-
-	if (CurrentGameplayTags.HasTag(GarStanceTags::Standing))
-	{
-		TurnInPlaceSlotName = UGarConstants::TurnInPlaceStandingSlotName();
-
-		if (FMath::Abs(ViewYawAngle) < Settings->TurnInPlace.Turn180AngleThreshold)
-		{
-			TurnInPlaceSettings = ViewYawAngle < 0.0f ? Settings->TurnInPlace.StandingTurn90Left : Settings->TurnInPlace.StandingTurn90Right;
-		}
-		else
-		{
-			TurnInPlaceSettings = ViewYawAngle < 0.0f ? Settings->TurnInPlace.StandingTurn180Left : Settings->TurnInPlace.StandingTurn180Right;
-		}
-	}
-	else if (CurrentGameplayTags.HasTag(GarStanceTags::Crouching))
-	{
-		TurnInPlaceSlotName = UGarConstants::TurnInPlaceCrouchingSlotName();
-
-		if (FMath::Abs(ViewYawAngle) < Settings->TurnInPlace.Turn180AngleThreshold)
-		{
-			TurnInPlaceSettings = ViewYawAngle < 0.0f ? Settings->TurnInPlace.CrouchingTurn90Left : Settings->TurnInPlace.CrouchingTurn90Right;
-		}
-		else
-		{
-			TurnInPlaceSettings = ViewYawAngle < 0.0f ? Settings->TurnInPlace.CrouchingTurn180Left : Settings->TurnInPlace.CrouchingTurn180Right;
-		}
-	}
-
-	if (TurnInPlaceSettings && IsValid(TurnInPlaceSettings) && ensure(IsValid(TurnInPlaceSettings->Animation)))
-	{
-		// Animation montages can't be played in the worker thread, so queue them up to play later in the game thread.
-
-		TurnInPlaceState.QueuedSettings = TurnInPlaceSettings;
-		TurnInPlaceState.QueuedSlotName = TurnInPlaceSlotName;
-		TurnInPlaceState.QueuedTurnYawAngle = ViewYawAngle;
-
-		if (IsInGameThread())
-		{
-			PlayQueuedTurnInPlaceAnimation();
-		}
-	}
-}
-
-void UGarAnimationInstance::PlayQueuedTurnInPlaceAnimation()
-{
-	check(IsInGameThread())
-
-	if (TransitionsState.bStopTransitionsQueued || !IsValid(TurnInPlaceState.QueuedSettings))
-	{
-		return;
-	}
-
-	const auto* TurnInPlaceSettings{TurnInPlaceState.QueuedSettings.Get()};
-
-	PlaySlotAnimationAsDynamicMontage(TurnInPlaceSettings->Animation, TurnInPlaceState.QueuedSlotName,
-									  Settings->TurnInPlace.BlendDuration, Settings->TurnInPlace.BlendDuration,
-									  TurnInPlaceSettings->PlayRate, 1, 0.0f);
-
-	// Scale the rotation yaw delta (gets scaled in animation graph) to compensate for play rate and turn angle (if allowed).
-
-	TurnInPlaceState.PlayRate = TurnInPlaceSettings->bScalePlayRateByAnimatedTurnAngle
-									? TurnInPlaceSettings->PlayRate *
-									  FMath::Abs(TurnInPlaceState.QueuedTurnYawAngle / TurnInPlaceSettings->AnimatedTurnAngle)
-									: TurnInPlaceSettings->PlayRate;
-
-	TurnInPlaceState.bFootLockInhibited = Settings->TurnInPlace.bDisableFootLock;
-
-	TurnInPlaceState.QueuedSettings = nullptr;
-	TurnInPlaceState.QueuedSlotName = NAME_None;
-	TurnInPlaceState.QueuedTurnYawAngle = 0.0f;
 }
 
 float UGarAnimationInstance::GetCurveValueClamped01(const FName& CurveName) const

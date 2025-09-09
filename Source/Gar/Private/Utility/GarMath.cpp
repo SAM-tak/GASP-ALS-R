@@ -1,7 +1,5 @@
 #include "Utility/GarMath.h"
 
-#include "State/GarMovementDirection.h"
-
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarMath)
 
 float UGarMath::SpringDampFloat(const float Current, const float Target, FGarSpringFloatState& SpringState, const float DeltaTime,
@@ -35,26 +33,6 @@ FVector UGarMath::SlerpSkipNormalization(const FVector& From, const FVector& To,
 	const auto FromPerpendicular{(To - From * Dot).GetSafeNormal()};
 
 	return From * Cos + FromPerpendicular * Sin;
-}
-
-EGarMovementDirection UGarMath::CalculateMovementDirection(const float Angle, const float ForwardHalfAngle, const float AngleThreshold)
-{
-	if (Angle >= -ForwardHalfAngle - AngleThreshold && Angle <= ForwardHalfAngle + AngleThreshold)
-	{
-		return EGarMovementDirection::Forward;
-	}
-
-	if (Angle >= ForwardHalfAngle - AngleThreshold && Angle <= 180.0f - ForwardHalfAngle + AngleThreshold)
-	{
-		return EGarMovementDirection::Right;
-	}
-
-	if (Angle <= -(ForwardHalfAngle - AngleThreshold) && Angle >= -(180.0f - ForwardHalfAngle + AngleThreshold))
-	{
-		return EGarMovementDirection::Left;
-	}
-
-	return EGarMovementDirection::Backward;
 }
 
 bool UGarMath::TryCalculatePoleVector(const FVector& ALocation, const FVector& BLocation, const FVector& CLocation,

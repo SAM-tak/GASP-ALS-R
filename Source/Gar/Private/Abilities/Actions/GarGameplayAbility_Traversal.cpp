@@ -607,7 +607,7 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 	// Clear the character movement mode and set the locomotion action to traverse.
 
 	Character->GetCharacterMovement()->FlushServerMoves();
-	Character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	Character->GetCharacterMovement()->SetMovementMode(MOVE_Custom);
 	Character->GetGarCharacterMovement()->SetMovementModeLocked(true);
 	Character->GetCharacterMovement()->SetBase(CurrentTargetPrimitive.Get());
 	Character->GetCharacterMovement()->Velocity = FVector::ZeroVector;
@@ -628,11 +628,11 @@ void UGarGameplayAbility_Traversal::Tick_Implementation(const float DeltaTime)
 	auto* Character{GetGarCharacterFromActorInfo()};
 	auto* CharacterMovement{Character->GetGarCharacterMovement()};
 
-	//if (CharacterMovement->MovementMode != MOVE_Flying)
-	//{
-	//	EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
-	//	return;
-	//}
+	if (CharacterMovement->MovementMode != MOVE_Custom)
+	{
+		EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+		return;
+	}
 
 	if (!CurrentTargetPrimitive.IsValid() || !CurrentTargetPrimitive->IsVisible())
 	{
@@ -660,7 +660,10 @@ void UGarGameplayAbility_Traversal::EndAbility(const FGameplayAbilitySpecHandle 
 	CharacterMovement->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 
 	CharacterMovement->SetMovementModeLocked(false);
-	CharacterMovement->SetMovementMode(MOVE_Walking);
+	if (CharacterMovement->MovementMode == MOVE_Custom)
+	{
+		CharacterMovement->SetMovementMode(MOVE_Walking);
+	}
 
 	Character->ForceNetUpdate();
 	Character->GetCapsuleComponent()->SetCollisionEnabled(SavedCollisionEnabled);

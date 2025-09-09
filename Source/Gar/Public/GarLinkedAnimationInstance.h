@@ -42,12 +42,6 @@ protected:
 	// utility for overlays. overlay accesses View->PitchAmount
 	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "View"))
 	UGarViewAnimInstance* GetViewUnsafe() const;
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void SetHipsDirection(EGarHipsDirection NewHipsDirection);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe))
-	void ActivatePivot();
 };
 
 inline UGarAnimationInstance* UGarLinkedAnimationInstance::GetParentUnsafe() const
