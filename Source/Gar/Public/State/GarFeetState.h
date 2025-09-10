@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/EngineTypes.h"
+#include "Utility/GarMath.h"
 #include "GarFeetState.generated.h"
 
 USTRUCT(BlueprintType)
