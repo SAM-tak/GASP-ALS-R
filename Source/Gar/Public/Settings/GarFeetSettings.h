@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/EngineTypes.h"
 #include "GarFeetSettings.generated.h"
@@ -49,9 +49,6 @@ USTRUCT(BlueprintType)
 struct GAR_API FGarFeetSettings
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	uint8 bDisableFootLock : 1 {false};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float FootHeight{13.5f};

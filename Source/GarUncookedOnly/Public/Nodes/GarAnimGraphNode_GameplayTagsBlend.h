@@ -5,7 +5,7 @@
 #include "GarAnimGraphNode_GameplayTagsBlend.generated.h"
 
 UCLASS()
-class GAREDITOR_API UGarAnimGraphNode_GameplayTagsBlend : public UAnimGraphNode_BlendListBase
+class GARUNCOOKEDONLY_API UGarAnimGraphNode_GameplayTagsBlend : public UAnimGraphNode_BlendListBase
 {
 	GENERATED_BODY()
 

@@ -1,8 +1,8 @@
 using UnrealBuildTool;
 
-public class GAREditor : ModuleRules
+public class GARUncookedOnly : ModuleRules
 {
-	public GAREditor(ReadOnlyTargetRules Target) : base(Target)
+	public GARUncookedOnly(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
@@ -11,11 +11,16 @@ public class GAREditor : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(
 		[
-			"Core", "CoreUObject", "Engine", "AnimationModifiers", "AnimationBlueprintLibrary", "GAR"
+			"Core", "CoreUObject", "Engine", "AnimationBlueprintLibrary", "GAR"
 		]);
 
 		if (Target.bBuildEditor)
 		{
+			PublicDependencyModuleNames.AddRange(
+			[
+				"AnimGraph"
+			]);
+
 			PrivateDependencyModuleNames.AddRange(
 			[
 				"BlueprintGraph", "Slate", "SlateCore", "Projects"

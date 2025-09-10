@@ -165,13 +165,6 @@ private:
 	void RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName, const FName& FootLockCurveName,
 	                 const FGarFootLimitsSettings& LimitsSettings, const FTransform& ComponentTransformInverse, float DeltaTime) const;
 
-	void ProcessFootLockTeleport(FGarFootState& FootState) const;
-
-	void ProcessFootLockBaseChange(FGarFootState& FootState, const FTransform& ComponentTransformInverse) const;
-
-	void RefreshFootLock(FGarFootState& FootState, const FName& FootLockCurveName, const FTransform& ComponentTransformInverse,
-	                     float DeltaTime, FVector& FinalLocation, FQuat& FinalRotation) const;
-
 	void RefreshFootOffset(FGarFootState& FootState, float DeltaTime, FVector& FinalLocation, FQuat& FinalRotation) const;
 
 	void LimitFootRotation(const FGarFootLimitsSettings& LimitsSettings, const FQuat& ParentRotation, FQuat& Rotation) const;

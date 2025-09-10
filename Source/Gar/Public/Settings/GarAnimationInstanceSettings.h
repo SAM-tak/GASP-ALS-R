@@ -8,19 +8,15 @@
 UCLASS(Blueprintable, BlueprintType)
 class GAR_API UGarAnimationInstanceSettings : public UDataAsset
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "cm/s"))
-	float MovingSmoothSpeedThreshold{150.0f};
+	float MovingSmoothSpeedThreshold{150.0f}; // TODO: Remove
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	FGarFeetSettings Feet;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UGarBoneNameTable> BoneNameTable;
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
 };

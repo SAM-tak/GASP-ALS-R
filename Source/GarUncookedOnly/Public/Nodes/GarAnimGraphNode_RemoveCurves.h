@@ -1,17 +1,17 @@
 #pragma once
 
 #include "AnimGraphNode_Base.h"
-#include "Nodes/GarAnimNode_CurvesBlend.h"
-#include "GarAnimGraphNode_CurvesBlend.generated.h"
+#include "Nodes/GarAnimNode_RemoveCurves.h"
+#include "GarAnimGraphNode_RemoveCurves.generated.h"
 
 UCLASS()
-class GAREDITOR_API UGarAnimGraphNode_CurvesBlend : public UAnimGraphNode_Base
+class GARUNCOOKEDONLY_API UGarAnimGraphNode_RemoveCurves : public UAnimGraphNode_Base
 {
 	GENERATED_BODY()
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	FGarAnimNode_CurvesBlend Node;
+	FGarAnimNode_RemoveCurves Node;
 
 public:
 	virtual FText GetNodeTitle(ENodeTitleType::Type TitleType) const override;

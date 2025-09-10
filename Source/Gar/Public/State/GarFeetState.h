@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include "Utility/GarMath.h"
+#include "Engine/EngineTypes.h"
 #include "GarFeetState.generated.h"
 
 USTRUCT(BlueprintType)
@@ -11,32 +11,11 @@ struct GAR_API FGarFootState
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
 	float IkAmount{0.0f};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
-	float LockAmount{0.0f};
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	FVector TargetLocation{ForceInit};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	FQuat TargetRotation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector LockLocation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FQuat LockRotation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector LockComponentRelativeLocation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FQuat LockComponentRelativeRotation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector LockMovementBaseRelativeLocation{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FQuat LockMovementBaseRelativeRotation{ForceInit};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	float OffsetTargetLocationZ{0.0f};
