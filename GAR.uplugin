@@ -93,9 +93,14 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "GAREditor",
+			"Name": "GARUncookedOnly",
 			"Type": "UncookedOnly",
-			"LoadingPhase": "PreDefault"
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "GAREditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }
