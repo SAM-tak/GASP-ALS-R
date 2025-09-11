@@ -73,15 +73,6 @@ protected:
 	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag Stance{GarStanceTags::Standing};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag Gait{GarGaitTags::Walking};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag ViewMode{GarViewModeTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
@@ -309,12 +300,11 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
 	void OnGaitChanged(const FGameplayTag& PreviousGait);
 
+	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
+	FGameplayTag LimitGaitIfNeeded(const FGameplayTag& NewGait) const;
+
 private:
 	void RefreshGait();
-
-	FGameplayTag CalculateMaxAllowedGait() const;
-
-	FGameplayTag CalculateActualGait(const FGameplayTag& MaxAllowedGait) const;
 
 	bool CanSprint() const;
 
@@ -417,14 +407,6 @@ private:
 
 public:
 	virtual void Jump() override;
-
-	virtual void OnJumped_Implementation() override;
-
-private:
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastOnJumpedNetworked();
-
-	void OnJumpedNetworked();
 
 	// Rotation
 
@@ -587,21 +569,6 @@ inline const FGameplayTag& AGarCharacter::GetLocomotionMode() const
 inline const FGameplayTag& AGarCharacter::GetViewMode() const
 {
 	return ViewMode;
-}
-
-inline const FGameplayTag& AGarCharacter::GetRotationMode() const
-{
-	return RotationMode;
-}
-
-inline const FGameplayTag& AGarCharacter::GetStance() const
-{
-	return Stance;
-}
-
-inline const FGameplayTag& AGarCharacter::GetGait() const
-{
-	return Gait;
 }
 
 inline const FGameplayTag& AGarCharacter::GetOverlayMode() const

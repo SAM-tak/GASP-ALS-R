@@ -22,7 +22,7 @@ void FGarCharacterNetworkMoveData::ClientFillNetworkMoveData(const FSavedMove_Ch
 
 	RotationMode = SavedMove.RotationMode;
 	Stance = SavedMove.Stance;
-	MaxAllowedGait = SavedMove.MaxAllowedGait;
+	Gait = SavedMove.Gait;
 }
 
 bool FGarCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Movement, FArchive& Archive,
@@ -32,7 +32,7 @@ bool FGarCharacterNetworkMoveData::Serialize(UCharacterMovementComponent& Moveme
 
 	NetSerializeOptionalValue(Archive.IsSaving(), Archive, RotationMode, GarRotationModeTags::ViewDirection.GetTag(), Map);
 	NetSerializeOptionalValue(Archive.IsSaving(), Archive, Stance, GarStanceTags::Standing.GetTag(), Map);
-	NetSerializeOptionalValue(Archive.IsSaving(), Archive, MaxAllowedGait, GarGaitTags::Walking.GetTag(), Map);
+	NetSerializeOptionalValue(Archive.IsSaving(), Archive, Gait, GarGaitTags::Running.GetTag(), Map);
 
 	return !Archive.IsError();
 }
@@ -50,7 +50,7 @@ void FGarSavedMove::Clear()
 
 	RotationMode = GarRotationModeTags::ViewDirection;
 	Stance = GarStanceTags::Standing;
-	MaxAllowedGait = GarGaitTags::Walking;
+	Gait = GarGaitTags::Running;
 }
 
 void FGarSavedMove::SetMoveFor(ACharacter* Character, const float NewDeltaTime, const FVector& NewAcceleration,
@@ -63,7 +63,7 @@ void FGarSavedMove::SetMoveFor(ACharacter* Character, const float NewDeltaTime, 
 	{
 		RotationMode = Movement->RotationMode;
 		Stance = Movement->Stance;
-		MaxAllowedGait = Movement->MaxAllowedGait;
+		Gait = Movement->Gait;
 		bWantsToLie = Movement->bWantsToLie;
 	}
 }
@@ -74,7 +74,7 @@ bool FGarSavedMove::CanCombineWith(const FSavedMovePtr& NewMovePtr, ACharacter* 
 
 	return RotationMode == NewMove->RotationMode &&
 		   Stance == NewMove->Stance &&
-		   MaxAllowedGait == NewMove->MaxAllowedGait &&
+		   Gait == NewMove->Gait &&
 		   Super::CanCombineWith(NewMovePtr, Character, MaxDeltaTime);
 }
 
@@ -110,7 +110,7 @@ void FGarSavedMove::PrepMoveFor(ACharacter* Character)
 	{
 		Movement->RotationMode = RotationMode;
 		Movement->Stance = Stance;
-		Movement->MaxAllowedGait = MaxAllowedGait;
+		Movement->Gait = Gait;
 		Movement->bWantsToLie = bWantsToLie;
 
 		Movement->RefreshGaitSettings();
@@ -137,6 +137,8 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 	bNetworkAlwaysReplicateTransformUpdateTimestamp = true; // Required for view network smoothing.
 
 	SetCrouchedHalfHeight(56.0f);
+
+	Character = Cast<AGarCharacter>(CharacterOwner);
 
 	// Default values for standing walking movement.
 
@@ -247,24 +249,6 @@ void UGarCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick T
 			PreviousControlRotation.Yaw + ClampedYaw,
 			CurrentControlRotation.Roll}.Clamp());
 	}
-
-	//auto GarCharacter{GetGarCharacter()};
-	//if (GarCharacter->GetPhysicalAnimation()->IsRagdolling() && (MovementMode == EMovementMode::MOVE_Custom || MovementMode == EMovementMode::MOVE_None))
-	//{
-	//	// Proxies get replicated crouch state.
-	//	if (CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
-	//	{
-	//		// Check for a change in crouch state. Players toggle crouch by changing bWantsToCrouch.
-	//		if (CharacterOwner->bIsCrouched && !bWantsToCrouch)
-	//		{
-	//			CharacterOwner->bIsCrouched = false;
-	//		}
-	//		else if (!CharacterOwner->bIsCrouched && bWantsToCrouch)
-	//		{
-	//			CharacterOwner->bIsCrouched = true;
-	//		}
-	//	}
-	//}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
@@ -924,7 +908,7 @@ void UGarCharacterMovementComponent::MoveAutonomous(const float ClientTimeStamp,
 	{
 		RotationMode = MoveData->RotationMode;
 		Stance = MoveData->Stance;
-		MaxAllowedGait = MoveData->MaxAllowedGait;
+		Gait = MoveData->Gait;
 
 		RefreshGaitSettings();
 	}
@@ -939,13 +923,54 @@ void UGarCharacterMovementComponent::MoveAutonomous(const float ClientTimeStamp,
 	{
 		const auto NewControlRotation{Controller->GetControlRotation()};
 
-		auto* Character{Cast<AGarCharacter>(CharacterOwner)};
-		if (IsValid(Character))
+		if (Character.IsValid())
 		{
 			Character->CorrectViewNetworkSmoothing(NewControlRotation, false);
 		}
 
 		PreviousControlRotation = NewControlRotation;
+	}
+}
+
+void UGarCharacterMovementComponent::SetRotationMode(const FGameplayTag& NewRotationMode)
+{
+	if (Character.IsValid() && !Character->IsLocallyControlled())
+	{
+		return;
+	}
+	if (RotationMode != NewRotationMode)
+	{
+		RotationMode = NewRotationMode;
+
+		RefreshGaitSettings();
+	}
+}
+
+void UGarCharacterMovementComponent::SetStance(const FGameplayTag& NewStance)
+{
+	if (Character.IsValid() && !Character->IsLocallyControlled())
+	{
+		return;
+	}
+	if (Stance != NewStance)
+	{
+		Stance = NewStance;
+
+		RefreshGaitSettings();
+	}
+}
+
+void UGarCharacterMovementComponent::SetGait(const FGameplayTag& NewGait)
+{
+	if (Character.IsValid() && !Character->IsLocallyControlled())
+	{
+		return;
+	}
+	if (Gait != NewGait)
+	{
+		Gait = NewGait;
+
+		RefreshMaxWalkSpeed();
 	}
 }
 
@@ -962,39 +987,9 @@ void UGarCharacterMovementComponent::RefreshGaitSettings()
 	RefreshMaxWalkSpeed();
 }
 
-void UGarCharacterMovementComponent::SetRotationMode(const FGameplayTag& NewRotationMode)
-{
-	if (RotationMode != NewRotationMode)
-	{
-		RotationMode = NewRotationMode;
-
-		RefreshGaitSettings();
-	}
-}
-
-void UGarCharacterMovementComponent::SetStance(const FGameplayTag& NewStance)
-{
-	if (Stance != NewStance)
-	{
-		Stance = NewStance;
-
-		RefreshGaitSettings();
-	}
-}
-
-void UGarCharacterMovementComponent::SetMaxAllowedGait(const FGameplayTag& NewMaxAllowedGait)
-{
-	if (MaxAllowedGait != NewMaxAllowedGait)
-	{
-		MaxAllowedGait = NewMaxAllowedGait;
-
-		RefreshMaxWalkSpeed();
-	}
-}
-
 void UGarCharacterMovementComponent::RefreshMaxWalkSpeed()
 {
-	MaxWalkSpeed = GaitSettings.GetSpeedByGait(MaxAllowedGait);
+	MaxWalkSpeed = GaitSettings.GetSpeedByGait(Gait);
 	MaxWalkSpeedCrouched = MaxWalkSpeed;
 }
 
@@ -1587,7 +1582,7 @@ void UGarCharacterMovementComponent::FillAsyncInput(const FVector& InputVector, 
 
 	GarAsyncSimState->RotationMode = RotationMode;
 	GarAsyncSimState->Stance = Stance;
-	GarAsyncSimState->MaxAllowedGait = MaxAllowedGait;
+	GarAsyncSimState->Gait = Gait;
 	GarAsyncSimState->bWantsToCrouch = bWantsToCrouch;
 	GarAsyncSimState->bIsCrouched = CharacterOwner->bIsCrouched;
 }
@@ -1632,7 +1627,7 @@ void UGarCharacterMovementComponent::ApplyAsyncOutput(FCharacterMovementComponen
 	ensure(GarOutput.bIsLied == false);
 	RotationMode = GarOutput.RotationMode;
 	Stance = GarOutput.Stance;
-	MaxAllowedGait = GarOutput.MaxAllowedGait;
+	Gait = GarOutput.Gait;
 	bWantsToLie = GarOutput.bWantsToLie;
 }
 

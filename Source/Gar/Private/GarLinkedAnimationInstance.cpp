@@ -61,3 +61,8 @@ UGarViewAnimInstance* UGarLinkedAnimationInstance::GetViewUnsafe() const
 {
 	return Parent->ViewAnimInstance.Get();
 }
+
+UGarRagdollingAnimInstance* UGarLinkedAnimationInstance::GetRagdollingUnsafe() const
+{
+	return Parent->RagdollingAnimInstance.Get();
+}

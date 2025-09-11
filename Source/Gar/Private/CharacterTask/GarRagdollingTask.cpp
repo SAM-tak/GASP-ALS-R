@@ -6,7 +6,7 @@
 #include "GarAbilitySystemComponent.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
-#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
+#include "LinkedAnimLayers/GarOverrideAnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"

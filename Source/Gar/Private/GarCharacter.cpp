@@ -115,17 +115,17 @@ void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) co
 	{
 		TagContainer.AddLeafTag(LocomotionMode);
 	}
-	if (RotationMode.IsValid())
+	if (GetRotationMode().IsValid())
 	{
-		TagContainer.AddLeafTag(RotationMode);
+		TagContainer.AddLeafTag(GetRotationMode());
 	}
-	if (Stance.IsValid())
+	if (GetStance().IsValid())
 	{
-		TagContainer.AddLeafTag(Stance);
+		TagContainer.AddLeafTag(GetStance());
 	}
-	if (Gait.IsValid())
+	if (GetGait().IsValid())
 	{
-		TagContainer.AddLeafTag(Gait);
+		TagContainer.AddLeafTag(GetGait());
 	}
 	if (ViewMode.IsValid())
 	{
@@ -180,9 +180,9 @@ void AGarCharacter::PreRegisterAllComponents()
 
 	if (IsValid(Settings))
 	{
-		RotationMode = DesiredToActual(DesiredRotationMode);
-		Stance = DesiredToActual(DesiredStance);
-		Gait = DesiredToActual(DesiredGait);
+		SetRotationMode(DesiredToActual(DesiredRotationMode));
+		SetStance(DesiredToActual(DesiredStance));
+		SetGait(DesiredToActual(DesiredGait));
 	}
 
 	Super::PreRegisterAllComponents();
@@ -203,10 +203,7 @@ void AGarCharacter::PostRegisterAllComponents()
 
 	const auto& ActorTransform{GetActorTransform()};
 
-	LocomotionState.Location = ActorTransform.GetLocation();
-	LocomotionState.RotationQuaternion = ActorTransform.GetRotation();
 	LocomotionState.Rotation = GetActorRotation();
-	LocomotionState.PreviousYawAngle = UE_REAL_TO_FLOAT(LocomotionState.Rotation.Yaw);
 
 	RefreshTargetYawAngleUsingLocomotionRotation();
 
@@ -276,13 +273,7 @@ void AGarCharacter::BeginPlay()
 	// Update states to use the initial desired values.
 
 	RefreshRotationMode();
-
-	GarCharacterMovement->SetRotationMode(RotationMode);
-
 	ApplyDesiredStance();
-
-	GarCharacterMovement->SetStance(Stance);
-
 	RefreshGait();
 }
 
@@ -705,25 +696,25 @@ void AGarCharacter::SetDesiredRotationMode(const FGameplayTag& NewDesiredRotatio
 
 void AGarCharacter::SetRotationMode(const FGameplayTag& NewRotationMode)
 {
-	GarCharacterMovement->SetRotationMode(NewRotationMode);
-
-	if (RotationMode == NewRotationMode)
+	const FGameplayTag PreviousRotationMode{GetRotationMode()};
+	if (PreviousRotationMode == NewRotationMode)
 	{
 		return;
 	}
-
-	const auto PreviousRotationMode{RotationMode};
-
-	RotationMode = NewRotationMode;
-
+	GarCharacterMovement->SetRotationMode(NewRotationMode);
 	OnRotationModeChanged(PreviousRotationMode);
 }
 
 void AGarCharacter::OnRotationModeChanged_Implementation(const FGameplayTag& PreviousRotationMode) {}
 
+const FGameplayTag& AGarCharacter::GetRotationMode() const
+{
+	return GarCharacterMovement->GetRotationMode();
+}
+
 void AGarCharacter::RefreshRotationMode()
 {
-	bool bSprinting{Gait == GarGaitTags::Sprinting};
+	bool bSprinting{GetGait() == GarGaitTags::Sprinting};
 	bool bAiming{HasMatchingGameplayTag(GarAimingModeTags::Root)};
 
 	if (ViewMode == GarViewModeTags::FirstPerson)
@@ -921,21 +912,23 @@ void AGarCharacter::OnEndCrouch(const float HalfHeightAdjust, const float Scaled
 
 void AGarCharacter::SetStance(const FGameplayTag& NewStance)
 {
-	GarCharacterMovement->SetStance(NewStance);
+	const FGameplayTag PreviousStance{GetStance()};
 
-	if (Stance == NewStance)
+	if (PreviousStance == NewStance)
 	{
 		return;
 	}
 
-	const auto PreviousStance{Stance};
-
-	Stance = NewStance;
-
+	GarCharacterMovement->SetStance(NewStance);
 	OnStanceChanged(PreviousStance);
 }
 
 void AGarCharacter::OnStanceChanged_Implementation(const FGameplayTag& PreviousStance) {}
+
+const FGameplayTag& AGarCharacter::GetStance() const
+{
+	return GarCharacterMovement->GetStance();
+}
 
 void AGarCharacter::SetDesiredGait(const FGameplayTag& NewDesiredGait)
 {
@@ -961,19 +954,22 @@ void AGarCharacter::ServerSetDesiredGait_Implementation(const FGameplayTag& NewD
 
 void AGarCharacter::SetGait(const FGameplayTag& NewGait)
 {
-	if (Gait == NewGait)
+	const FGameplayTag PreviousGait{GetGait()};
+	auto ActualNewGait{LimitGaitIfNeeded(NewGait)};
+	if (PreviousGait == ActualNewGait)
 	{
 		return;
 	}
-
-	const auto PreviousGait{Gait};
-
-	Gait = NewGait;
-
+	GarCharacterMovement->SetGait(ActualNewGait);
 	OnGaitChanged(PreviousGait);
 }
 
 void AGarCharacter::OnGaitChanged_Implementation(const FGameplayTag& PreviousGait) {}
+
+const FGameplayTag& AGarCharacter::GetGait() const
+{
+	return GarCharacterMovement->GetGait();
+}
 
 void AGarCharacter::RefreshGait()
 {
@@ -982,51 +978,21 @@ void AGarCharacter::RefreshGait()
 		return;
 	}
 
-	const auto MaxAllowedGait{CalculateMaxAllowedGait()};
-
-	// Update the character max walk speed to the configured speeds based on the currently max allowed gait.
-
-	GarCharacterMovement->SetMaxAllowedGait(MaxAllowedGait);
-
-	SetGait(CalculateActualGait(MaxAllowedGait));
+	SetGait(DesiredToActual(DesiredGait));
 }
 
-FGameplayTag AGarCharacter::CalculateMaxAllowedGait() const
+FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag& NewGait) const
 {
 	// Calculate the max allowed gait. This represents the maximum gait the character is currently allowed
 	// to be in and can be determined by the desired gait, the rotation mode, the stance, etc. For example,
 	// if you wanted to force the character into a walking state while indoors, this could be done here.
 
-	if (DesiredGait != GarDesiredGaitTags::Sprinting)
-	{
-		return DesiredToActual(DesiredGait);
-	}
-
-	if (CanSprint())
-	{
-		return GarGaitTags::Sprinting;
-	}
-
-	return GarGaitTags::Running;
-}
-
-FGameplayTag AGarCharacter::CalculateActualGait(const FGameplayTag& MaxAllowedGait) const
-{
-	// Calculate the new gait. This is calculated by the actual movement of the character and so it can be
-	// different from the desired gait or max allowed gait. For instance, if the max allowed gait becomes
-	// walking, the new gait will still be running until the character decelerates to the walking speed.
-
-	if (LocomotionState.Speed < GarCharacterMovement->GetGaitSettings().WalkSpeed + 10.0f)
-	{
-		return GarGaitTags::Walking;
-	}
-
-	if (LocomotionState.Speed < GarCharacterMovement->GetGaitSettings().RunSpeed + 10.0f || MaxAllowedGait != GarGaitTags::Sprinting)
+	if (NewGait == GarGaitTags::Sprinting && !CanSprint())
 	{
 		return GarGaitTags::Running;
 	}
 
-	return GarGaitTags::Sprinting;
+	return NewGait;
 }
 
 bool AGarCharacter::CanSprint() const
@@ -1035,7 +1001,8 @@ bool AGarCharacter::CanSprint() const
 	// If the character is in view direction rotation mode, only allow sprinting if there is
 	// input and if the input direction is aligned with the view direction within 50 degrees.
 
-	if (!LocomotionState.bHasInput || Stance != GarStanceTags::Standing || (RotationMode == GarRotationModeTags::Aiming && !Settings->bSprintHasPriorityOverAiming))
+	if (!LocomotionState.bHasInput || GetStance() != GarStanceTags::Standing
+		|| (GetRotationMode() == GarRotationModeTags::Aiming && !Settings->bSprintHasPriorityOverAiming))
 	{
 		return false;
 	}
@@ -1061,9 +1028,7 @@ FRotator AGarCharacter::GetViewRotation() const
 
 void AGarCharacter::SetInputDirection(FVector NewInputDirection)
 {
-	NewInputDirection = NewInputDirection.GetSafeNormal();
-
-	COMPARE_ASSIGN_AND_MARK_PROPERTY_DIRTY(ThisClass, InputDirection, NewInputDirection, this);
+	COMPARE_ASSIGN_AND_MARK_PROPERTY_DIRTY(ThisClass, InputDirection, NewInputDirection.GetSafeNormal(), this);
 }
 
 void AGarCharacter::RefreshInput(const float DeltaTime)
@@ -1451,39 +1416,9 @@ void AGarCharacter::RefreshLocomotionLate(const float DeltaTime)
 
 void AGarCharacter::Jump()
 {
-	if (Stance == GarStanceTags::Standing && !GetLocomotionAction().IsValid() && LocomotionMode == GarLocomotionModeTags::Grounded)
+	if (GetStance() == GarStanceTags::Standing && !GetLocomotionAction().IsValid() && LocomotionMode == GarLocomotionModeTags::Grounded)
 	{
 		Super::Jump();
-	}
-}
-
-void AGarCharacter::OnJumped_Implementation() // TODO : removal?
-{
-	Super::OnJumped_Implementation();
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		OnJumpedNetworked();
-	}
-	else if (GetLocalRole() >= ROLE_Authority)
-	{
-		MulticastOnJumpedNetworked();
-	}
-}
-
-void AGarCharacter::MulticastOnJumpedNetworked_Implementation() // TODO : removal?
-{
-	if (GetLocalRole() != ROLE_AutonomousProxy)
-	{
-		OnJumpedNetworked();
-	}
-}
-
-void AGarCharacter::OnJumpedNetworked() // TODO : removal?
-{
-	if (AnimationInstance.IsValid())
-	{
-		//AnimationInstance->Jump();
 	}
 }
 
@@ -1517,7 +1452,7 @@ void AGarCharacter::RefreshGroundedRotation(const float DeltaTime)
 			return;
 		}
 
-		if (RotationMode == GarRotationModeTags::VelocityDirection)
+		if (GetRotationMode() == GarRotationModeTags::VelocityDirection)
 		{
 			// Rotate to the last target yaw angle when not moving (relative to the movement base or not).
 
@@ -1535,7 +1470,7 @@ void AGarCharacter::RefreshGroundedRotation(const float DeltaTime)
 			return;
 		}
 
-		if (RotationMode == GarRotationModeTags::Aiming || ViewMode == GarViewModeTags::FirstPerson)
+		if (GetRotationMode() == GarRotationModeTags::Aiming || ViewMode == GarViewModeTags::FirstPerson)
 		{
 			RefreshGroundedAimingRotation(DeltaTime);
 			return;
@@ -1552,7 +1487,7 @@ void AGarCharacter::RefreshGroundedRotation(const float DeltaTime)
 		return;
 	}
 
-	if (RotationMode == GarRotationModeTags::VelocityDirection &&
+	if (GetRotationMode() == GarRotationModeTags::VelocityDirection &&
 	    (LocomotionState.bHasInput || !LocomotionState.bRotationTowardsLastInputDirectionBlocked))
 	{
 		LocomotionState.bRotationTowardsLastInputDirectionBlocked = false;
@@ -1567,10 +1502,10 @@ void AGarCharacter::RefreshGroundedRotation(const float DeltaTime)
 		return;
 	}
 
-	if (RotationMode == GarRotationModeTags::ViewDirection)
+	if (GetRotationMode() == GarRotationModeTags::ViewDirection)
 	{
 		const auto TargetYawAngle{
-			Gait == GarGaitTags::Sprinting
+			GetGait() == GarGaitTags::Sprinting
 				? LocomotionState.VelocityYawAngle
 				: UE_REAL_TO_FLOAT(ViewState.Rotation.Yaw +
 					GetMesh()->GetAnimInstance()->GetCurveValue(UGarConstants::RotationYawOffsetCurveName()))
@@ -1583,7 +1518,7 @@ void AGarCharacter::RefreshGroundedRotation(const float DeltaTime)
 		return;
 	}
 
-	if (RotationMode == GarRotationModeTags::Aiming)
+	if (GetRotationMode() == GarRotationModeTags::Aiming)
 	{
 		RefreshGroundedAimingRotation(DeltaTime);
 		return;
@@ -1731,7 +1666,7 @@ void AGarCharacter::RefreshInAirRotation(const float DeltaTime)
 	}
 
 	static constexpr auto RotationInterpolationSpeed{5.0f};
-
+	const FGameplayTag RotationMode{GetRotationMode()};
 	if (RotationMode == GarRotationModeTags::VelocityDirection || RotationMode == GarRotationModeTags::ViewDirection)
 	{
 		switch (Settings->InAirRotationMode)

@@ -4,13 +4,15 @@
 #include "Settings/GarMovementSettings.h"
 #include "GarCharacterMovementComponent.generated.h"
 
+class AGarCharacter;
+
 using FGarPhysicsRotationDelegate = TMulticastDelegate<void(float DeltaTime)>;
 
 struct FGarCharacterMovementComponentAsyncInput : public FCharacterMovementComponentAsyncInput
 {
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 	FGameplayTag Stance{GarStanceTags::Standing};
-	FGameplayTag MaxAllowedGait{GarGaitTags::Walking};
+	FGameplayTag Gait{GarGaitTags::Running};
 	bool bWantsToLie;
 	bool bIsLied;
 };
@@ -19,7 +21,7 @@ struct FGarCharacterMovementComponentAsyncOutput : public FCharacterMovementComp
 {
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 	FGameplayTag Stance{GarStanceTags::Standing};
-	FGameplayTag MaxAllowedGait{GarGaitTags::Walking};
+	FGameplayTag Gait{GarGaitTags::Running};
 	bool bWantsToLie;
 	bool bIsLied;
 };
@@ -43,7 +45,7 @@ public:
 
 	FGameplayTag Stance{GarStanceTags::Standing};
 
-	FGameplayTag MaxAllowedGait{GarGaitTags::Walking};
+	FGameplayTag Gait{GarGaitTags::Running};
 
 public:
 	virtual void ClientFillNetworkMoveData(const FSavedMove_Character& Move, ENetworkMoveType MoveType) override;
@@ -70,7 +72,7 @@ public:
 
 	FGameplayTag Stance{GarStanceTags::Standing};
 
-	FGameplayTag MaxAllowedGait{GarGaitTags::Walking};
+	FGameplayTag Gait{GarGaitTags::Running};
 
 	bool bWantsToLie{false};
 
@@ -114,6 +116,9 @@ protected:
 	uint8 NavAgentProps_bCanLie : 1{true};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
+	TWeakObjectPtr<AGarCharacter> Character;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	FGarMovementGaitSettings GaitSettings;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
@@ -123,7 +128,7 @@ protected:
 	FGameplayTag Stance{GarStanceTags::Standing};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
-	FGameplayTag MaxAllowedGait{GarGaitTags::Walking};
+	FGameplayTag Gait{GarGaitTags::Running};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	uint8 bMovementModeLocked : 1 {false};
@@ -214,10 +219,13 @@ private:
 
 public:
 	void SetRotationMode(const FGameplayTag& NewRotationMode);
+	const FGameplayTag& GetRotationMode() const;
 
 	void SetStance(const FGameplayTag& NewStance);
+	const FGameplayTag& GetStance() const;
 
-	void SetMaxAllowedGait(const FGameplayTag& NewMaxAllowedGait);
+	void SetGait(const FGameplayTag& NewGait);
+	const FGameplayTag& GetGait() const;
 
 private:
 	void RefreshMaxWalkSpeed();
@@ -275,4 +283,19 @@ private:
 inline const FGarMovementGaitSettings& UGarCharacterMovementComponent::GetGaitSettings() const
 {
 	return GaitSettings;
+}
+
+inline const FGameplayTag& UGarCharacterMovementComponent::GetRotationMode() const
+{
+	return RotationMode;
+}
+
+inline const FGameplayTag& UGarCharacterMovementComponent::GetStance() const
+{
+	return Stance;
+}
+
+inline const FGameplayTag& UGarCharacterMovementComponent::GetGait() const
+{
+	return Gait;
 }

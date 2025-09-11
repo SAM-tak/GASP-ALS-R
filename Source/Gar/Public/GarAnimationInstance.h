@@ -3,6 +3,7 @@
 #include "Animation/AnimInstance.h"
 #include "Engine/World.h"
 #include "State/GarControlRigInput.h"
+#include "State/GarLocomotionState.h"
 #include "State/GarFeetState.h"
 #include "State/GarCharacterMovementState.h"
 #include "State/GarMovementBaseState.h"
@@ -82,13 +83,13 @@ protected:
 	FGarPoseState PoseState;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
+	FGarLocomotionState LocomotionState;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarCharacterMovementState CharacterMovement;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarFeetState FeetState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Meta = (DeprecatedProperty, DeprecationMessage = "remove later"))
-	uint8 bCharacterMoving : 1{false}; // TODO : remove later
 
 public:
 	//This is in the process of organizing such that things that are only accessed within each LinkedAnimLayer are defined within the LinkedAnimLayer,
@@ -99,14 +100,8 @@ public:
 	float ViewYawAngle; // in NativeThreadSafeUpdateAnimation ex ViewState.YawAngle
 	float ViewYawSpeed; // in NativeThreadSafeUpdateAnimation ex ViewState.YawSpeed
 
-	// Former LocomotionAnimationState
-	FRotator CharacterRotation{ForceInit};
-	float CharacterZScale;
-	float InputYawAngle{0.0f};
-	float TargetYawAngle{0.0f};
-	float YawSpeed{0.0f};
-	uint8 bHasInput : 1{false};
-	uint8 bMovingSmooth : 1{false};
+	float CharacterZScale{1.0f};
+	uint8 bMovingSmooth : 1 {false};
 
 	const FGameplayTagContainer& GetCurrentGameplayTags() const;
 

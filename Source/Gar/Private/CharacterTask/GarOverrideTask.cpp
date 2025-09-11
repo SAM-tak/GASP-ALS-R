@@ -2,7 +2,7 @@
 
 #include "CharacterTasks/GarOverrideTask.h"
 #include "GarCharacter.h"
-#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
+#include "LinkedAnimLayers/GarOverrideAnimInstance.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarOverrideTask)
 
@@ -10,12 +10,12 @@ void UGarOverrideTask::Begin()
 {
 	if (!bActive && IsValid(OverrideAnimClass))
 	{
-		OverrideAnimInstance = Cast<UGarCharacterTaskAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverrideAnimClass));
+		OverrideAnimInstance = Cast<UGarOverrideAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverrideAnimClass));
 
 		if (!OverrideAnimInstance.IsValid())
 		{
 			Character->GetMesh()->LinkAnimClassLayers(OverrideAnimClass);
-			OverrideAnimInstance = Cast<UGarCharacterTaskAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverrideAnimClass));
+			OverrideAnimInstance = Cast<UGarOverrideAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverrideAnimClass));
 		}
 
 		OverrideAnimInstance->Refresh(this);

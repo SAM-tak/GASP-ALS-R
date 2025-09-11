@@ -2,7 +2,7 @@
 
 #include "CharacterTasks/GarOverlayTask.h"
 #include "GarCharacter.h"
-#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
+#include "LinkedAnimLayers/GarOverlayAnimInstance.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarOverlayTask)
 
@@ -10,12 +10,12 @@ void UGarOverlayTask::Begin()
 {
 	if (!bActive && IsValid(OverlayAnimClass))
 	{
-		OverlayAnimInstance = Cast<UGarCharacterTaskAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
+		OverlayAnimInstance = Cast<UGarOverlayAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
 
 		if (!OverlayAnimInstance.IsValid())
 		{
 			Character->GetMesh()->LinkAnimClassLayers(OverlayAnimClass);
-			OverlayAnimInstance = Cast<UGarCharacterTaskAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
+			OverlayAnimInstance = Cast<UGarOverlayAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
 		}
 
 		OverlayAnimInstance->Refresh(this);

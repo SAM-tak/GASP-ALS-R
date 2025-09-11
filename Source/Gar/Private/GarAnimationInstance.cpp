@@ -97,16 +97,10 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	CharacterZScale = UE_REAL_TO_FLOAT(GetSkelMeshComponent()->GetComponentScale().Z);
 
-	const auto& Locomotion{Character->GetLocomotionState()};
-
-	bCharacterMoving = Locomotion.bMoving;
-
-	bMovingSmooth = (Locomotion.bHasInput && Locomotion.bHasSpeed) || Locomotion.Speed > Settings->MovingSmoothSpeedThreshold;
-	bHasInput = Locomotion.bHasInput;
-	InputYawAngle = Locomotion.InputYawAngle;
-	TargetYawAngle = Locomotion.TargetYawAngle;
-	CharacterRotation = Locomotion.Rotation;
-	YawSpeed = Locomotion.YawSpeed;
+	LocomotionState = Character->GetLocomotionState();
+	bMovingSmooth =
+		(LocomotionState.bHasInput && LocomotionState.bHasSpeed) ||
+		LocomotionState.Speed > Settings->MovingSmoothSpeedThreshold;
 
 	RefreshMovementBaseOnGameThread();
 
