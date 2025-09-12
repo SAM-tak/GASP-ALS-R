@@ -201,8 +201,6 @@ void AGarCharacter::PostRegisterAllComponents()
 	ViewState.Rotation = ViewState.LookRotation = ReplicatedViewRotation;
 	ViewState.PreviousYawAngle = UE_REAL_TO_FLOAT(ReplicatedViewRotation.Yaw);
 
-	const auto& ActorTransform{GetActorTransform()};
-
 	LocomotionState.Rotation = GetActorRotation();
 
 	RefreshTargetYawAngleUsingLocomotionRotation();
@@ -263,7 +261,7 @@ void AGarCharacter::BeginPlay()
 			});
 	}
 
-	RefreshMeshProperties();
+	//RefreshMeshProperties();
 
 	// workaround for crash since 5.6
 	PhysicalAnimation->SetSkeletalMeshComponent(GetMesh());
@@ -281,7 +279,7 @@ void AGarCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	RefreshMeshProperties();
+	//RefreshMeshProperties();
 
 	// Enable view network smoothing on the listen server here because the remote role may not be valid yet during begin play.
 
@@ -410,7 +408,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 
 	RefreshMovementBase();
 
-	RefreshMeshProperties();
+	//RefreshMeshProperties();
 
 	RefreshInput(DeltaTime);
 
@@ -438,80 +436,80 @@ void AGarCharacter::Restart()
 	ApplyDesiredStance();
 }
 
-void AGarCharacter::RefreshMeshProperties() const
-{
-	bool bStandalone{IsNetMode(NM_Standalone)};
-	bool bDedicatedServer{IsNetMode(NM_DedicatedServer)};
-	bool bListenServer{IsNetMode(NM_ListenServer)};
-
-	bool bAuthority{GetLocalRole() >= ROLE_Authority};
-	bool bRemoteAutonomousProxy{GetRemoteRole() == ROLE_AutonomousProxy};
-	bool bLocallyControlled{IsLocallyControlled()};
-
-	// Make sure that the pose is always ticked on the server when the character is controlled
-	// by a remote client, otherwise some problems may arise (such as jitter when rolling).
-
-	const auto DefaultTickOption{GetClass()->GetDefaultObject<ThisClass>()->GetMesh()->VisibilityBasedAnimTickOption};
-
-	const auto TargetTickOption{
-		!bStandalone && bAuthority && bRemoteAutonomousProxy
-			? EVisibilityBasedAnimTickOption::AlwaysTickPose
-			: EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered
-	};
-
-	// Keep the default tick option, at least if the target tick option is not required by the plugin to work properly.
-
-	GetMesh()->VisibilityBasedAnimTickOption = FMath::Min(TargetTickOption, DefaultTickOption);
-
-	bool bMeshIsTicking{GetMesh()->bRecentlyRendered || GetMesh()->VisibilityBasedAnimTickOption <= EVisibilityBasedAnimTickOption::AlwaysTickPose};
-
-	// Use absolute mesh rotation to be able to precisely synchronize character rotation
-	// with animations by manually updating the mesh rotation from the animation instance.
-
-	// This is necessary in cases where the character and the animation instance are ticking
-	// at different frequencies, which leads to desynchronization of rotation animations
-	// with the character rotation, as well as foot sliding when the foot lock is active.
-
-	// To save performance, use this only when really necessary, such as
-	// when URO is enabled, or for autonomous proxies on the listen server.
-
-	bool bUROActive{GetMesh()->AnimUpdateRateParams != nullptr && GetMesh()->AnimUpdateRateParams->UpdateRate > 1};
-	bool bAutonomousProxyOnListenServer{bListenServer && bRemoteAutonomousProxy};
-
-	// Can't use absolute mesh rotation when the character is standing on a rotating object, as it
-	// causes constant rotation jitter. Be careful: although it eliminates jitter in this case, not
-	// using absolute mesh rotation can cause jitter when rotating in place or turning in place.
-
-	const auto bStandingOnRotatingObject{MovementBase.bHasRelativeRotation};
-
-	bool bUseAbsoluteRotation{
-		bMeshIsTicking && !bDedicatedServer && !bLocallyControlled && !bStandingOnRotatingObject &&
-		(bUROActive || bAutonomousProxyOnListenServer)
-	};
-
-	if (GetMesh()->IsUsingAbsoluteRotation() != bUseAbsoluteRotation)
-	{
-		GetMesh()->SetUsingAbsoluteRotation(bUseAbsoluteRotation);
-
-		// Instantly update the relative mesh rotation, otherwise it will be incorrect during this tick.
-
-		if (bUseAbsoluteRotation || !IsValid(GetMesh()->GetAttachParent()))
-		{
-			GetMesh()->SetRelativeRotation_Direct(
-				GetMesh()->GetRelativeRotationCache().QuatToRotator(GetMesh()->GetComponentQuat()));
-		}
-		else
-		{
-			GetMesh()->SetRelativeRotation_Direct(
-				GetMesh()->GetRelativeRotationCache().QuatToRotator(GetActorQuat().Inverse() * GetMesh()->GetComponentQuat()));
-		}
-	}
-
-	if (!bMeshIsTicking)
-	{
-		AnimationInstance->MarkPendingUpdate();
-	}
-}
+//void AGarCharacter::RefreshMeshProperties() const
+//{
+//	bool bStandalone{IsNetMode(NM_Standalone)};
+//	bool bDedicatedServer{IsNetMode(NM_DedicatedServer)};
+//	bool bListenServer{IsNetMode(NM_ListenServer)};
+//
+//	bool bAuthority{GetLocalRole() >= ROLE_Authority};
+//	bool bRemoteAutonomousProxy{GetRemoteRole() == ROLE_AutonomousProxy};
+//	bool bLocallyControlled{IsLocallyControlled()};
+//
+//	// Make sure that the pose is always ticked on the server when the character is controlled
+//	// by a remote client, otherwise some problems may arise (such as jitter when rolling).
+//
+//	const auto DefaultTickOption{GetClass()->GetDefaultObject<ThisClass>()->GetMesh()->VisibilityBasedAnimTickOption};
+//
+//	const auto TargetTickOption{
+//		!bStandalone && bAuthority && bRemoteAutonomousProxy
+//			? EVisibilityBasedAnimTickOption::AlwaysTickPose
+//			: EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered
+//	};
+//
+//	// Keep the default tick option, at least if the target tick option is not required by the plugin to work properly.
+//
+//	GetMesh()->VisibilityBasedAnimTickOption = FMath::Min(TargetTickOption, DefaultTickOption);
+//
+//	bool bMeshIsTicking{GetMesh()->bRecentlyRendered || GetMesh()->VisibilityBasedAnimTickOption <= EVisibilityBasedAnimTickOption::AlwaysTickPose};
+//
+//	// Use absolute mesh rotation to be able to precisely synchronize character rotation
+//	// with animations by manually updating the mesh rotation from the animation instance.
+//
+//	// This is necessary in cases where the character and the animation instance are ticking
+//	// at different frequencies, which leads to desynchronization of rotation animations
+//	// with the character rotation, as well as foot sliding when the foot lock is active.
+//
+//	// To save performance, use this only when really necessary, such as
+//	// when URO is enabled, or for autonomous proxies on the listen server.
+//
+//	bool bUROActive{GetMesh()->AnimUpdateRateParams != nullptr && GetMesh()->AnimUpdateRateParams->UpdateRate > 1};
+//	bool bAutonomousProxyOnListenServer{bListenServer && bRemoteAutonomousProxy};
+//
+//	// Can't use absolute mesh rotation when the character is standing on a rotating object, as it
+//	// causes constant rotation jitter. Be careful: although it eliminates jitter in this case, not
+//	// using absolute mesh rotation can cause jitter when rotating in place or turning in place.
+//
+//	const auto bStandingOnRotatingObject{MovementBase.bHasRelativeRotation};
+//
+//	bool bUseAbsoluteRotation{
+//		bMeshIsTicking && !bDedicatedServer && !bLocallyControlled && !bStandingOnRotatingObject &&
+//		(bUROActive || bAutonomousProxyOnListenServer)
+//	};
+//
+//	if (GetMesh()->IsUsingAbsoluteRotation() != bUseAbsoluteRotation)
+//	{
+//		GetMesh()->SetUsingAbsoluteRotation(bUseAbsoluteRotation);
+//
+//		// Instantly update the relative mesh rotation, otherwise it will be incorrect during this tick.
+//
+//		if (bUseAbsoluteRotation || !IsValid(GetMesh()->GetAttachParent()))
+//		{
+//			GetMesh()->SetRelativeRotation_Direct(
+//				GetMesh()->GetRelativeRotationCache().QuatToRotator(GetMesh()->GetComponentQuat()));
+//		}
+//		else
+//		{
+//			GetMesh()->SetRelativeRotation_Direct(
+//				GetMesh()->GetRelativeRotationCache().QuatToRotator(GetActorQuat().Inverse() * GetMesh()->GetComponentQuat()));
+//		}
+//	}
+//
+//	if (!bMeshIsTicking)
+//	{
+//		AnimationInstance->MarkPendingUpdate();
+//	}
+//}
 
 void AGarCharacter::RefreshMovementBase()
 {
@@ -1338,12 +1336,12 @@ void AGarCharacter::RefreshLocomotionEarly()
 		LocomotionState.SmoothTargetYawAngle = FMath::UnwindDegrees(UE_REAL_TO_FLOAT(
 			LocomotionState.SmoothTargetYawAngle + MovementBase.DeltaRotation.Yaw));
 
-		auto NewRotation{GetActorRotation()};
-		NewRotation.Pitch += MovementBase.DeltaRotation.Pitch;
-		NewRotation.Yaw += MovementBase.DeltaRotation.Yaw;
-		NewRotation.Normalize();
+		//auto NewRotation{GetActorRotation()};
+		//NewRotation.Pitch += MovementBase.DeltaRotation.Pitch;
+		//NewRotation.Yaw += MovementBase.DeltaRotation.Yaw;
+		//NewRotation.Normalize();
 
-		SetActorRotation(NewRotation);
+		//SetActorRotation(NewRotation);
 	}
 
 	RefreshLocomotionLocationAndRotation();
@@ -1643,10 +1641,10 @@ void AGarCharacter::ApplyRotationYawSpeedAnimationCurve(const float DeltaTime)
 	const auto DeltaYawAngle{GetMesh()->GetAnimInstance()->GetCurveValue(UGarConstants::RotationYawSpeedCurveName()) * DeltaTime};
 	if (FMath::Abs(DeltaYawAngle) > UE_SMALL_NUMBER)
 	{
-		auto NewRotation{GetActorRotation()};
-		NewRotation.Yaw += DeltaYawAngle;
+		//auto NewRotation{GetActorRotation()};
+		//NewRotation.Yaw += DeltaYawAngle;
 
-		SetActorRotation(NewRotation);
+		//SetActorRotation(NewRotation);
 
 		RefreshLocomotionLocationAndRotation();
 		RefreshTargetYawAngleUsingLocomotionRotation();
@@ -1723,11 +1721,11 @@ void AGarCharacter::RefreshRotation(const float TargetYawAngle, const float Delt
 {
 	RefreshTargetYawAngle(TargetYawAngle);
 
-	auto NewRotation{GetActorRotation()};
-	NewRotation.Yaw = UGarMath::ExponentialDecayAngle(UE_REAL_TO_FLOAT(FMath::UnwindDegrees(NewRotation.Yaw)),
-													  TargetYawAngle, DeltaTime, RotationInterpolationSpeed);
+	//auto NewRotation{GetActorRotation()};
+	//NewRotation.Yaw = UGarMath::ExponentialDecayAngle(UE_REAL_TO_FLOAT(FMath::UnwindDegrees(NewRotation.Yaw)),
+	//												  TargetYawAngle, DeltaTime, RotationInterpolationSpeed);
 
-	SetActorRotation(NewRotation);
+	//SetActorRotation(NewRotation);
 
 	RefreshLocomotionLocationAndRotation();
 }
@@ -1745,11 +1743,11 @@ void AGarCharacter::RefreshRotationExtraSmooth(const float TargetYawAngle, const
 																			  LocomotionState.TargetYawAngle,
 																			  DeltaTime, TargetYawAngleRotationSpeed);
 
-	auto NewRotation{GetActorRotation()};
-	NewRotation.Yaw = UGarMath::ExponentialDecayAngle(UE_REAL_TO_FLOAT(FMath::UnwindDegrees(NewRotation.Yaw)),
-													  LocomotionState.SmoothTargetYawAngle, DeltaTime, RotationInterpolationSpeed);
+	//auto NewRotation{GetActorRotation()};
+	//NewRotation.Yaw = UGarMath::ExponentialDecayAngle(UE_REAL_TO_FLOAT(FMath::UnwindDegrees(NewRotation.Yaw)),
+	//												  LocomotionState.SmoothTargetYawAngle, DeltaTime, RotationInterpolationSpeed);
 
-	SetActorRotation(NewRotation);
+	//SetActorRotation(NewRotation);
 
 	RefreshLocomotionLocationAndRotation();
 }
@@ -1758,10 +1756,10 @@ void AGarCharacter::RefreshRotationInstant(const float TargetYawAngle, const ETe
 {
 	RefreshTargetYawAngle(TargetYawAngle);
 
-	auto NewRotation{GetActorRotation()};
-	NewRotation.Yaw = TargetYawAngle;
+	//auto NewRotation{GetActorRotation()};
+	//NewRotation.Yaw = TargetYawAngle;
 
-	SetActorRotation(NewRotation, Teleport);
+	//SetActorRotation(NewRotation, Teleport);
 
 	RefreshLocomotionLocationAndRotation();
 }

@@ -10,17 +10,6 @@ class GAR_API UGarConstants : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 
 public:
-	// Animation Slots
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Slots", Meta = (ReturnDisplayName = "Slot Name"))
-	static const FName& TransitionSlotName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Slots", Meta = (ReturnDisplayName = "Slot Name"))
-	static const FName& TurnInPlaceStandingSlotName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Slots", Meta = (ReturnDisplayName = "Slot Name"))
-	static const FName& TurnInPlaceCrouchingSlotName();
-
 	// Layering Animation Curves
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
@@ -89,15 +78,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& HandRightIkCurveName();
 
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& ViewBlockCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& AllowAimingCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& HipsDirectionLockCurveName();
-
 	// Pose Animation Curves
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
@@ -124,13 +104,7 @@ public:
 	static const FName& FootLeftIkCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& FootLeftLockCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& FootRightIkCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& FootRightLockCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& FootPlantedCurveName();
@@ -150,10 +124,13 @@ public:
 	static const FName& AllowTransitionsCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& SprintBlockCurveName();
+	static const FName& BlockViewCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& GroundPredictionBlockCurveName();
+	static const FName& BlockSprintCurveName();
+
+	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
+	static const FName& AllowAimingCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& FootstepSoundBlockCurveName();
@@ -204,24 +181,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
 	static const FGameplayTagContainer& LocomotionActionRoot();
 };
-
-inline const FName& UGarConstants::TransitionSlotName()
-{
-	static const FName Name{TEXTVIEW("Transition")};
-	return Name;
-}
-
-inline const FName& UGarConstants::TurnInPlaceStandingSlotName()
-{
-	static const FName Name{TEXTVIEW("TurnInPlaceStanding")};
-	return Name;
-}
-
-inline const FName& UGarConstants::TurnInPlaceCrouchingSlotName()
-{
-	static const FName Name{TEXTVIEW("TurnInPlaceCrouching")};
-	return Name;
-}
 
 inline const FName& UGarConstants::LayerHeadCurveName()
 {
@@ -355,21 +314,9 @@ inline const FName& UGarConstants::HandRightIkCurveName()
 	return Name;
 }
 
-inline const FName& UGarConstants::ViewBlockCurveName()
-{
-	static const FName Name{TEXTVIEW("ViewBlock")};
-	return Name;
-}
-
 inline const FName& UGarConstants::AllowAimingCurveName()
 {
 	static const FName Name{TEXTVIEW("allow_aiming")};
-	return Name;
-}
-
-inline const FName& UGarConstants::HipsDirectionLockCurveName()
-{
-	static const FName Name{TEXTVIEW("hips_direction_lock")};
 	return Name;
 }
 
@@ -415,21 +362,9 @@ inline const FName& UGarConstants::FootLeftIkCurveName()
 	return Name;
 }
 
-inline const FName& UGarConstants::FootLeftLockCurveName()
-{
-	static const FName Name{TEXTVIEW("lock_foot_l")};
-	return Name;
-}
-
 inline const FName& UGarConstants::FootRightIkCurveName()
 {
 	static const FName Name{TEXTVIEW("enable_footik_r")};
-	return Name;
-}
-
-inline const FName& UGarConstants::FootRightLockCurveName()
-{
-	static const FName Name{TEXTVIEW("lock_foot_r")};
 	return Name;
 }
 
@@ -463,15 +398,15 @@ inline const FName& UGarConstants::AllowTransitionsCurveName()
 	return Name;
 }
 
-inline const FName& UGarConstants::SprintBlockCurveName()
+inline const FName& UGarConstants::BlockViewCurveName()
 {
-	static const FName Name{TEXTVIEW("block_sprint")};
+	static const FName Name{ TEXTVIEW("block_view") };
 	return Name;
 }
 
-inline const FName& UGarConstants::GroundPredictionBlockCurveName()
+inline const FName& UGarConstants::BlockSprintCurveName()
 {
-	static const FName Name{TEXTVIEW("block_ground_prediction")};
+	static const FName Name{TEXTVIEW("block_sprint")};
 	return Name;
 }
 

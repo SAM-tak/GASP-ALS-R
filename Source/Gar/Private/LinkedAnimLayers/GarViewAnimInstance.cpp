@@ -46,7 +46,7 @@ void UGarViewAnimInstance::Refresh(const float DeltaTime)
 		PitchAmount = 0.5f - PitchAngle / 180.0f;
 	}
 
-	const auto ViewAmount{1.0f - Parent->GetCurveValueClamped01(UGarConstants::ViewBlockCurveName())};
+	const auto ViewAmount{1.0f - Parent->GetCurveValueClamped01(UGarConstants::BlockViewCurveName())};
 	const auto AimingAmount{Parent->GetCurveValueClamped01(UGarConstants::AllowAimingCurveName())};
 
 	LookAmount = ViewAmount * (1.0f - AimingAmount);

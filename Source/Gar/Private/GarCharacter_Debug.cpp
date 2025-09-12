@@ -211,9 +211,6 @@ void AGarCharacter::InitializeCurveNames()
 	CurveNames.AddUnique(UGarConstants::LayerLegsSlotCurveName());
 	CurveNames.AddUnique(UGarConstants::HandLeftIkCurveName());
 	CurveNames.AddUnique(UGarConstants::HandRightIkCurveName());
-	CurveNames.AddUnique(UGarConstants::ViewBlockCurveName());
-	CurveNames.AddUnique(UGarConstants::AllowAimingCurveName());
-	CurveNames.AddUnique(UGarConstants::HipsDirectionLockCurveName());
 
 	// Pose Animation Curves
 	CurveNames.AddUnique(UGarConstants::PoseGaitCurveName());
@@ -225,9 +222,7 @@ void AGarCharacter::InitializeCurveNames()
 
 	// Feet Animation Curves
 	CurveNames.AddUnique(UGarConstants::FootLeftIkCurveName());
-	CurveNames.AddUnique(UGarConstants::FootLeftLockCurveName());
 	CurveNames.AddUnique(UGarConstants::FootRightIkCurveName());
-	CurveNames.AddUnique(UGarConstants::FootRightLockCurveName());
 	CurveNames.AddUnique(UGarConstants::FootPlantedCurveName());
 	CurveNames.AddUnique(UGarConstants::FeetCrossingCurveName());
 
@@ -235,8 +230,9 @@ void AGarCharacter::InitializeCurveNames()
 	CurveNames.AddUnique(UGarConstants::RotationYawSpeedCurveName());
 	CurveNames.AddUnique(UGarConstants::RotationYawOffsetCurveName());
 	CurveNames.AddUnique(UGarConstants::AllowTransitionsCurveName());
-	CurveNames.AddUnique(UGarConstants::SprintBlockCurveName());
-	CurveNames.AddUnique(UGarConstants::GroundPredictionBlockCurveName());
+	CurveNames.AddUnique(UGarConstants::BlockViewCurveName());
+	CurveNames.AddUnique(UGarConstants::BlockSprintCurveName());
+	CurveNames.AddUnique(UGarConstants::AllowAimingCurveName());
 	CurveNames.AddUnique(UGarConstants::FootstepSoundBlockCurveName());
 
 	// Physical Animation Curves

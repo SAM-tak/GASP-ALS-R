@@ -154,10 +154,6 @@ public:
 	FGarPhysicsRotationDelegate OnPhysicsRotation;
 
 public:
-#if WITH_EDITOR
-	virtual bool CanEditChange(const FProperty* Property) const override;
-#endif
-
 	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
@@ -259,9 +255,6 @@ public:
 
 	virtual void UpdateCharacterStateBeforeMovement(float DeltaSeconds) override;
 	virtual void UpdateCharacterStateAfterMovement(float DeltaSeconds) override;
-	
-	TObjectPtr<class AGarCharacter> GetGarCharacter() const;
-
 	virtual void UpdateCapsuleSize(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
 
 protected:

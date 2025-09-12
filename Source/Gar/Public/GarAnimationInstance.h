@@ -157,8 +157,8 @@ private:
 
 	void RefreshFeet(float DeltaTime);
 
-	void RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName, const FName& FootLockCurveName,
-	                 const FGarFootLimitsSettings& LimitsSettings, const FTransform& ComponentTransformInverse, float DeltaTime) const;
+	void RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName, const FGarFootLimitsSettings& LimitsSettings,
+					 const FTransform& ComponentTransformInverse, float DeltaTime) const;
 
 	void RefreshFootOffset(FGarFootState& FootState, float DeltaTime, FVector& FinalLocation, FQuat& FinalRotation) const;
 

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "AnimationModifier.h"
 #include "GarConstants.h"
@@ -40,10 +40,12 @@ protected:
 		UGarConstants::HandLeftIkCurveName(),
 		UGarConstants::HandRightIkCurveName(),
 
-		UGarConstants::ViewBlockCurveName(),
-		UGarConstants::AllowAimingCurveName(),
+		UGarConstants::FootLeftIkCurveName(),
+		UGarConstants::FootRightIkCurveName(),
 
-		UGarConstants::HipsDirectionLockCurveName(),
+		UGarConstants::BlockViewCurveName(),
+		UGarConstants::BlockSprintCurveName(),
+		UGarConstants::AllowAimingCurveName(),
 	};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")

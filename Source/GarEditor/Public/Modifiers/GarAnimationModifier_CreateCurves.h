@@ -54,15 +54,12 @@ protected:
 		{UGarConstants::PoseGroundedCurveName()},
 
 		{UGarConstants::FootLeftIkCurveName()},
-		{UGarConstants::FootLeftLockCurveName()},
 		{UGarConstants::FootRightIkCurveName()},
-		{UGarConstants::FootRightLockCurveName()},
 		{UGarConstants::FootPlantedCurveName()},
 		{UGarConstants::FeetCrossingCurveName()},
 
 		{UGarConstants::AllowTransitionsCurveName()},
-		{UGarConstants::SprintBlockCurveName()},
-		{UGarConstants::GroundPredictionBlockCurveName()},
+		{UGarConstants::BlockSprintCurveName()},
 		{UGarConstants::FootstepSoundBlockCurveName()}
 	};
 

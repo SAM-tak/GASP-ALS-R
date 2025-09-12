@@ -98,9 +98,8 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	CharacterZScale = UE_REAL_TO_FLOAT(GetSkelMeshComponent()->GetComponentScale().Z);
 
 	LocomotionState = Character->GetLocomotionState();
-	bMovingSmooth =
-		(LocomotionState.bHasInput && LocomotionState.bHasSpeed) ||
-		LocomotionState.Speed > Settings->MovingSmoothSpeedThreshold;
+	bMovingSmooth = (LocomotionState.bHasInput && LocomotionState.bHasSpeed)
+				  || LocomotionState.Speed > Settings->MovingSmoothSpeedThreshold;
 
 	RefreshMovementBaseOnGameThread();
 
@@ -308,11 +307,9 @@ void UGarAnimationInstance::RefreshFeet(const float DeltaTime)
 
 	const auto ComponentTransformInverse{GetProxyOnAnyThread<FAnimInstanceProxy>().GetComponentTransform().Inverse()};
 
-	RefreshFoot(FeetState.Left, UGarConstants::FootLeftIkCurveName(), UGarConstants::FootLeftLockCurveName(),
-				Settings->Feet.LeftFootLimits, ComponentTransformInverse, DeltaTime);
+	RefreshFoot(FeetState.Left, UGarConstants::FootLeftIkCurveName(), Settings->Feet.LeftFootLimits, ComponentTransformInverse, DeltaTime);
 
-	RefreshFoot(FeetState.Right, UGarConstants::FootRightIkCurveName(), UGarConstants::FootRightLockCurveName(),
-				Settings->Feet.RightFootLimits, ComponentTransformInverse, DeltaTime);
+	RefreshFoot(FeetState.Right, UGarConstants::FootRightIkCurveName(), Settings->Feet.RightFootLimits, ComponentTransformInverse, DeltaTime);
 
 	FeetState.MinMaxPelvisOffsetZ.X = UE_REAL_TO_FLOAT(
 		FMath::Min(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / CharacterZScale);
@@ -321,8 +318,7 @@ void UGarAnimationInstance::RefreshFeet(const float DeltaTime)
 		FMath::Max(FeetState.Left.OffsetTargetLocationZ, FeetState.Right.OffsetTargetLocationZ) / CharacterZScale);
 }
 
-void UGarAnimationInstance::RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName,
-										const FName& FootLockCurveName, const FGarFootLimitsSettings& LimitsSettings,
+void UGarAnimationInstance::RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName, const FGarFootLimitsSettings& LimitsSettings,
 										const FTransform& ComponentTransformInverse, const float DeltaTime) const
 {
 	FootState.IkAmount = GetCurveValueClamped01(FootIkCurveName);

@@ -65,7 +65,13 @@ public:
 	};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
-	float MaxRotationSpeed{720.0f};
+	float TurnSpeedInAir{200.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
+	float TurnSpeed{720.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "deg/s"))
+	float MaxRotationSpeed{1080.0f};
 };
 
 inline float FGarMovementGaitSettings::GetSpeedByGait(const FGameplayTag& Gait) const

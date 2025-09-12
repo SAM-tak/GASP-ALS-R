@@ -187,7 +187,7 @@ private:
 
 	mutable FGameplayTagContainer TempTagContainer;
 
-	void RefreshMeshProperties() const;
+	//void RefreshMeshProperties() const;
 
 	void RefreshMovementBase();
 

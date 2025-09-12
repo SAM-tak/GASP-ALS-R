@@ -138,8 +138,6 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 
 	SetCrouchedHalfHeight(56.0f);
 
-	Character = Cast<AGarCharacter>(CharacterOwner);
-
 	// Default values for standing walking movement.
 
 	MinAnalogWalkSpeed = 25.0f;
@@ -171,20 +169,6 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 
 	JumpOffJumpZFactor = 0.0f; // Makes the actor slide down instead of bouncing on a surface it can't stand on.
 
-	// bImpartBaseVelocityX = false;
-	// bImpartBaseVelocityY = false;
-	// bImpartBaseVelocityZ = false;
-	// bImpartBaseAngularVelocity = false;
-	bIgnoreBaseRotation = true;
-
-	// bStayBasedInAir = true;
-
-	// These values prohibit the character movement component from affecting the actor's rotation.
-
-	RotationRate = FRotator::ZeroRotator;
-	bUseControllerDesiredRotation = false;
-	bOrientRotationToMovement = false;
-
 	NavAgentProps.bCanCrouch = true;
 	NavAgentProps.bCanFly = true;
 	NavMovementProperties.bUseAccelerationForPaths = true;
@@ -194,31 +178,16 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 	FallingLateralFriction = 1.0f;
 	JumpOffJumpZFactor = 0.0f;
 
-	bNetworkAlwaysReplicateTransformUpdateTimestamp = true; // Required for view network smoothing.
-
-	RotationRate = FRotator::ZeroRotator;
-	bUseControllerDesiredRotation = false;
-	bOrientRotationToMovement = false;
-
-	bAllowPhysicsRotationDuringAnimRootMotion = true; // Used to allow character rotation while rolling.
-
 	bWantsToLie = false;
 	CanEverCrouch();
 }
 
-#if WITH_EDITOR
-bool UGarCharacterMovementComponent::CanEditChange(const FProperty* Property) const
-{
-	return Super::CanEditChange(Property) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, RotationRate) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, bUseControllerDesiredRotation) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, bOrientRotationToMovement);
-}
-#endif
-
 void UGarCharacterMovementComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
+
+	Character = Cast<AGarCharacter>(CharacterOwner);
+
 	if (IsValid(MovementSettings))
 	{
 		RefreshGaitSettings();
@@ -227,16 +196,14 @@ void UGarCharacterMovementComponent::InitializeComponent()
 
 void UGarCharacterMovementComponent::BeginPlay()
 {
-	ensure(IsValid(MovementSettings));
-	ensureMsgf(!bUseControllerDesiredRotation && !bOrientRotationToMovement,
-			   TEXT("These settings are not allowed and must be turned off!"));
-
+	if (!ensure(IsValid(MovementSettings))) return;
+	if (!ensure(Character.IsValid())) return;
 	Super::BeginPlay();
 }
 
 void UGarCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	auto* Controller{CharacterOwner->GetController()};
+	auto* Controller{Character->GetController()};
 	if (IsValid(Controller) && IsValid(MovementSettings) && !PreviousControlRotation.ContainsNaN() && MovementSettings->MaxRotationSpeed > 0)
 	{
 		// Limit rotation speed
@@ -248,6 +215,30 @@ void UGarCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick T
 			PreviousControlRotation.Pitch + ClampedPitch,
 			PreviousControlRotation.Yaw + ClampedYaw,
 			CurrentControlRotation.Roll}.Clamp());
+	}
+
+	if (RotationMode == GarRotationModeTags::VelocityDirection)
+	{
+		bUseControllerDesiredRotation = false;
+		bOrientRotationToMovement = true;
+	}
+	else
+	{
+		bUseControllerDesiredRotation = true;
+		bOrientRotationToMovement = false;
+	}
+
+	if (IsFalling())
+	{
+		RotationRate = FRotator(0.0, MovementSettings->TurnSpeedInAir, 0.0);
+	}
+	else if(RotationMode == GarRotationModeTags::VelocityDirection)
+	{
+		RotationRate = FRotator(0.0, MovementSettings->TurnSpeed, 0.0);
+	}
+	else
+	{
+		RotationRate = FRotator(0.0, MovementSettings->MaxRotationSpeed, 0.0);
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -1266,13 +1257,13 @@ void UGarCharacterMovementComponent::Lie(bool bClientSimulation)
 	}
 
 	// See if collision is already at desired size.
-	if (GetGarCharacter()->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == GetCrouchedHalfHeight())
+	if (Character->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == GetCrouchedHalfHeight())
 	{
 		if (!bClientSimulation)
 		{
-			GetGarCharacter()->SetIsLied(true);
+			Character->SetIsLied(true);
 		}
-		GetGarCharacter()->OnStartLie(0.f, 0.f);
+		Character->OnStartLie(0.f, 0.f);
 		return;
 	}
 
@@ -1295,7 +1286,7 @@ void UGarCharacterMovementComponent::Lie(bool bClientSimulation)
 
 	if (!bClientSimulation)
 	{
-		GetGarCharacter()->SetIsLied(true);
+		Character->SetIsLied(true);
 	}
 
 	bForceNextFloorCheck = true;
@@ -1306,7 +1297,7 @@ void UGarCharacterMovementComponent::Lie(bool bClientSimulation)
 	HalfHeightAdjust = (DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() - ClampedCrouchedHalfHeight);
 	ScaledHalfHeightAdjust = HalfHeightAdjust * ComponentScale;
 
-	GetGarCharacter()->OnStartLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
+	Character->OnStartLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
 
 	// Don't smooth this change in mesh position
 	if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
@@ -1330,13 +1321,13 @@ void UGarCharacterMovementComponent::UnLie(bool bClientSimulation)
 	AGarCharacter* DefaultCharacter = CharacterOwner->GetClass()->GetDefaultObject<AGarCharacter>();
 
 	// See if collision is already at desired size.
-	if (GetGarCharacter()->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight())
+	if (Character->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight() == DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight())
 	{
 		if (!bClientSimulation)
 		{
-			GetGarCharacter()->SetIsLied(false);
+			Character->SetIsLied(false);
 		}
-		GetGarCharacter()->OnEndLie(0.f, 0.f);
+		Character->OnEndLie(0.f, 0.f);
 		return;
 	}
 
@@ -1438,7 +1429,7 @@ void UGarCharacterMovementComponent::UnLie(bool bClientSimulation)
 			return;
 		}
 
-		GetGarCharacter()->SetIsLied(false);
+		Character->SetIsLied(false);
 	}
 	else
 	{
@@ -1446,7 +1437,7 @@ void UGarCharacterMovementComponent::UnLie(bool bClientSimulation)
 	}
 
 	AdjustProxyCapsuleSize();
-	GetGarCharacter()->OnEndLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
+	Character->OnEndLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
 
 	// Don't smooth this change in mesh position
 	if ((bClientSimulation && CharacterOwner->GetLocalRole() == ROLE_SimulatedProxy) || (IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy))
@@ -1458,11 +1449,6 @@ void UGarCharacterMovementComponent::UnLie(bool bClientSimulation)
 			ClientData->OriginalMeshTranslationOffset = ClientData->MeshTranslationOffset;
 		}
 	}
-}
-
-TObjectPtr<AGarCharacter> UGarCharacterMovementComponent::GetGarCharacter() const
-{
-	return Cast<AGarCharacter>(CharacterOwner);
 }
 
 void UGarCharacterMovementComponent::UpdateCapsuleSize(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
@@ -1506,8 +1492,7 @@ bool UGarCharacterMovementComponent::CanAttemptJump() const
 
 bool UGarCharacterMovementComponent::IsLying() const
 {
-	auto GarCharacter{GetGarCharacter()};
-	return GarCharacter && GarCharacter->IsLied();
+	return Character->IsLied();
 }
 
 bool UGarCharacterMovementComponent::CanLieInCurrentState() const
