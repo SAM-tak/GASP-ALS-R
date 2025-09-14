@@ -1,7 +1,7 @@
 #include "Components/GarLocalMontageComponent.h"
 
+#include "MotionWarpingComponent.h"
 #include "GarCharacter.h"
-#include "GarMotionWarpingComponent.h"
 #include "CharacterTasks/GarLocalMontageTask.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"

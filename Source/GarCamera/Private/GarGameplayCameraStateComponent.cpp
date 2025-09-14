@@ -74,7 +74,7 @@ void UGarGameplayCameraStateComponent::GetLifetimeReplicatedProps(TArray<FLifeti
 	Parameters.bIsPushBased = true;
 
 	Parameters.Condition = COND_SkipOwner;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ConfirmedDesiredViewMode, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ConfirmedDesiredPerspective, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ShoulderMode, Parameters)
 }
 
@@ -214,9 +214,9 @@ void UGarGameplayCameraStateComponent::BeginPlay()
 	Super::BeginPlay();
 
 	PreviousShoulderMode = ShoulderMode = Settings->ThirdPerson.ShoulderMode;
-	PreviousConfirmedDesiredViewMode = DesiredViewMode = Settings->DesiredViewMode;
-	SetConfirmedDesiredViewMode(DesiredViewMode);
-	Character->SetViewMode(ViewMode == GarCameraViewModeTags::ThirdPerson ? GarViewModeTags::ThirdPerson : GarViewModeTags::FirstPerson);
+	PreviousConfirmedDesiredPerspective = DesiredPerspective = Settings->DesiredPerspective;
+	SetConfirmedDesiredViewMode(DesiredPerspective);
+	Character->SetPerspective(Perspective == GarCameraPerspectiveTags::ThirdPerson ? GarPerspectiveTags::ThirdPerson : GarPerspectiveTags::FirstPerson);
 }
 
 void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -280,25 +280,25 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 
 	if (Character->IsCharacterSelf())
 	{
-		if (ViewModeChangeBlockTime > 0.f)
+		if (PerspectiveChangeBlockTime > 0.f)
 		{
-			ViewModeChangeBlockTime -= DeltaTime;
+			PerspectiveChangeBlockTime -= DeltaTime;
 		}
 		else
 		{
-			if (DesiredViewMode != ConfirmedDesiredViewMode)
+			if (DesiredPerspective != ConfirmedDesiredPerspective)
 			{
-				ViewModeChangeBlockTime = Settings->ViewModeChangeBlockTime;
+				PerspectiveChangeBlockTime = Settings->PerspectiveChangeBlockTime;
 			}
-			SetConfirmedDesiredViewMode(DesiredViewMode);
+			SetConfirmedDesiredViewMode(DesiredPerspective);
 		}
 	}
 
-	if (PreviousConfirmedDesiredViewMode != ConfirmedDesiredViewMode)
+	if (PreviousConfirmedDesiredPerspective != ConfirmedDesiredPerspective)
 	{
 		// Set aim point correction during change FPP/TPP
 		auto FocusLocation{GetCurrentFocusLocation()};
-		if (PreviousConfirmedDesiredViewMode == GarCameraViewModeTags::FirstPerson)
+		if (PreviousConfirmedDesiredPerspective == GarCameraPerspectiveTags::FirstPerson)
 		{
 			// FPP -> TPP
 			auto TraceStart{GetThirdPersonTraceStartLocation()};
@@ -320,7 +320,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			}
 #endif
 		}
-		else if(PreviousConfirmedDesiredViewMode == GarCameraViewModeTags::ThirdPerson)
+		else if(PreviousConfirmedDesiredPerspective == GarCameraPerspectiveTags::ThirdPerson)
 		{
 			// TPP -> FPP
 			auto TraceStart{GetFirstPersonTraceStartLocation()};
@@ -342,12 +342,12 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			}
 #endif
 		}
-		PreviousConfirmedDesiredViewMode = ConfirmedDesiredViewMode;
+		PreviousConfirmedDesiredPerspective = ConfirmedDesiredPerspective;
 	}
 
 	if (PreviousShoulderMode != ShoulderMode)
 	{
-		if (Character->GetViewMode() == GarViewModeTags::ThirdPerson && bIsFocusPawn)
+		if (Character->GetPerspective() == GarPerspectiveTags::ThirdPerson && bIsFocusPawn)
 		{
 			// Set aim point correction during change shoulder
 			auto FocusLocation{GetCurrentFocusLocation()};
@@ -369,35 +369,35 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 	UpdateViewMode();
 	UpdateFocalLength();
 
-	if (FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold)
-	{
-		Character->SetLookRotation(Character->GetViewRotation());
-	}
-	else
-	{
-		if (Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
-		{
-			if (bIsSightOffsetValid)
-			{
-				auto ControlRotation = Character->GetControlRotation();
-				auto Location{ControlRotation.RotateVector(SightLocationOffset) + GetEyeCameraLocation()};
-				auto Rotation{(ControlRotation.Quaternion() * SightRotationOffset).Rotator()};
-				Location = FVector::PointPlaneProject(Location, GetEyeCameraLocation(), Rotation.Vector())
-					- Rotation.Vector() * Settings->FirstPerson.RetreatDistance;
-				Character->SetLookRotation((GetCurrentFocusLocation() - Location).Rotation());
-			}
-			else
-			{
-				Character->SetLookRotation((GetCurrentFocusLocation() - GetEyeCameraLocation()).Rotation());
-			}
-		}
-		else
-		{
-			Character->SetLookRotation((GetCurrentFocusLocation() - GetFirstPersonCameraLocation()).Rotation());
-		}
-	}
+	//if (FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold)
+	//{
+	//	Character->SetLookRotation(Character->GetViewRotation());
+	//}
+	//else
+	//{
+	//	if (Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
+	//	{
+	//		if (bIsSightOffsetValid)
+	//		{
+	//			auto ControlRotation = Character->GetControlRotation();
+	//			auto Location{ControlRotation.RotateVector(SightLocationOffset) + GetEyeCameraLocation()};
+	//			auto Rotation{(ControlRotation.Quaternion() * SightRotationOffset).Rotator()};
+	//			Location = FVector::PointPlaneProject(Location, GetEyeCameraLocation(), Rotation.Vector())
+	//				- Rotation.Vector() * Settings->FirstPerson.RetreatDistance;
+	//			Character->SetLookRotation((GetCurrentFocusLocation() - Location).Rotation());
+	//		}
+	//		else
+	//		{
+	//			Character->SetLookRotation((GetCurrentFocusLocation() - GetEyeCameraLocation()).Rotation());
+	//		}
+	//	}
+	//	else
+	//	{
+	//		Character->SetLookRotation((GetCurrentFocusLocation() - GetFirstPersonCameraLocation()).Rotation());
+	//	}
+	//}
 
-	Character->SetViewMode(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold ? GarViewModeTags::FirstPerson : GarViewModeTags::ThirdPerson);
+	Character->SetPerspective(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold ? GarPerspectiveTags::FirstPerson : GarPerspectiveTags::ThirdPerson);
 }
 
 void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
@@ -535,14 +535,14 @@ FVector UGarGameplayCameraStateComponent::GetFirstPersonTraceStartLocation() con
 
 void UGarGameplayCameraStateComponent::UpdateViewMode()
 {
-	if (ConfirmedDesiredViewMode == GarCameraViewModeTags::FirstPerson)
+	if (ConfirmedDesiredPerspective == GarCameraPerspectiveTags::FirstPerson)
 	{
-		ViewMode = GarCameraViewModeTags::FirstPerson;
+		Perspective = GarCameraPerspectiveTags::FirstPerson;
 		return;
 	}
 	if (Settings->ThirdPerson.AutoFPPStartDistance <= 0.0f || Character->GetLocomotionAction().IsValid())
 	{
-		ViewMode = GarCameraViewModeTags::ThirdPerson;
+		Perspective = GarCameraPerspectiveTags::ThirdPerson;
 		return;
 	}
 
@@ -574,13 +574,13 @@ void UGarGameplayCameraStateComponent::UpdateViewMode()
 	}
 #endif
 	auto Distance{FVector::Dist(TraceStart, TraceResult)};
-	if (ViewMode == GarCameraViewModeTags::FirstPerson && Distance > Settings->ThirdPerson.AutoFPPEndDistance)
+	if (Perspective == GarCameraPerspectiveTags::FirstPerson && Distance > Settings->ThirdPerson.AutoFPPEndDistance)
 	{
-		ViewMode = GarCameraViewModeTags::ThirdPerson;
+		Perspective = GarCameraPerspectiveTags::ThirdPerson;
 	}
-	else if(ViewMode == GarCameraViewModeTags::ThirdPerson && Distance < Settings->ThirdPerson.AutoFPPStartDistance)
+	else if(Perspective == GarCameraPerspectiveTags::ThirdPerson && Distance < Settings->ThirdPerson.AutoFPPStartDistance)
 	{
-		ViewMode = GarCameraViewModeTags::FirstPerson;
+		Perspective = GarCameraPerspectiveTags::FirstPerson;
 	}
 }
 
@@ -591,7 +591,7 @@ void UGarGameplayCameraStateComponent::UpdateFocalLength()
 
 	auto EyeVec = CameraRotation.Vector();
 	FVector TraceStart = CameraLocation + EyeVec * Settings->MinFocalLength;
-	if (Character->GetViewMode() != GarViewModeTags::FirstPerson)
+	if (Character->GetPerspective() != GarPerspectiveTags::FirstPerson)
 	{
 		auto ProjectedLocation = FVector::PointPlaneProject(CameraLocation, Character->GetActorLocation(), -EyeVec);
 		auto ProjectedLocationDistance = FVector::Distance(TraceStart, ProjectedLocation);
@@ -628,19 +628,19 @@ void UGarGameplayCameraStateComponent::UpdateFocalLength()
 
 void UGarGameplayCameraStateComponent::SetDesiredViewMode(const FGameplayTag& NewDesiredViewMode)
 {
-	DesiredViewMode = NewDesiredViewMode;
+	DesiredPerspective = NewDesiredViewMode;
 }
 
 void UGarGameplayCameraStateComponent::SetConfirmedDesiredViewMode(const FGameplayTag& NewConfirmedDesiredViewMode)
 {
-	if (ConfirmedDesiredViewMode == NewConfirmedDesiredViewMode || Character->GetLocalRole() < ROLE_AutonomousProxy)
+	if (ConfirmedDesiredPerspective == NewConfirmedDesiredViewMode || Character->GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	ConfirmedDesiredViewMode = NewConfirmedDesiredViewMode;
+	ConfirmedDesiredPerspective = NewConfirmedDesiredViewMode;
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ConfirmedDesiredViewMode, this)
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ConfirmedDesiredPerspective, this)
 
 	if (Character->GetLocalRole() == ROLE_AutonomousProxy)
 	{

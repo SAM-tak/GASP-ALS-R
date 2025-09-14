@@ -2,22 +2,16 @@
 
 #include "Animation/AnimInstance.h"
 #include "Engine/World.h"
-#include "State/GarControlRigInput.h"
-#include "State/GarLocomotionState.h"
-#include "State/GarFeetState.h"
-#include "State/GarCharacterMovementState.h"
-#include "State/GarMovementBaseState.h"
 #include "State/GarPoseState.h"
+#include "State/GarCharacterMovementState.h"
 #include "GarGameplayTags.h"
 #include "GarAnimationInstance.generated.h"
 
-struct FGarFootLimitsSettings;
 class UGarAnimationInstanceSettings;
-class UGarLinkedAnimationInstance;
 class UGarLayeringAnimInstance;
 class UGarCharacterMovementState;
-class UGarViewAnimInstance;
 class UGarRagdollingAnimInstance;
+class UGarBoneNameTable;
 class AGarCharacter;
 
 UCLASS()
@@ -25,12 +19,12 @@ class GAR_API UGarAnimationInstance : public UAnimInstance
 {
 	GENERATED_BODY()
 
-	friend UGarLinkedAnimationInstance;
-	friend UGarViewAnimInstance;
+	friend class UGarLinkedAnimationInstance;
+	friend class UGarPhysicalAnimationComponent;
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	TObjectPtr<UGarAnimationInstanceSettings> Settings;
+	TObjectPtr<UGarBoneNameTable> BoneNameTable;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
@@ -39,22 +33,10 @@ protected:
 	TWeakObjectPtr<UGarLayeringAnimInstance> LayeringAnimInstance;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	TWeakObjectPtr<UGarViewAnimInstance> ViewAnimInstance;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<UGarRagdollingAnimInstance> RagdollingAnimInstance;
-
-	// Time of the last teleportation event.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Meta = (ClampMin = 0))
-	float TeleportedTime{0.0f};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State", Transient, Meta = (ClampMin = 0, ClampMax = 1))
 	float IdleAdditiveAmount{1.0f};
-
-	// Used to indicate that the animation instance has not been updated for a long time
-	// and its current state may not be correct (such as foot location used in foot locking).
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	uint8 bPendingUpdate : 1{true};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	uint8 bIsActionRunning : 1{false};
@@ -74,35 +56,27 @@ protected:
 	FTransform CharacterTransform;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag FaceRotationMode{GarRotationModeTags::ViewDirection};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarMovementBaseState MovementBase;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarPoseState PoseState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarLocomotionState LocomotionState;
+	FTransform InteractionTransform;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGarCharacterMovementState CharacterMovement;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State", Transient)
+	FGarPoseState PoseState;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGarFeetState FeetState;
+	FGameplayTag ViewRotationMode{GarRotationModeTags::ViewDirection};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ViewOffset", Transient, Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
+	float ViewYawAngle{0.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ViewOffset", Transient, Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
+	float ViewPitchAngle{0.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ViewOffset", Transient, Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
+	float SpineYawAngle{0.0f};
 
 public:
-	//This is in the process of organizing such that things that are only accessed within each LinkedAnimLayer are defined within the LinkedAnimLayer,
-	//and only those that are referenced across multiple LinkedAnimLayers are held in the GarAnimationInstance.
-
-	// Former ViewState
-	FRotator ViewRotation; // in NativeUpdateAnimation ex ViewState.Rotation
-	float ViewYawAngle; // in NativeThreadSafeUpdateAnimation ex ViewState.YawAngle
-	float ViewYawSpeed; // in NativeThreadSafeUpdateAnimation ex ViewState.YawSpeed
-
-	float CharacterZScale{1.0f};
-	uint8 bMovingSmooth : 1 {false};
-
 	const FGameplayTagContainer& GetCurrentGameplayTags() const;
 
 public:
@@ -119,83 +93,62 @@ public:
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override;
 
-	// Core
-
-protected:
-	UFUNCTION(BlueprintPure, Category = "GAR|Animation Instance",
-		Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "Rig Input"))
-	FGarControlRigInput GetControlRigInput() const;
-
-	mutable TArray<TFunction<void()>> RequestQueue;
+	// Movement Analysis
 
 public:
-	void MarkPendingUpdate();
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool IsMoving() const;
 
-	void MarkTeleported();
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool IsStarting() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool IsPivoting() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool JustStopped() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool ShouldTurnInPlace() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool ShouldSpinTransition() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool JustLanded() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool JustLanded_Light() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool JustLanded_Heavy() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	bool JustTraversed() const;
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintPure, Category = "Movement Analysis", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	float Speed2D() const;
+
+	// Pose
 
 private:
-	void RefreshMovementBaseOnGameThread();
-
 	void RefreshPose();
-
-	// View
-
-public:
-	virtual bool IsSpineRotationAllowed();
-
-	UGarViewAnimInstance* GetViewAnimInstance() const;
 
 	// Character Movement
 
 private:
 	void RefreshCharacterMovementOnGameThread(float DeltaTime);
 
-	// Feet
-
-private:
-	void RefreshFeetOnGameThread();
-
-	void RefreshFeet(float DeltaTime);
-
-	void RefreshFoot(FGarFootState& FootState, const FName& FootIkCurveName, const FGarFootLimitsSettings& LimitsSettings,
-					 const FTransform& ComponentTransformInverse, float DeltaTime) const;
-
-	void RefreshFootOffset(FGarFootState& FootState, float DeltaTime, FVector& FinalLocation, FQuat& FinalRotation) const;
-
-	void LimitFootRotation(const FGarFootLimitsSettings& LimitsSettings, const FQuat& ParentRotation, FQuat& Rotation) const;
-
-	// Ragdolling
-
-public:
-	UGarRagdollingAnimInstance* GetRagdollingAnimInstance() const;
-
 	// Utility
 
 public:
+	UFUNCTION(BlueprintPure, Category = "GAR|ViewState", Meta = (BlueprintThreadSafe, ReturnDisplayName = "ReturnValue"))
+	float GetViewPitchAmount() const { return 0.5f - ViewPitchAngle / 180.f; }
+
 	float GetCurveValueClamped01(const FName& CurveName) const;
 };
 
 inline const FGameplayTagContainer& UGarAnimationInstance::GetCurrentGameplayTags() const
 {
 	return CurrentGameplayTags;
-}
-
-inline UGarViewAnimInstance* UGarAnimationInstance::GetViewAnimInstance() const
-{
-	return ViewAnimInstance.Get();
-}
-
-inline UGarRagdollingAnimInstance* UGarAnimationInstance::GetRagdollingAnimInstance() const
-{
-	return RagdollingAnimInstance.Get();
-}
-
-inline void UGarAnimationInstance::MarkPendingUpdate()
-{
-	bPendingUpdate |= true;
-}
-
-inline void UGarAnimationInstance::MarkTeleported()
-{
-	TeleportedTime = GetWorld()->GetTimeSeconds();
 }

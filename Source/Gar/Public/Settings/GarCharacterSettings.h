@@ -1,6 +1,5 @@
 #pragma once
 
-#include "GarViewSettings.h"
 #include "GarGameplayTags.h"
 #include "GarCharacterSettings.generated.h"
 
@@ -21,13 +20,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "cm/s"))
 	float MovingSpeedThreshold{50.0f};
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ClampMax = 180, ForceUnits = "deg/s"))
+	float AdjustControllRotationSpeed{15.0f};
+
 	// When FirstPerson Or RotateToVelocityWhenSprinting is False And DesiredRotationMode is not VelocityDirection,
 	// sprint will allow if View Relative Angle less than this value. 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ClampMax = 180, ForceUnits = "deg"))
 	float ViewRelativeAngleThresholdForSprint{50.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	EGarInAirRotationMode InAirRotationMode{EGarInAirRotationMode::KeepRelativeRotation};
+	EGarInAirRotationMode InAirRotationMode{EGarInAirRotationMode::KeepRelativeRotation}; // TODO : unused?
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	uint8 bAllowAimingWhenInAir : 1{true};
@@ -49,9 +51,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	uint8 bAutoTurnOffSprint : 1{false};
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	FGarViewSettings View;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
 	FGameplayTagContainer OverlayModeTags{GarOverlayModeTags::Root};

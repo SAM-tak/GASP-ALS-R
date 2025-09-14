@@ -6,6 +6,7 @@
 
 class UEnhancedInputComponent;
 class UInputAction;
+class UGarAbilitySet;
 class AGarCharacter;
 
 /**
@@ -15,6 +16,10 @@ UCLASS()
 class GAR_API UGarAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_UCLASS_BODY()
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbilitySystem|Settings")
+	TObjectPtr<UGarAbilitySet> AbilitySet;
 
 protected:
 	virtual void OnRegister() override;
@@ -41,6 +46,11 @@ protected:
 	{
 		CancelAbilitiesBySingleTag(Tag);
 	}
+
+	// Initalize
+
+public:
+	virtual void Initialize(AGarCharacter* InOwnerCharacter);
 
 	// Utility
 

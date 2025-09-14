@@ -39,10 +39,6 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "Parent"))
 	UGarAnimationInstance* GetParentUnsafe() const;
 
-	// utility for overlays. overlay accesses View->PitchAmount
-	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "View"))
-	UGarViewAnimInstance* GetViewUnsafe() const;
-
 	// utility for overrides.
 	UFUNCTION(BlueprintPure, Category = "GAR|Linked Animation Instance", Meta = (BlueprintProtected, BlueprintThreadSafe, ReturnDisplayName = "View"))
 	UGarRagdollingAnimInstance* GetRagdollingUnsafe() const;

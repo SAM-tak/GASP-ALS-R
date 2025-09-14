@@ -81,6 +81,12 @@ public:
 	// Pose Animation Curves
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
+	static const FName& PoseGroundedCurveName();
+
+	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
+	static const FName& PoseInAirCurveName();
+
+	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& PoseGaitCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
@@ -93,10 +99,7 @@ public:
 	static const FName& PoseCrouchingCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& PoseGroundedCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& PoseInAirCurveName();
+	static const FName& PoseLyingCurveName();
 
 	// Feet Animation Curves
 
@@ -106,19 +109,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& FootRightIkCurveName();
 
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& FootPlantedCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& FeetCrossingCurveName();
-
 	// Other Animation Curves
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& RotationYawSpeedCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& RotationYawOffsetCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& AllowTransitionsCurveName();
@@ -150,7 +141,7 @@ public:
 	static const FName& TracesDebugDisplayName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
-	static const FName& MantlingDebugDisplayName();
+	static const FName& TraversalDebugDisplayName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
 	static const FName& PADebugDisplayName();
@@ -320,6 +311,18 @@ inline const FName& UGarConstants::AllowAimingCurveName()
 	return Name;
 }
 
+inline const FName& UGarConstants::PoseGroundedCurveName()
+{
+	static const FName Name{ TEXTVIEW("pose_grounded") };
+	return Name;
+}
+
+inline const FName& UGarConstants::PoseInAirCurveName()
+{
+	static const FName Name{ TEXTVIEW("pose_inair") };
+	return Name;
+}
+
 inline const FName& UGarConstants::PoseGaitCurveName()
 {
 	static const FName Name{TEXTVIEW("pose_gait")};
@@ -344,15 +347,9 @@ inline const FName& UGarConstants::PoseCrouchingCurveName()
 	return Name;
 }
 
-inline const FName& UGarConstants::PoseGroundedCurveName()
+inline const FName& UGarConstants::PoseLyingCurveName()
 {
-	static const FName Name{TEXTVIEW("pose_grounded")};
-	return Name;
-}
-
-inline const FName& UGarConstants::PoseInAirCurveName()
-{
-	static const FName Name{TEXTVIEW("pose_inair")};
+	static const FName Name{TEXTVIEW("pose_lying")};
 	return Name;
 }
 
@@ -365,30 +362,6 @@ inline const FName& UGarConstants::FootLeftIkCurveName()
 inline const FName& UGarConstants::FootRightIkCurveName()
 {
 	static const FName Name{TEXTVIEW("enable_footik_r")};
-	return Name;
-}
-
-inline const FName& UGarConstants::FootPlantedCurveName()
-{
-	static const FName Name{TEXTVIEW("foot_planted")};
-	return Name;
-}
-
-inline const FName& UGarConstants::FeetCrossingCurveName()
-{
-	static const FName Name{TEXTVIEW("feet_crossing")};
-	return Name;
-}
-
-inline const FName& UGarConstants::RotationYawSpeedCurveName()
-{
-	static const FName Name{TEXTVIEW("rotation_yaw_speed")};
-	return Name;
-}
-
-inline const FName& UGarConstants::RotationYawOffsetCurveName()
-{
-	static const FName Name{TEXTVIEW("rotation_yaw_offset")};
 	return Name;
 }
 
@@ -440,9 +413,9 @@ inline const FName& UGarConstants::TracesDebugDisplayName()
 	return Name;
 }
 
-inline const FName& UGarConstants::MantlingDebugDisplayName()
+inline const FName& UGarConstants::TraversalDebugDisplayName()
 {
-	static const FName Name{TEXTVIEW("GAR.Mantling")};
+	static const FName Name{TEXTVIEW("GAR.Traversal")};
 	return Name;
 }
 
@@ -454,7 +427,7 @@ inline const FName& UGarConstants::PADebugDisplayName()
 
 inline const FGameplayTagContainer& UGarConstants::ViewModeRoot()
 {
-	static const FGameplayTagContainer Container{GarViewModeTags::Root};
+	static const FGameplayTagContainer Container{GarPerspectiveTags::Root};
 	return Container;
 }
 

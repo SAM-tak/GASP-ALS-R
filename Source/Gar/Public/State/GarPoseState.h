@@ -20,6 +20,9 @@ struct GAR_API FGarPoseState
 	float CrouchingAmount{0.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
+	float LyingAmount{0.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
 	float MovingAmount{0.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 3))
@@ -33,16 +36,4 @@ struct GAR_API FGarPoseState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
 	float GaitSprintingAmount{0.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 3))
-	float UnweightedGaitAmount{0.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
-	float UnweightedGaitWalkingAmount{0.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
-	float UnweightedGaitRunningAmount{0.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
-	float UnweightedGaitSprintingAmount{0.0f};
 };

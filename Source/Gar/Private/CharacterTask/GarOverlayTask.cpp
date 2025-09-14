@@ -18,7 +18,10 @@ void UGarOverlayTask::Begin()
 			OverlayAnimInstance = Cast<UGarOverlayAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
 		}
 
-		OverlayAnimInstance->Refresh(this);
+		if (OverlayAnimInstance.IsValid())
+		{
+			OverlayAnimInstance->Refresh(this);
+		}
 	}
 	Super::Begin();
 }

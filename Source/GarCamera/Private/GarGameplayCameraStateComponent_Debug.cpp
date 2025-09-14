@@ -34,7 +34,7 @@ void UGarGameplayCameraStateComponent::DisplayDebug(UCanvas* Canvas, const FDebu
 			!DisplayInfo.IsDisplayOn(UGarConstants::StateDebugDisplayName()) &&
 			!DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
 			!DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
-			!DisplayInfo.IsDisplayOn(UGarConstants::MantlingDebugDisplayName()) &&
+			!DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
 			!DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
 		{
 			return;
@@ -121,49 +121,49 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 	const auto ColumnOffset{145.0f * Scale};
 
 	static const auto ViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ViewMode), false))
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
 	};
 
 	Text.Text = ViewModeText;
 	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ViewMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
 	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
 
 	VerticalLocation += RowOffset;
 
 	static const auto DesiredViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredViewMode), false))
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredPerspective), false))
 	};
 
 	Text.Text = DesiredViewModeText;
 	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredViewMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredPerspective).ToString(), false));
 	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
 
 	VerticalLocation += RowOffset;
 
 	static const auto ConfirmedDesiredViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ConfirmedDesiredViewMode), false))
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ConfirmedDesiredPerspective), false))
 	};
 
 	Text.Text = ConfirmedDesiredViewModeText;
 	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ConfirmedDesiredViewMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ConfirmedDesiredPerspective).ToString(), false));
 	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
 
 	VerticalLocation += RowOffset;
 
 	static const auto PreviousConfirmedDesiredViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousConfirmedDesiredViewMode), false))
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousConfirmedDesiredPerspective), false))
 	};
 
 	Text.Text = PreviousConfirmedDesiredViewModeText;
 	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousConfirmedDesiredViewMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousConfirmedDesiredPerspective).ToString(), false));
 	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
 
 	VerticalLocation += RowOffset;

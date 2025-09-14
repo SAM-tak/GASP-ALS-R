@@ -83,12 +83,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Ability")
 	void SetInputBlocked(bool bBlocked) const;
 
-	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|MotionWarping")
-	void AddOrUpdateWarpTargetFromLocationAndRotation(FName WarpTargetName, FVector TargetLocation, FRotator TargetRotation);
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|MotionWarping")
-	void AddOrUpdateWarpTargetFromComponent(FName WarpTargetName, const USceneComponent* Component, FName BoneName, bool bFollowComponent);
-
 	virtual void OnPossessed(AController* NewController);
 
 	virtual void OnUnPossessed(AController* PreviousController);

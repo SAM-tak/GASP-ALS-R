@@ -33,11 +33,11 @@ namespace GarDesiredGaitTags
 	UE_DEFINE_GAMEPLAY_TAG(Sprinting, "Gar.Desired.Gait.Sprinting")
 }
 
-namespace GarViewModeTags
+namespace GarPerspectiveTags
 {
-	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.ViewMode")
-	UE_DEFINE_GAMEPLAY_TAG(FirstPerson, "Gar.ViewMode.FirstPerson")
-	UE_DEFINE_GAMEPLAY_TAG(ThirdPerson, "Gar.ViewMode.ThirdPerson")
+	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.Perspective")
+	UE_DEFINE_GAMEPLAY_TAG(FirstPerson, "Gar.Perspective.FirstPerson")
+	UE_DEFINE_GAMEPLAY_TAG(ThirdPerson, "Gar.Perspective.ThirdPerson")
 }
 
 namespace GarLocomotionModeTags

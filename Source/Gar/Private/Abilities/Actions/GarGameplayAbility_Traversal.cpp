@@ -7,10 +7,10 @@
 #include "Net/UnrealNetwork.h"
 #include "ChooserFunctionLibrary.h"
 #include "AnimationWarpingLibrary.h"
+#include "MotionWarpingComponent.h"
 #include "GarCharacter.h"
 #include "GarCharacterMovementComponent.h"
 #include "GarAbilitySystemComponent.h"
-#include "GarMotionWarpingComponent.h"
 #include "GarAnimationInstance.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
@@ -72,20 +72,20 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 
 	const auto ActorLocation{Character->GetActorLocation()};
 	const auto ActorYawAngle{UE_REAL_TO_FLOAT(FMath::UnwindDegrees(Character->GetActorRotation().Yaw))};
-	const auto& LocomotionState{Character->GetLocomotionState()};
-
+	const auto Velocity{Character->GetVelocity()};
 	float ForwardTraceAngle;
-	if (LocomotionState.bHasSpeed)
+	if (Velocity.Size2D() > StaticSpeedThreshold)
 	{
-		ForwardTraceAngle = LocomotionState.bHasInput
-			                    ? LocomotionState.VelocityYawAngle +
-			                      FMath::ClampAngle(LocomotionState.InputYawAngle - LocomotionState.VelocityYawAngle,
-			                                        -MaxReachAngle, MaxReachAngle)
-			                    : LocomotionState.VelocityYawAngle;
+		auto VelocityYawAngle{UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Velocity))};
+		ForwardTraceAngle = Character->HasInput()
+			                ? VelocityYawAngle +
+			                    FMath::ClampAngle(UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Character->GetInputDirection())) - VelocityYawAngle,
+			                                    -MaxReachAngle, MaxReachAngle)
+			                : VelocityYawAngle;
 	}
 	else
 	{
-		ForwardTraceAngle = LocomotionState.bHasInput ? LocomotionState.InputYawAngle : ActorYawAngle;
+		ForwardTraceAngle = Character->HasInput() ? UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Character->GetInputDirection())) : ActorYawAngle;
 	}
 
 	const auto ForwardTraceDeltaAngle{FMath::UnwindDegrees(ForwardTraceAngle - ActorYawAngle)};
@@ -94,12 +94,10 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 		return false;
 	}
 
-	const auto ForwardTraceDirection{
-		UGarMath::AngleToDirectionXY(ActorYawAngle + FMath::ClampAngle(ForwardTraceDeltaAngle, -MaxReachAngle, MaxReachAngle))
-	};
+	const auto ForwardTraceDirection{UGarMath::AngleToDirectionXY(ActorYawAngle + FMath::ClampAngle(ForwardTraceDeltaAngle, -MaxReachAngle, MaxReachAngle))};
 
 #if ENABLE_DRAW_DEBUG
-	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::MantlingDebugDisplayName())};
+	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName())};
 #endif
 
 	const auto* Capsule{Character->GetCapsuleComponent()};
@@ -360,7 +358,7 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	ChooserInputs.bHasFrontLedge = true;
 	ChooserInputs.bHasBackLedge = true;
 	ChooserInputs.ObstacleHeight = UE_REAL_TO_FLOAT(TargetLocation.Z - CapsuleBottomLocation.Z);
-	ChooserInputs.Speed = LocomotionState.Velocity.Size2D();
+	ChooserInputs.Speed = Character->GetVelocity().Size2D();
 
 	Params.BackLedgeLocation = TargetLocation;
 
@@ -431,11 +429,6 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	return true;
 }
 
-void UGarGameplayAbility_Traversal::ChooseCandidate_Implementation
-(const FGarTraversalChooserInputs& Input, FGarTraversalChooserOutput& Output, TArray<UAnimMontage*>& OutMontages) const
-{
-}
-
 void UGarGameplayAbility_Traversal::CommitParameters(const FGameplayAbilitySpecHandle Handle, const FGarTraversalParameters& Parameters) const
 {
 	ParameterMap.Add(Handle, Parameters);
@@ -496,7 +489,7 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 			return;
 		}
 
-		MotionWarpingComponent = Character->GetComponentByClass<UGarMotionWarpingComponent>();
+		MotionWarpingComponent = Character->GetMotionWarping();
 
 		if (!ensure(MotionWarpingComponent.IsValid()))
 		{
@@ -519,7 +512,8 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 		float AnimatedDistanceFromFrontLedgeToBackFloor{0.0f};
 
 		// Update the FrontLedge warp target using the front ledge's location and rotation.
-		MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("FrontLedge")),
+		MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("FrontLedge")), Parameters.TargetPrimitive.Get(),
+			NAME_None, true, EWarpTargetLocationOffsetDirection::WorldSpace,
 			Parameters.FrontLedgeLocation + FVector(0.f, 0.f, 0.5f),
 			FRotationMatrix::MakeFromX(-Parameters.FrontLedgeNormal).Rotator());
 
@@ -537,7 +531,8 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 				UAnimationWarpingLibrary::GetCurveValueFromAnimation(Montage, FName(TEXTVIEW("Distance_From_Ledge")), Windows[0].StartTime,
 					AnimatedDistanceFromFrontLedgeToBackLedge);
 				// Update the BackLedge warp target.
-				MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("BackLedge")),
+				MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackLedge")), Parameters.TargetPrimitive.Get(),
+					NAME_None, true, EWarpTargetLocationOffsetDirection::WorldSpace,
 					Parameters.BackLedgeLocation, FRotator::ZeroRotator);
 			}
 			else
@@ -567,7 +562,8 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 				// therefore having fixed metrics for all traversal animations would be an improvement.
 				auto HLoc = Parameters.BackLedgeLocation + (Parameters.FrontLedgeNormal
 					* FMath::Abs(AnimatedDistanceFromFrontLedgeToBackFloor - AnimatedDistanceFromFrontLedgeToBackLedge));
-				MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("BackFloor")),
+				MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackFloor")), Parameters.TargetPrimitive.Get(),
+					NAME_None, true, EWarpTargetLocationOffsetDirection::WorldSpace,
 					FVector(HLoc.X, HLoc.Y, Parameters.BackFloorLocation.Z), FRotator::ZeroRotator);
 			}
 			else

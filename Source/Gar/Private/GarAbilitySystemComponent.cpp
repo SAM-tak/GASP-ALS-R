@@ -1,9 +1,11 @@
 #include "GarAbilitySystemComponent.h"
+
 #include "EnhancedInputComponent.h"
+#include "Animation/AnimMontage.h"
 #include "GarCharacter.h"
 #include "GarCharacterMovementComponent.h"
 #include "Abilities/GarGameplayAbility.h"
-#include "Animation/AnimMontage.h"
+#include "Abilities/GarAbilitySet.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilitySystemComponent)
 
@@ -22,6 +24,15 @@ void UGarAbilitySystemComponent::OnRegister()
 		Character->OnRefresh.AddUObject(this, &ThisClass::OnRefresh);
 		Character->OnPossessed_Client.AddUObject(this, &ThisClass::OnPossessed);
 		Character->OnUnPossessed_Client.AddUObject(this, &ThisClass::OnUnPossessed);
+	}
+}
+
+void UGarAbilitySystemComponent::Initialize(AGarCharacter* InOwnerCharacter)
+{
+	Super::InitAbilityActorInfo(InOwnerCharacter, InOwnerCharacter);
+	if (InOwnerCharacter->HasAuthority() && IsValid(AbilitySet))
+	{
+		AbilitySet->GiveToAbilitySystem(this, InOwnerCharacter);
 	}
 }
 

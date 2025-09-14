@@ -18,7 +18,10 @@ void UGarOverrideTask::Begin()
 			OverrideAnimInstance = Cast<UGarOverrideAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverrideAnimClass));
 		}
 
-		OverrideAnimInstance->Refresh(this);
+		if(OverrideAnimInstance.IsValid())
+		{
+			OverrideAnimInstance->Refresh(this);
+		}
 	}
 	Super::Begin();
 }

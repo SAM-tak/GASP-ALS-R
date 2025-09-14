@@ -23,8 +23,8 @@ UGarGameplayAbility_Rolling::UGarGameplayAbility_Rolling(const FObjectInitialize
 float UGarGameplayAbility_Rolling::CalcTargetYawAngle_Implementation() const
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	return bRotateToInputOnStart && Character->GetLocomotionState().bHasInput
-		? Character->GetLocomotionState().InputYawAngle
+	return bRotateToInputOnStart && Character->HasInput()
+		? Character->GetInputYawAngle()
 		: UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(Character->GetActorRotation().Yaw));
 }
 
@@ -36,9 +36,6 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 	if (Character->GetLocalRole() < ROLE_Authority)
 	{
 		Character->GetCharacterMovement()->FlushServerMoves();
-
-		const auto InitialYawAngle{UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(Character->GetActorRotation().Yaw))};
-		Character->RefreshRotationInstant(InitialYawAngle);
 	}
 
 	TargetYawAngle = CalcTargetYawAngle();

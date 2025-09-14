@@ -24,6 +24,7 @@
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
 #include "Settings/GarRagdollingSettings.h"
 #include "Utility/GarUtility.h"
+#include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarPhysicalAnimationComponent)
@@ -511,7 +512,7 @@ void UGarPhysicalAnimationComponent::BeginPlay()
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 	if (IsValid(Character))
 	{
-		RagdollingState.RagdollingAnimInstance = Character->GetGarAnimationInstace()->GetRagdollingAnimInstance();
+		RagdollingState.RagdollingAnimInstance = Character->GetGarAnimationInstace()->RagdollingAnimInstance.Get();
 	}
 }
 

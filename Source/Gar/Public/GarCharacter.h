@@ -1,14 +1,10 @@
 #pragma once
 
 #include "GameFramework/Character.h"
-#include "State/GarLocomotionState.h"
-#include "State/GarMovementBaseState.h"
-#include "State/GarViewState.h"
-#include "GarGameplayTags.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayCueInterface.h"
 #include "GameplayTagAssetInterface.h"
-#include "Abilities/GarAbilitySet.h"
+#include "GarGameplayTags.h"
 #include "GarCharacter.generated.h"
 
 class UGarCharacterSettings;
@@ -16,7 +12,7 @@ class UGarAnimationInstance;
 class UGarCharacterMovementComponent;
 class UGarPhysicalAnimationComponent;
 class UGarAbilitySystemComponent;
-class UGarMotionWarpingComponent;
+class UMotionWarpingComponent;
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnControllerChanged, AController*);
 
@@ -43,13 +39,10 @@ protected:
 	TObjectPtr<UGarAbilitySystemComponent> AbilitySystem;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
-	TObjectPtr<UGarMotionWarpingComponent> MotionWarping;
+	TObjectPtr<UMotionWarpingComponent> MotionWarping;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	TObjectPtr<UGarCharacterSettings> Settings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbilitySystem|Settings")
-	TObjectPtr<UGarAbilitySet> AbilitySet;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
 	FGameplayTag DesiredRotationMode{GarDesiredRotationModeTags::ViewDirection};
@@ -73,28 +66,13 @@ protected:
 	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag ViewMode{GarViewModeTags::ThirdPerson};
+	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGarMovementBaseState MovementBase;
-
-	// Replicated raw view rotation. Depending on the context, this rotation can be in world space, or in movement
-	// base space. In most cases, it is better to use FGarViewState::Rotation to take advantage of network smoothing.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, ReplicatedUsing = OnReplicated_ReplicatedViewRotation)
-	FRotator ReplicatedViewRotation{ForceInit};
+	FVector InputDirection;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGarViewState ViewState;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
-	FVector_NetQuantizeNormal InputDirection;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated,
-			  Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
-	float DesiredVelocityYawAngle;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGarLocomotionState LocomotionState;
+	float InputYawAngle;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FRotator PendingFocalRotationRelativeAdjustment{ForceInit};
@@ -109,8 +87,6 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual void PreRegisterAllComponents() override;
-
-	virtual void PostRegisterAllComponents() override;
 
 	virtual void PostInitializeComponents() override;
 
@@ -137,7 +113,7 @@ public:
 	/** Name of the MotionWarpingComponent. */
 	static FName MotionWarpingComponentName;
 
-	FORCEINLINE UGarMotionWarpingComponent* GetMotionWarping() const { return MotionWarping; }
+	FORCEINLINE UMotionWarpingComponent* GetMotionWarping() const { return MotionWarping; }
 
 protected:
 	virtual void BeginPlay() override;
@@ -187,22 +163,18 @@ private:
 
 	mutable FGameplayTagContainer TempTagContainer;
 
-	//void RefreshMeshProperties() const;
-
-	void RefreshMovementBase();
-
-	// View Mode
+	// Perspective
 
 public:
-	const FGameplayTag& GetViewMode() const;
+	const FGameplayTag& GetPerspective() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
-	void SetViewMode(const FGameplayTag& NewViewMode);
+	void SetPerspective(const FGameplayTag& NewPerspective);
 
 protected:
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
-	void OnViewModeChanged(const FGameplayTag& PreviousViewMode);
+	void OnPerspectiveChanged(const FGameplayTag& PreviousPerspective);
 
 	// Locomotion Mode
 
@@ -343,10 +315,19 @@ public:
 public:
 	const FVector& GetInputDirection() const;
 
+	inline bool HasInput() const { return InputDirection.SizeSquared() > UE_KINDA_SMALL_NUMBER; }
+
+	inline float GetInputYawAngle() const { return InputYawAngle; }
+
 protected:
 	void SetInputDirection(FVector NewInputDirection);
 
 	virtual void RefreshInput(float DeltaTime);
+
+private:
+	inline bool HasSpeed() const { return GetVelocity().Size2D() > 1.0; }
+
+	bool IsMoving() const;
 
 	// Controll Rotation Adjustment
 
@@ -357,98 +338,15 @@ public:
 private:
 	void TryAdjustControllRotation(float DeltaTime);
 
-	// View
-
-public:
-	virtual FRotator GetViewRotation() const override;
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
-	void SetLookRotation(const FRotator& NewLookRotation);
+	// Sprint
 
 private:
-	void SetReplicatedViewRotation(const FRotator& NewViewRotation, bool bSendRpc);
-
-	UFUNCTION(Server, Unreliable)
-	void ServerSetReplicatedViewRotation(const FRotator& NewViewRotation);
-
-	UFUNCTION()
-	void OnReplicated_ReplicatedViewRotation();
-
-	FRotator TargetLookRotation{NAN, NAN, NAN};
-
-public:
-	void CorrectViewNetworkSmoothing(const FRotator& NewTargetRotation, bool bRelativeTargetRotation);
-
-public:
-	const FGarViewState& GetViewState() const;
-
-private:
-	void RefreshView(float DeltaTime);
-
-	void RefreshViewNetworkSmoothing(float DeltaTime);
-
-	// Locomotion
-
-public:
-	const FGarLocomotionState& GetLocomotionState() const;
-
-private:
-	void SetDesiredVelocityYawAngle(float NewDesiredVelocityYawAngle);
-
-	void RefreshLocomotionLocationAndRotation();
-
-	void RefreshLocomotionEarly();
-
-	void RefreshLocomotion(float DeltaTime);
-
-	void RefreshLocomotionLate(float DeltaTime);
+	void RefreshSprintState();
 
 	// Jumping
 
 public:
 	virtual void Jump() override;
-
-	// Rotation
-
-public:
-	virtual void FaceRotation(FRotator Rotation, float DeltaTime) override final;
-
-	void RefreshRotationInstant(float TargetYawAngle, ETeleportType Teleport = ETeleportType::None);
-
-private:
-	void RefreshGroundedRotation(float DeltaTime);
-
-protected:
-	virtual bool RefreshCustomGroundedMovingRotation(float DeltaTime);
-
-	virtual bool RefreshCustomGroundedNotMovingRotation(float DeltaTime);
-
-	float CalculateGroundedMovingRotationInterpolationSpeed() const;
-
-	void RefreshGroundedAimingRotation(float DeltaTime);
-
-	bool RefreshConstrainedAimingRotation(float DeltaTime, bool bApplySecondaryConstraint = false);
-
-private:
-	void ApplyRotationYawSpeedAnimationCurve(float DeltaTime);
-
-	void RefreshInAirRotation(float DeltaTime);
-
-protected:
-	virtual bool RefreshCustomInAirRotation(float DeltaTime);
-
-	void RefreshInAirAimingRotation(float DeltaTime);
-
-	void RefreshRotation(float TargetYawAngle, float DeltaTime, float RotationInterpolationSpeed);
-
-	void RefreshRotationExtraSmooth(float TargetYawAngle, float DeltaTime,
-	                                float RotationInterpolationSpeed, float TargetYawAngleRotationSpeed);
-
-	void RefreshTargetYawAngleUsingLocomotionRotation();
-
-	void RefreshTargetYawAngle(float TargetYawAngle);
-
-	void RefreshViewRelativeTargetYawAngle();
 
 	// ADS
 
@@ -456,10 +354,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	float GetAimAmount() const;
 
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
+	UFUNCTION(BlueprintPure, BlueprintImplementableEvent, Category = "GAR|Character")
 	bool HasSight() const;
 
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|Character")
 	void GetSightLocAndRot(FVector& Loc, FRotator& Rot) const;
 
 	// Utility
@@ -566,9 +464,9 @@ inline const FGameplayTag& AGarCharacter::GetLocomotionMode() const
 	return LocomotionMode;
 }
 
-inline const FGameplayTag& AGarCharacter::GetViewMode() const
+inline const FGameplayTag& AGarCharacter::GetPerspective() const
 {
-	return ViewMode;
+	return Perspective;
 }
 
 inline const FGameplayTag& AGarCharacter::GetOverlayMode() const
@@ -579,16 +477,6 @@ inline const FGameplayTag& AGarCharacter::GetOverlayMode() const
 inline const FVector& AGarCharacter::GetInputDirection() const
 {
 	return InputDirection;
-}
-
-inline const FGarViewState& AGarCharacter::GetViewState() const
-{
-	return ViewState;
-}
-
-inline const FGarLocomotionState& AGarCharacter::GetLocomotionState() const
-{
-	return LocomotionState;
 }
 
 inline bool AGarCharacter::IsLied() const

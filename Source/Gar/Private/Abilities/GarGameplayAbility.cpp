@@ -1,11 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Abilities/GarGameplayAbility.h"
+
+#include "Engine/InputDelegateBinding.h"
 #include "GarCharacter.h"
 #include "GarCharacterMovementComponent.h"
 #include "GarAbilitySystemComponent.h"
-#include "GarMotionWarpingComponent.h"
-#include "Engine/InputDelegateBinding.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility)
 
@@ -112,24 +111,6 @@ void UGarGameplayAbility::StopCurrentMontage(const FGameplayAbilityActorInfo* Ac
 void UGarGameplayAbility::StopCurrentMontage(float OverrideBlendOutTime) const
 {
 	StopCurrentMontage(GetCurrentActorInfo(), OverrideBlendOutTime);
-}
-
-void UGarGameplayAbility::AddOrUpdateWarpTargetFromLocationAndRotation(FName WarpTargetName, FVector TargetLocation, FRotator TargetRotation)
-{
-	auto* Character{GetGarCharacterFromActorInfo()};
-	if (Character->GetLocalRole() < ROLE_Authority)
-	{
-		Character->GetMotionWarping()->AddOrUpdateReplicatedWarpTargetFromLocationAndRotation(WarpTargetName, TargetLocation, TargetRotation);
-	}
-}
-
-void UGarGameplayAbility::AddOrUpdateWarpTargetFromComponent(FName WarpTargetName, const USceneComponent* Component, FName BoneName, bool bFollowComponent)
-{
-	auto* Character{GetGarCharacterFromActorInfo()};
-	if (Character->GetLocalRole() < ROLE_Authority)
-	{
-		Character->GetMotionWarping()->AddOrUpdateReplicatedWarpTargetFromComponent(WarpTargetName, Component, BoneName, bFollowComponent);
-	}
 }
 
 void UGarGameplayAbility::SetInputBlocked(bool bBlocked) const

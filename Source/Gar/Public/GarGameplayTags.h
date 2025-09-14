@@ -35,7 +35,7 @@ namespace GarDesiredGaitTags
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Sprinting)
 }
 
-namespace GarViewModeTags
+namespace GarPerspectiveTags
 {
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(FirstPerson)

@@ -23,9 +23,7 @@ UGarGameplayAbility_Landing::UGarGameplayAbility_Landing(const FObjectInitialize
 float UGarGameplayAbility_Landing::CalcTargetYawAngle_Implementation() const
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	return Character->GetLocomotionState().bHasSpeed
-		   ? Character->GetLocomotionState().VelocityYawAngle
-		   : UE_REAL_TO_FLOAT(FMath::UnwindDegrees(Character->GetActorRotation().Yaw));
+	return UE_REAL_TO_FLOAT(FMath::UnwindDegrees(Character->GetActorRotation().Yaw));
 }
 
 bool UGarGameplayAbility_Landing::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -35,11 +33,11 @@ bool UGarGameplayAbility_Landing::CanActivateAbility(const FGameplayAbilitySpecH
 	if (Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
 	{
 		const auto* Character{Cast<AGarCharacter>(ActorInfo->OwnerActor)};
-		if (bStartRagdollingOnLand && Character->GetLocomotionState().Velocity.Z <= -RagdollingOnLandSpeedThreshold)
+		if (bStartRagdollingOnLand && Character->GetVelocity().Z <= -RagdollingOnLandSpeedThreshold)
 		{
 			return true;
 		}
-		else if (bStartRollingOnLand && Character->GetLocomotionState().Velocity.Z <= -RollingOnLandSpeedThreshold)
+		else if (bStartRollingOnLand && Character->GetVelocity().Z <= -RollingOnLandSpeedThreshold)
 		{
 			return true;
 		}
@@ -51,7 +49,7 @@ void UGarGameplayAbility_Landing::ActivateAbility(const FGameplayAbilitySpecHand
 												  const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	if (bStartRagdollingOnLand && Character->GetLocomotionState().Velocity.Z <= -RagdollingOnLandSpeedThreshold)
+	if (bStartRagdollingOnLand && Character->GetVelocity().Z <= -RagdollingOnLandSpeedThreshold)
 	{
 		if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 		{
@@ -62,7 +60,7 @@ void UGarGameplayAbility_Landing::ActivateAbility(const FGameplayAbilitySpecHand
 
 		GetGarAbilitySystemComponentFromActorInfo()->TryActivateAbilitiesBySingleTag(GarLocomotionActionTags::Unconsious);
 	}
-	else if (bStartRollingOnLand && Character->GetLocomotionState().Velocity.Z <= -RollingOnLandSpeedThreshold)
+	else if (bStartRollingOnLand && Character->GetVelocity().Z <= -RollingOnLandSpeedThreshold)
 	{
 		Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	}

@@ -57,11 +57,6 @@ TMap<FName, float>& UGarLinkedAnimationInstance::GetAnimationCurvesFromProxy(EAn
 	return GetProxyOnAnyThread<FGarAnimationInstanceProxy>().GetAnimationCurves(EAnimCurveType::AttributeCurve);
 }
 
-UGarViewAnimInstance* UGarLinkedAnimationInstance::GetViewUnsafe() const
-{
-	return Parent->ViewAnimInstance.Get();
-}
-
 UGarRagdollingAnimInstance* UGarLinkedAnimationInstance::GetRagdollingUnsafe() const
 {
 	return Parent->RagdollingAnimInstance.Get();

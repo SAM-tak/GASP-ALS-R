@@ -132,9 +132,7 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 
 	SetNetworkMoveDataContainer(MoveDataContainer);
 
-	bRunPhysicsWithNoController = true;
 	bAllowPhysicsRotationDuringAnimRootMotion = true;       // Required to be able to manually rotate the actor while rolling.
-	bNetworkAlwaysReplicateTransformUpdateTimestamp = true; // Required for view network smoothing.
 
 	SetCrouchedHalfHeight(56.0f);
 
@@ -150,7 +148,7 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 
 	// This value is only used when the actor is in the air, since when moving on the ground
 	// the value from the AccelerationAndDecelerationAndGroundFriction curve is used instead.
-	MaxAcceleration = 2000.0f;
+	MaxAcceleration = 800.0f;
 
 	// Makes GroundFriction and FallingLateralFriction used for both acceleration and deceleration.
 	bUseSeparateBrakingFriction = false;
@@ -905,22 +903,6 @@ void UGarCharacterMovementComponent::MoveAutonomous(const float ClientTimeStamp,
 	}
 
 	Super::MoveAutonomous(ClientTimeStamp, DeltaTime, CompressedFlags, NewAcceleration);
-
-	// Process view network smoothing on the listen server.
-
-	const auto* Controller{HasValidData() ? CharacterOwner->GetController() : nullptr};
-
-	if (Controller != nullptr && IsValid(Controller) && IsNetMode(NM_ListenServer) && CharacterOwner->GetRemoteRole() == ROLE_AutonomousProxy)
-	{
-		const auto NewControlRotation{Controller->GetControlRotation()};
-
-		if (Character.IsValid())
-		{
-			Character->CorrectViewNetworkSmoothing(NewControlRotation, false);
-		}
-
-		PreviousControlRotation = NewControlRotation;
-	}
 }
 
 void UGarCharacterMovementComponent::SetRotationMode(const FGameplayTag& NewRotationMode)

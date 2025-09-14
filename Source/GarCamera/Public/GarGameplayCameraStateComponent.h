@@ -40,19 +40,19 @@ protected:
 	uint8 bIsFocusPawn : 1{false};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag ViewMode{GarCameraViewModeTags::ThirdPerson};
+	FGameplayTag Perspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State", Transient)
-	FGameplayTag DesiredViewMode{GarCameraViewModeTags::ThirdPerson};
+	FGameplayTag DesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Replicated)
-	FGameplayTag ConfirmedDesiredViewMode{GarCameraViewModeTags::ThirdPerson};
+	FGameplayTag ConfirmedDesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag PreviousConfirmedDesiredViewMode{GarCameraViewModeTags::ThirdPerson};
+	FGameplayTag PreviousConfirmedDesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Meta = (ClampMin = 0, ForceUnits = "s"))
-	float ViewModeChangeBlockTime{0.f};
+	float PerspectiveChangeBlockTime{0.f};
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Replicated)
 	FGameplayTag ShoulderMode{GarCameraShoulderModeTags::Right};
@@ -210,12 +210,12 @@ inline FVector UGarGameplayCameraStateComponent::GetCurrentFocusLocation() const
 
 inline const FGameplayTag& UGarGameplayCameraStateComponent::GetDesiredViewMode() const
 {
-	return DesiredViewMode;
+	return DesiredPerspective;
 }
 
 inline const FGameplayTag& UGarGameplayCameraStateComponent::GetConfirmedDesiredViewMode() const
 {
-	return ConfirmedDesiredViewMode;
+	return ConfirmedDesiredPerspective;
 }
 
 inline const FGameplayTag& UGarGameplayCameraStateComponent::GetShoulderMode() const

@@ -55,8 +55,6 @@ protected:
 
 		{UGarConstants::FootLeftIkCurveName()},
 		{UGarConstants::FootRightIkCurveName()},
-		{UGarConstants::FootPlantedCurveName()},
-		{UGarConstants::FeetCrossingCurveName()},
 
 		{UGarConstants::AllowTransitionsCurveName()},
 		{UGarConstants::BlockSprintCurveName()},

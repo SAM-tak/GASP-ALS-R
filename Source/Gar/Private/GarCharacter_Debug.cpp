@@ -40,7 +40,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	    !DisplayInfo.IsDisplayOn(UGarConstants::StateDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::MantlingDebugDisplayName()) &&
+	    !DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
 	{
 		VerticalLocation = MaxVerticalLocation;
@@ -118,9 +118,9 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Mantling (Shift + 5)")})};
+	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traversal (Shift + 5)")})};
 
-	if (DisplayInfo.IsDisplayOn(UGarConstants::MantlingDebugDisplayName()))
+	if (DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()))
 	{
 		DisplayDebugHeader(Canvas, MantlingHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
 		DisplayDebugMantling(Canvas, Scale, HorizontalLocation, VerticalLocation);
@@ -223,12 +223,8 @@ void AGarCharacter::InitializeCurveNames()
 	// Feet Animation Curves
 	CurveNames.AddUnique(UGarConstants::FootLeftIkCurveName());
 	CurveNames.AddUnique(UGarConstants::FootRightIkCurveName());
-	CurveNames.AddUnique(UGarConstants::FootPlantedCurveName());
-	CurveNames.AddUnique(UGarConstants::FeetCrossingCurveName());
 
 	// Other Animation Curves
-	CurveNames.AddUnique(UGarConstants::RotationYawSpeedCurveName());
-	CurveNames.AddUnique(UGarConstants::RotationYawOffsetCurveName());
 	CurveNames.AddUnique(UGarConstants::AllowTransitionsCurveName());
 	CurveNames.AddUnique(UGarConstants::BlockViewCurveName());
 	CurveNames.AddUnique(UGarConstants::BlockSprintCurveName());
@@ -315,13 +311,13 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 	const auto ColumnOffset{120.0f * Scale};
 
 	static const auto ViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ViewMode), false))
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
 	};
 
 	Text.Text = ViewModeText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ViewMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
@@ -351,9 +347,7 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto RotationModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, GetRotationMode()), false))
-	};
+	static const auto RotationModeText{FText::AsCultureInvariant(TEXT("RotationMode"))};
 
 	Text.Text = RotationModeText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -375,9 +369,7 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto StanceText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, GetStance()), false))
-	};
+	static const auto StanceText{FText::AsCultureInvariant(TEXT("Stance"))};
 
 	Text.Text = StanceText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -399,9 +391,7 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto GaitText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, GetGait()), false))
-	};
+	static const auto GaitText{FText::AsCultureInvariant(TEXT("Gait"))};
 
 	Text.Text = GaitText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -411,9 +401,7 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto OverlayModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(TEXT("OverlayMode"), false))
-	};
+	static const auto OverlayModeText{FText::AsCultureInvariant(TEXT("OverlayMode"))};
 
 	Text.Text = OverlayModeText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -423,9 +411,7 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto LocomotionActionText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(TEXT("LocomotionAction"), false))
-	};
+	static const auto LocomotionActionText{FText::AsCultureInvariant(TEXT("LocomotionAction"))};
 
 	Text.Text = LocomotionActionText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -456,9 +442,8 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	const auto RowOffset{12.0f * Scale};
 	const auto ColumnOffset{120.0f * Scale};
 
-	static const auto ViewRotationText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(FGarViewState, Rotation), false))
-	};
+	static const auto ViewRotationText{FText::AsCultureInvariant("Rotation")};
+	const auto ViewRotation{GetViewRotation()};
 
 	auto Color{FLinearColor::Red};
 	Text.SetColor(Color);
@@ -467,11 +452,11 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	DebugStringBuilder << TEXTVIEW("R:");
-	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewState.Rotation.Roll);
+	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewRotation.Roll);
 	DebugStringBuilder << TEXTVIEW(" P:");
-	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewState.Rotation.Pitch);
+	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewRotation.Pitch);
 	DebugStringBuilder << TEXTVIEW(" Y:");
-	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewState.Rotation.Yaw);
+	DebugStringBuilder.Appendf(TEXT("%.2f"), ViewRotation.Yaw);
 
 	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
@@ -480,27 +465,24 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 
 #if ENABLE_DRAW_DEBUG
 	DrawDebugCone(GetWorld(), GetPawnViewLocation(),
-	              ViewState.Rotation.Vector(), 100.0f, FMath::DegreesToRadians(15.0f), FMath::DegreesToRadians(15.0f),
+				  ViewRotation.Vector(), 100.0f, FMath::DegreesToRadians(15.0f), FMath::DegreesToRadians(15.0f),
 	              8, Color.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
-	DrawDebugCone(GetWorld(), GetPawnViewLocation(),
-	              ViewState.LookRotation.Vector(), 100.0f, FMath::DegreesToRadians(10.0f), FMath::DegreesToRadians(10.0f),
-	              8, FLinearColor::Blue.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
+	//DrawDebugCone(GetWorld(), GetPawnViewLocation(),
+	//              ViewState.LookRotation.Vector(), 100.0f, FMath::DegreesToRadians(10.0f), FMath::DegreesToRadians(10.0f),
+	//              8, FLinearColor::Blue.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
 #endif
 
 	VerticalLocation += RowOffset;
 
-	static const auto InputYawAngleText{
-		FText::AsCultureInvariant(
-			FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(FGarLocomotionState, InputYawAngle), false))
-	};
+	static const auto InputYawAngleText{FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, InputYawAngle), false))};
 
-	Color = LocomotionState.bHasInput ? FLinearColor{1.0f, 0.5f, 0.0f} : FLinearColor{0.5f, 0.25f, 0.0f};
+	Color = HasInput() ? FLinearColor{1.0f, 0.5f, 0.0f} : FLinearColor{0.5f, 0.25f, 0.0f};
 	Text.SetColor(Color);
 
 	Text.Text = InputYawAngleText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
-	DebugStringBuilder.Appendf(TEXT("%.2f"), LocomotionState.InputYawAngle);
+	DebugStringBuilder.Appendf(TEXT("%.2f"), InputYawAngle);
 
 	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
@@ -508,28 +490,26 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	DebugStringBuilder.Reset();
 
 #if ENABLE_DRAW_DEBUG
-	const auto FeetLocation{LocomotionState.Location - FVector{0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()}};
+	const auto FeetLocation{GetActorLocation() - FVector{0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()}};
 
 	DrawDebugDirectionalArrow(GetWorld(),
 	                          FeetLocation + FVector{0.0f, 0.0f, 3.0f},
 	                          FeetLocation + FVector{0.0f, 0.0f, 3.0f} +
-	                          UGarMath::AngleToDirectionXY(LocomotionState.InputYawAngle) * 50.0f,
+	                          UGarMath::AngleToDirectionXY(InputYawAngle) * 50.0f,
 	                          50.0f, Color.ToFColor(true), false, -1.0f, SDPG_World, 3.0f);
 #endif
 
 	VerticalLocation += RowOffset;
 
-	static const auto SpeedText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(FGarLocomotionState, Speed), false))
-	};
+	static const auto SpeedText{FText::AsCultureInvariant("Speed")};
 
-	Color = LocomotionState.bHasSpeed ? FLinearColor{0.75f, 0.0f, 1.0f} : FLinearColor{0.375f, 0.0f, 0.5f};
+	Color = HasSpeed() ? FLinearColor{0.75f, 0.0f, 1.0f} : FLinearColor{0.375f, 0.0f, 0.5f};
 	Text.SetColor(Color);
 
 	Text.Text = SpeedText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
-	DebugStringBuilder.Appendf(TEXT("%.2f"), LocomotionState.Speed);
+	DebugStringBuilder.Appendf(TEXT("%.2f"), GetVelocity().Size2D());
 
 	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
@@ -540,7 +520,7 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 
 	static const auto VelocityDirectionText{FText::AsCultureInvariant(FString{TEXTVIEW("Velocity Direction")})};
 
-	const auto VelocityDirection{LocomotionState.Velocity.GetSafeNormal()};
+	const auto VelocityDirection{GetVelocity().GetSafeNormal()};
 
 	Text.Text = VelocityDirectionText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
@@ -559,64 +539,9 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto VelocityYawAngleText{
-		FText::AsCultureInvariant(
-			FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(FGarLocomotionState, VelocityYawAngle), false))
-	};
-
-	Text.Text = VelocityYawAngleText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	DebugStringBuilder.Appendf(TEXT("%.2f"), LocomotionState.VelocityYawAngle);
-
-	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	DebugStringBuilder.Reset();
-
 #if ENABLE_DRAW_DEBUG
-	DrawDebugDirectionalArrow(GetWorld(),
-	                          FeetLocation,
-	                          FeetLocation +
-	                          UGarMath::AngleToDirectionXY(LocomotionState.VelocityYawAngle) *
-	                          FMath::GetMappedRangeValueClamped(FVector2f{0.0f, GetCharacterMovement()->GetMaxSpeed()},
-	                                                            {50.0f, 75.0f}, LocomotionState.Speed),
-	                          50.0f, Color.ToFColor(true), false, -1.0f, SDPG_World, 3.0f);
-#endif
-
-	VerticalLocation += RowOffset;
-
-	static const auto TargetYawAngleText{
-		FText::AsCultureInvariant(
-			FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(FGarLocomotionState, SmoothTargetYawAngle), false))
-	};
-
-	Color = {0.0f, 0.75f, 1.0f};
-	Text.SetColor(Color);
-
-	Text.Text = TargetYawAngleText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	DebugStringBuilder.Appendf(TEXT("%.2f"), LocomotionState.SmoothTargetYawAngle);
-
-	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	DebugStringBuilder.Reset();
-
-#if ENABLE_DRAW_DEBUG
-	DrawDebugDirectionalArrow(GetWorld(),
-	                          FeetLocation + FVector{0.0f, 0.0f, 6.0f},
-	                          FeetLocation + FVector{0.0f, 0.0f, 6.0f} +
-	                          UGarMath::AngleToDirectionXY(LocomotionState.SmoothTargetYawAngle) * 50.0f,
-	                          50.0f, Color.ToFColor(true), false, -1.0f, SDPG_World, 3.0f);
-#endif
-
-	VerticalLocation += RowOffset;
-
-#if ENABLE_DRAW_DEBUG
-	DrawDebugCapsule(GetWorld(), LocomotionState.Location, GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),
-	                 GetCapsuleComponent()->GetScaledCapsuleRadius(), LocomotionState.RotationQuaternion,
+	DrawDebugCapsule(GetWorld(), GetActorLocation(), GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),
+	                 GetCapsuleComponent()->GetScaledCapsuleRadius(), GetActorRotation().Quaternion(),
 	                 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 #endif
 }

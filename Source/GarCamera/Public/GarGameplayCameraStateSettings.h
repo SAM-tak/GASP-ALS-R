@@ -72,7 +72,7 @@ class GARCAMERA_API UGarGameplayCameraStateSettings : public UDataAsset
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	FGameplayTag DesiredViewMode{GarCameraViewModeTags::ThirdPerson};
+	FGameplayTag DesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	FGarFirstPersonCameraStateSettings FirstPerson;
@@ -81,7 +81,7 @@ public:
 	FGarThirdPersonCameraStateSettings ThirdPerson;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "s"))
-	float ViewModeChangeBlockTime{0.08f};
+	float PerspectiveChangeBlockTime{0.08f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	TEnumAsByte<ECollisionChannel> FocusTraceChannel{ECC_Visibility};

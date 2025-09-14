@@ -7,7 +7,7 @@ namespace GarCameraTags
 	GARCAMERA_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
 }
 
-namespace GarCameraViewModeTags
+namespace GarCameraPerspectiveTags
 {
 	GARCAMERA_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
 	GARCAMERA_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(FirstPerson)

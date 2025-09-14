@@ -5,11 +5,11 @@ namespace GarCameraTags
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.Camera")
 }
 
-namespace GarCameraViewModeTags
+namespace GarCameraPerspectiveTags
 {
-	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.Camera.ViewMode")
-	UE_DEFINE_GAMEPLAY_TAG(FirstPerson, "Gar.Camera.ViewMode.FirstPerson")
-	UE_DEFINE_GAMEPLAY_TAG(ThirdPerson, "Gar.Camera.ViewMode.ThirdPerson")
+	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.Camera.Perspective")
+	UE_DEFINE_GAMEPLAY_TAG(FirstPerson, "Gar.Camera.Perspective.FirstPerson")
+	UE_DEFINE_GAMEPLAY_TAG(ThirdPerson, "Gar.Camera.Perspective.ThirdPerson")
 }
 
 namespace GarCameraShoulderModeTags
