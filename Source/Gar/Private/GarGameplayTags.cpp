@@ -102,7 +102,8 @@ namespace GarLocomotionActionTags
 namespace GarStateFlagTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.StateFlag")
-	UE_DEFINE_GAMEPLAY_TAG(LeftShoulder, "Gar.StateFlag.LeftShoulder")
+	UE_DEFINE_GAMEPLAY_TAG(RotationLocked, "Gar.StateFlag.RotationLocked")
+	UE_DEFINE_GAMEPLAY_TAG(BlockUpdateCapsuleSize, "Gar.StateFlag.BlockUpdateCapsuleSize")
 	UE_DEFINE_GAMEPLAY_TAG(FacingUpward, "Gar.StateFlag.FacingUpward")
 }
 

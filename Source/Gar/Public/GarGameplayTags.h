@@ -104,7 +104,8 @@ namespace GarLocomotionActionTags
 namespace GarStateFlagTags
 {
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
-	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(LeftShoulder) // Removal? no reference in source
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(RotationLocked)
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(BlockUpdateCapsuleSize)
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(FacingUpward)
 }
 

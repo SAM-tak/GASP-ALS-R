@@ -566,10 +566,6 @@ void AGarCharacter::RefreshRotationMode()
 			{
 				SetRotationMode(GarRotationModeTags::Aiming);
 			}
-			else
-			{
-				SetRotationMode(GarRotationModeTags::ViewDirection);
-			}
 
 			return;
 		}
@@ -599,10 +595,6 @@ void AGarCharacter::RefreshRotationMode()
 		else if (bAiming)
 		{
 			SetRotationMode(GarRotationModeTags::ViewDirection);
-		}
-		else
-		{
-			SetRotationMode(DesiredToActual(DesiredRotationMode));
 		}
 
 		return;
@@ -1036,6 +1028,11 @@ void AGarCharacter::OnEndLie(const float HalfHeightAdjust, const float ScaledHal
 
 void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 {
+	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
+	{
+		return;
+	}
+
 	// Update capsule height and radius
 	auto DefaultCharacter = GetDefault<AGarCharacter>(GetClass());
 	auto InitialEyeHeight = DefaultCharacter->BaseEyeHeight;

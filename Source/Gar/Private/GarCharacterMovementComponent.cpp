@@ -78,29 +78,6 @@ bool FGarSavedMove::CanCombineWith(const FSavedMovePtr& NewMovePtr, ACharacter* 
 		   Super::CanCombineWith(NewMovePtr, Character, MaxDeltaTime);
 }
 
-void FGarSavedMove::CombineWith(const FSavedMove_Character* PreviousMove, ACharacter* Character,
-								APlayerController* Player, const FVector& PreviousStartLocation)
-{
-	// Calling Super::CombineWith() will force change the character's rotation to the rotation from the previous move, which is
-	// undesirable because it will erase our rotation changes made in the AGarCharacter class. So, to keep the rotation unchanged,
-	// we simply override the saved rotations with the current rotation, and after calling Super::CombineWith() we restore them.
-
-	const auto OriginalRotation{PreviousMove->StartRotation};
-	const auto OriginalRelativeRotation{PreviousMove->StartAttachRelativeRotation};
-
-	const auto* UpdatedComponent{Character->GetCharacterMovement()->UpdatedComponent.Get()};
-
-	auto* MutablePreviousMove{const_cast<FSavedMove_Character*>(PreviousMove)};
-
-	MutablePreviousMove->StartRotation = UpdatedComponent->GetComponentRotation();
-	MutablePreviousMove->StartAttachRelativeRotation = UpdatedComponent->GetRelativeRotation();
-
-	Super::CombineWith(PreviousMove, Character, Player, PreviousStartLocation);
-
-	MutablePreviousMove->StartRotation = OriginalRotation;
-	MutablePreviousMove->StartAttachRelativeRotation = OriginalRelativeRotation;
-}
-
 void FGarSavedMove::PrepMoveFor(ACharacter* Character)
 {
 	Super::PrepMoveFor(Character);
@@ -131,8 +108,6 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 	bTickBeforeOwner = true;
 
 	SetNetworkMoveDataContainer(MoveDataContainer);
-
-	bAllowPhysicsRotationDuringAnimRootMotion = true;       // Required to be able to manually rotate the actor while rolling.
 
 	SetCrouchedHalfHeight(56.0f);
 
@@ -202,7 +177,8 @@ void UGarCharacterMovementComponent::BeginPlay()
 void UGarCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	auto* Controller{Character->GetController()};
-	if (IsValid(Controller) && IsValid(MovementSettings) && !PreviousControlRotation.ContainsNaN() && MovementSettings->MaxRotationSpeed > 0)
+	if (IsValid(Controller) && Controller ->IsLocalPlayerController() && IsValid(MovementSettings) && !PreviousControlRotation.ContainsNaN()
+		&& MovementSettings->MaxRotationSpeed > 0)
 	{
 		// Limit rotation speed
 		auto MaxDelta{MovementSettings->MaxRotationSpeed * DeltaTime};
@@ -215,7 +191,12 @@ void UGarCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick T
 			CurrentControlRotation.Roll}.Clamp());
 	}
 
-	if (RotationMode == GarRotationModeTags::VelocityDirection)
+	if (Character->HasMatchingGameplayTag(GarStateFlagTags::RotationLocked))
+	{
+		bUseControllerDesiredRotation = false;
+		bOrientRotationToMovement = false;
+	}
+	else if (RotationMode == GarRotationModeTags::VelocityDirection)
 	{
 		bUseControllerDesiredRotation = false;
 		bOrientRotationToMovement = true;
@@ -265,51 +246,12 @@ bool UGarCharacterMovementComponent::ShouldPerformAirControlForPathFollowing() c
 	return !bInputBlocked && Super::ShouldPerformAirControlForPathFollowing();
 }
 
-void UGarCharacterMovementComponent::UpdateBasedRotation(FRotator& FinalRotation, const FRotator& ReducedRotation)
-{
-	// Ignore the parent implementation of this function and provide our own, because the parent
-	// implementation has no effect when we ignore rotation changes in AGarCharacter::FaceRotation().
-
-	const auto& BasedMovement{CharacterOwner->GetBasedMovement()};
-
-	FVector MovementBaseLocation;
-	FQuat MovementBaseRotation;
-
-	MovementBaseUtility::GetMovementBaseTransform(BasedMovement.MovementBase, BasedMovement.BoneName,
-												  MovementBaseLocation, MovementBaseRotation);
-
-	if (!OldBaseQuat.Equals(MovementBaseRotation, UE_SMALL_NUMBER))
-	{
-		const auto DeltaRotation{(MovementBaseRotation * OldBaseQuat.Inverse()).Rotator()};
-		auto NewControlRotation{CharacterOwner->Controller->GetControlRotation()};
-
-		NewControlRotation.Pitch += DeltaRotation.Pitch;
-		NewControlRotation.Yaw += DeltaRotation.Yaw;
-		NewControlRotation.Normalize();
-
-		CharacterOwner->Controller->SetControlRotation(NewControlRotation);
-	}
-}
-
 bool UGarCharacterMovementComponent::ApplyRequestedMove(const float DeltaTime, const float CurrentMaxAcceleration,
 														const float MaxSpeed, const float Friction, const float BrakingDeceleration,
 														FVector& RequestedAcceleration, float& RequestedSpeed)
 {
 	return !bInputBlocked && Super::ApplyRequestedMove(DeltaTime, CurrentMaxAcceleration, MaxSpeed, Friction,
 													   BrakingDeceleration, RequestedAcceleration, RequestedSpeed);
-}
-
-void UGarCharacterMovementComponent::CalcVelocity(const float DeltaTime, const float Friction,
-												  const bool bFluid, const float BrakingDeceleration)
-{
-	FRotator BaseRotationSpeed;
-	if (!bIgnoreBaseRotation && UGarUtility::TryGetMovementBaseRotationSpeed(CharacterOwner->GetBasedMovement(), BaseRotationSpeed))
-	{
-		// Offset the velocity to keep it relative to the movement base.
-		Velocity = (BaseRotationSpeed * DeltaTime).RotateVector(Velocity);
-	}
-
-	Super::CalcVelocity(DeltaTime, Friction, bFluid, BrakingDeceleration);
 }
 
 float UGarCharacterMovementComponent::GetMaxAcceleration() const
@@ -338,16 +280,6 @@ void UGarCharacterMovementComponent::ControlledCharacterMove(const FVector& Inpu
 	if (IsValid(Controller))
 	{
 		PreviousControlRotation = Controller->GetControlRotation();
-	}
-}
-
-void UGarCharacterMovementComponent::PhysicsRotation(const float DeltaTime)
-{
-	Super::PhysicsRotation(DeltaTime);
-
-	if (HasValidData() && (bRunPhysicsWithNoController || IsValid(CharacterOwner->Controller)))
-	{
-		OnPhysicsRotation.Broadcast(DeltaTime);
 	}
 }
 
@@ -649,21 +581,12 @@ void UGarCharacterMovementComponent::PhysCustom(const float DeltaTime, int32 Ite
 
 FVector UGarCharacterMovementComponent::ConsumeInputVector()
 {
-	auto InputVector{Super::ConsumeInputVector()};
-
 	if (bInputBlocked)
 	{
 		return FVector::ZeroVector;
 	}
 
-	FRotator BaseRotationSpeed;
-	if (!bIgnoreBaseRotation && UGarUtility::TryGetMovementBaseRotationSpeed(CharacterOwner->GetBasedMovement(), BaseRotationSpeed))
-	{
-		// Offset the input vector to keep it relative to the movement base.
-		InputVector = (BaseRotationSpeed * GetWorld()->GetDeltaSeconds()).RotateVector(InputVector);
-	}
-
-	return InputVector;
+	return Super::ConsumeInputVector();
 }
 
 void UGarCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance,
@@ -868,27 +791,6 @@ FNetworkPredictionData_Client* UGarCharacterMovementComponent::GetPredictionData
 	return ClientPredictionData;
 }
 
-void UGarCharacterMovementComponent::SmoothClientPosition(const float DeltaTime)
-{
-	auto* PredictionData{GetPredictionData_Client_Character()};
-	const auto* Mesh{HasValidData() ? CharacterOwner->GetMesh() : nullptr};
-
-	if (PredictionData != nullptr && Mesh != nullptr && IsValid(Mesh) && Mesh->IsUsingAbsoluteRotation())
-	{
-		// Calling Super::SmoothClientPosition() will change the mesh's rotation, which is undesirable when using
-		// absolute mesh rotation since we're manually updating the mesh's rotation from the animation instance. So,
-		// to keep the rotation unchanged, we simply override the predicted rotations with the mesh's current rotation.
-
-		const auto Rotation{Mesh->GetComponentQuat() * CharacterOwner->GetBaseRotationOffset().Inverse()};
-
-		PredictionData->OriginalMeshRotationOffset = Rotation;
-		PredictionData->MeshRotationOffset = Rotation;
-		PredictionData->MeshRotationTarget = Rotation;
-	}
-
-	Super::SmoothClientPosition(DeltaTime);
-}
-
 void UGarCharacterMovementComponent::MoveAutonomous(const float ClientTimeStamp, const float DeltaTime,
 													const uint8 CompressedFlags, const FVector& NewAcceleration)
 {
@@ -1001,22 +903,6 @@ void UGarCharacterMovementComponent::SetMovementModeLocked(const bool bNewMoveme
 void UGarCharacterMovementComponent::SetInputBlocked(const bool bNewInputBlocked)
 {
 	bInputBlocked = bNewInputBlocked;
-}
-
-bool UGarCharacterMovementComponent::TryConsumePrePenetrationAdjustmentVelocity(FVector& OutVelocity)
-{
-	if (!bPrePenetrationAdjustmentVelocityValid)
-	{
-		OutVelocity = FVector::ZeroVector;
-		return false;
-	}
-
-	OutVelocity = PrePenetrationAdjustmentVelocity;
-
-	PrePenetrationAdjustmentVelocity = FVector::ZeroVector;
-	bPrePenetrationAdjustmentVelocityValid = false;
-
-	return true;
 }
 
 void UGarCharacterMovementComponent::Crouch(bool bClientSimulation)

@@ -15,7 +15,8 @@ UGarGameplayAbility_Rolling::UGarGameplayAbility_Rolling(const FObjectInitialize
 	: Super(ObjectInitializer)
 {
 	SetAssetTags(FGameplayTagContainer(GarLocomotionActionTags::Rolling));
-	ActivationOwnedTags.AddTag(GarLocomotionActionTags::Rolling);
+	ActivationOwnedTags.AddTag(GarLocomotionActionTags::Traversal);
+	ActivationOwnedTags.AddTag(GarStateFlagTags::RotationLocked);
 	CancelAbilitiesWithTag.AddTag(GarLocomotionActionTags::Root);
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Rolling);
 }
@@ -31,34 +32,25 @@ float UGarGameplayAbility_Rolling::CalcTargetYawAngle_Implementation() const
 void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 												  const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	auto* Character{GetGarCharacterFromActorInfo()};
-
-	if (Character->GetLocalRole() < ROLE_Authority)
-	{
-		Character->GetCharacterMovement()->FlushServerMoves();
-	}
-
-	TargetYawAngle = CalcTargetYawAngle();
-
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	if (IsActive())
 	{
+		auto* Character{GetGarCharacterFromActorInfo()};
+		auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
+
+		if (Character->GetLocalRole() < ROLE_Authority)
+		{
+			Character->GetCharacterMovement()->FlushServerMoves();
+		}
+
+		Character->SetActorRotation(FRotator(0.0, CalcTargetYawAngle(), 0.0));
+
 		TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Rolling")));
 		if (TickTask.IsValid())
 		{
 			TickTask->OnTick.AddDynamic(this, &ThisClass::Tick);
 			TickTask->ReadyForActivation();
-		}
-
-		if (Character->GetLocalRole() <= ROLE_SimulatedProxy ||
-			Character->GetMesh()->GetAnimInstance()->RootMotionMode <= ERootMotionMode::IgnoreRootMotion)
-		{
-			PhysicsRotationHandle.Reset();
-		}
-		else
-		{
-			PhysicsRotationHandle = Character->GetGarCharacterMovement()->OnPhysicsRotation.AddUObject(this, &ThisClass::RefreshRolling);
 		}
 
 		if (bCrouchOnStart)
@@ -68,31 +60,10 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 	}
 }
 
-void UGarGameplayAbility_Rolling::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
-											 const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
-{
-	auto* Character{GetGarCharacterFromActorInfo()};
-
-	if (PhysicsRotationHandle.IsValid())
-	{
-		Character->GetGarCharacterMovement()->OnPhysicsRotation.Remove(PhysicsRotationHandle);
-		PhysicsRotationHandle.Reset();
-	}
-
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
 void UGarGameplayAbility_Rolling::Tick_Implementation(const float DeltaTime)
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
 	auto* AnimInstance{Character->GetMesh()->GetAnimInstance()};
-	if (!PhysicsRotationHandle.IsValid())
-	{
-		// Refresh rolling physics here because AGarCharacter::PhysicsRotation()
-		// won't be called on simulated proxies or with ignored root motion.
-
-		RefreshRolling(DeltaTime);
-	}
 
 	if (bCancelRollingWhenInAir)
 	{
@@ -116,27 +87,5 @@ void UGarGameplayAbility_Rolling::Tick_Implementation(const float DeltaTime)
 		{
 			InAirTime = 0.0f;
 		}
-	}
-}
-
-// ReSharper disable once CppMemberFunctionMayBeConst
-void UGarGameplayAbility_Rolling::RefreshRolling(const float DeltaTime)
-{
-	auto* Character{GetGarCharacterFromActorInfo()};
-	auto TargetRotation{Character->GetCharacterMovement()->UpdatedComponent->GetComponentRotation()};
-
-	if (RotationInterpolationSpeed <= 0.0f)
-	{
-		TargetRotation.Yaw = TargetYawAngle;
-
-		Character->GetCharacterMovement()->MoveUpdatedComponent(FVector::ZeroVector, TargetRotation, false, nullptr, ETeleportType::TeleportPhysics);
-	}
-	else
-	{
-		TargetRotation.Yaw = UGarMath::ExponentialDecayAngle(UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(TargetRotation.Yaw)),
-		                                                     TargetYawAngle, DeltaTime,
-		                                                     RotationInterpolationSpeed);
-
-		Character->GetCharacterMovement()->MoveUpdatedComponent(FVector::ZeroVector, TargetRotation, false);
 	}
 }

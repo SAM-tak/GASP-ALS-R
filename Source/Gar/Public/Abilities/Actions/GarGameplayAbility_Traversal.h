@@ -50,6 +50,30 @@ struct GAR_API FGarTraversalChooserOutput
 };
 
 USTRUCT(BlueprintType)
+struct GAR_API FGarTraversalTraceResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	TWeakObjectPtr<UPrimitiveComponent> TargetPrimitive;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector FrontLedgeLocation{FVector::ZeroVector};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector UpperLedgeNormal{FVector::ZeroVector};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector BackLedgeLocation{FVector::ZeroVector};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	uint8 bHasBackFloor : 1{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector BackFloorLocation{FVector::ZeroVector};
+};
+
+USTRUCT(BlueprintType)
 struct GAR_API FGarTraversalParameters
 {
 	GENERATED_BODY()
@@ -67,7 +91,7 @@ struct GAR_API FGarTraversalParameters
 	FVector FrontLedgeLocation{FVector::ZeroVector};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector FrontLedgeNormal{FVector::ZeroVector};
+	FVector UpperLedgeNormal{FVector::ZeroVector};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	FVector BackLedgeLocation{FVector::ZeroVector};
@@ -150,6 +174,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "s"))
 	float RisingTime{0.1f};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm"))
+	float CapsuleHalfHeightWhileInAction{40.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm"))
+	float CapsuleRadiusWhileInAction{20.0f};
+
 	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
 	uint8 bStartRagdollingOnTargetPrimitiveDestruction : 1{true};
@@ -164,13 +194,31 @@ public:
 	TObjectPtr<UAnimMontage> ChosenMontage;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	FGameplayTagContainer ActionTags;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	float OriginalUnscaledCapsuleHalfHeight{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	float OriginalUnscaledCapsuleRadius{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
 	TWeakObjectPtr<UPrimitiveComponent> CurrentTargetPrimitive;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
-	TEnumAsByte<ECollisionEnabled::Type> SavedCollisionEnabled;
+	FVector FrontLedgeOffset{FVector::ZeroVector};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
-	FGameplayTagContainer ActionTags;
+	FRotator FrontLedgeRotationOffset{FRotator::ZeroRotator};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	FVector UpperLedgeNormalLS{FVector::ZeroVector};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	FVector BackLedgeOffset{FVector::ZeroVector};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	FVector BackFloorOffset{FVector::ZeroVector};
 
 protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
@@ -180,12 +228,17 @@ protected:
 	void CommitParameters(const FGameplayAbilitySpecHandle Handle, const FGarTraversalParameters& Parameters) const;
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|Traversal")
-	bool CanTraversal(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo& ActorInfo, FGarTraversalParameters& ChooserInputs) const;
+	bool CanTraversal(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo& ActorInfo, FGarTraversalParameters& OutParameters) const;
+
+	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
+	bool TraceEnvironment(AGarCharacter* Character, FGarTraversalTraceResult& OutResult) const;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|Ability|Traversal")
 	void ChooseCandidate(const FGarTraversalChooserInputs& Input, FGarTraversalChooserOutput& Output, TArray<UAnimMontage*>& OutMontages) const;
 
 	bool HasNonTraversalTag(const FHitResult& HitResult) const;
+
+	void UpdateWarpTarget();
 
 protected:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -207,4 +260,8 @@ private:
 	static TMap<FGameplayAbilitySpecHandle, FGarTraversalParameters> ParameterMap;
 
 	TWeakObjectPtr<class UGarAbilityTask_Tick> TickTask;
+
+#if ENABLE_DRAW_DEBUG
+	void DebugDrawWarpTarget();
+#endif
 };

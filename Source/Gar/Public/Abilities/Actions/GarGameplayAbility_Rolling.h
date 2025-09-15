@@ -32,18 +32,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Rolling", Meta = (EditCondition = bCancelRollingWhenInAir))
 	FGameplayTag TryActiveWhenCancel{GarLocomotionActionTags::FreeFalling};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GarAbility|Rolling|State", Transient, Meta = (ForceUnits = "deg"))
-	float TargetYawAngle{0.0f};
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GarAbility|Rolling|State", Transient, Meta = (ForceUnits = "s"))
 	float InAirTime{0.0f};
 
 protected:
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 								 const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
-
-	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-							bool bReplicateEndAbility, bool bWasCancelled) override;
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Rolling")
 	float CalcTargetYawAngle() const;
@@ -53,8 +47,4 @@ protected:
 
 private:
 	TWeakObjectPtr<class UGarAbilityTask_Tick> TickTask;
-
-	FDelegateHandle PhysicsRotationHandle;
-
-	void RefreshRolling(const float DeltaTime);
 };

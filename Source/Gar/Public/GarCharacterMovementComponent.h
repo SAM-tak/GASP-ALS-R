@@ -84,9 +84,6 @@ public:
 
 	virtual bool CanCombineWith(const FSavedMovePtr& NewMovePtr, ACharacter* Character, float MaxDeltaTime) const override;
 
-	virtual void CombineWith(const FSavedMove_Character* PreviousMove, ACharacter* Character,
-	                         APlayerController* Player, const FVector& PreviousStartLocation) override;
-
 	virtual void PrepMoveFor(ACharacter* Character) override;
 };
 
@@ -151,9 +148,6 @@ protected:
 	FGarCharacterNetworkMoveDataContainer MoveDataContainer;
 
 public:
-	FGarPhysicsRotationDelegate OnPhysicsRotation;
-
-public:
 	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
@@ -164,12 +158,8 @@ public:
 
 	virtual bool ShouldPerformAirControlForPathFollowing() const override;
 
-	virtual void UpdateBasedRotation(FRotator& FinalRotation, const FRotator& ReducedRotation) override;
-
 	virtual bool ApplyRequestedMove(float DeltaTime, float CurrentMaxAcceleration, float MaxSpeed, float Friction,
 	                                float BrakingDeceleration, FVector& RequestedAcceleration, float& RequestedSpeed) override;
-
-	virtual void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -180,10 +170,6 @@ public:
 protected:
 	virtual void ControlledCharacterMove(const FVector& InputVector, float DeltaTime) override;
 
-public:
-	virtual void PhysicsRotation(float DeltaTime) override;
-
-protected:
 	virtual void PhysWalking(float DeltaTime, int32 IterationCount) override;
 
 	virtual void PhysNavWalking(float DeltaTime, int32 IterationCount) override;
@@ -203,8 +189,6 @@ public:
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 
 protected:
-	virtual void SmoothClientPosition(float DeltaTime) override;
-
 	virtual void MoveAutonomous(float ClientTimeStamp, float DeltaTime, uint8 CompressedFlags, const FVector& NewAcceleration) override;
 
 public:
@@ -234,8 +218,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character Movement")
 	void SetInputBlocked(bool bNewInputBlocked);
-
-	bool TryConsumePrePenetrationAdjustmentVelocity(FVector& OutVelocity);
 
 public:
 	/** If true, try to lie (or keep lying down) on next update. If false, try to stop lying on next update. */
