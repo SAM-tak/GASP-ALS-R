@@ -5,13 +5,15 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Curves/CurveFloat.h"
-#include "GameFramework/GameNetworkManager.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameNetworkManager.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
+#include "MoveLibrary/BasedMovementUtils.h"
 #include "Settings/GarCharacterSettings.h"
+#include "State/GarCharacterMoverInputs.h"
 #include "GarAnimationInstance.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarConstants.h"
@@ -26,59 +28,74 @@ namespace GarCharacterConstants
 	constexpr auto TeleportDistanceThresholdSquared{FMath::Square(50.0f)};
 }
 
+FName AGarCharacter::SkeletalMeshComponentName(TEXT("CharacterMesh"));
+FName AGarCharacter::CapsuleComponentName(TEXT("CharacterCollider"));
+FName AGarCharacter::ProneCapsuleComponentName(TEXT("HorizontalCollider"));
+FName AGarCharacter::CharacterMoverComponentName(TEXT("CharacterMoverComp"));
+FName AGarCharacter::MotionWarpingComponentName(TEXT("MotionWarpComp"));
 FName AGarCharacter::PhysicalAnimationComponentName(TEXT("PhysicalAnimComp"));
 FName AGarCharacter::AbilitySystemComponentName(TEXT("AbilitySystemComp"));
-FName AGarCharacter::MotionWarpingComponentName(TEXT("MotionWarpComp"));
 
-AGarCharacter::AGarCharacter(const FObjectInitializer& ObjectInitializer) : Super{
-	ObjectInitializer.SetDefaultSubobjectClass<UGarCharacterMovementComponent>(CharacterMovementComponentName)
-}
+AGarCharacter::AGarCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	bUseControllerRotationYaw = false;
+	SetReplicatingMovement(false);	// disable Actor-level movement replication, since our Mover component will handle it
 
-	CapsuleUpdateSpeed = 0.3f;
-	bIsLied = false;
+	Capsule = CreateDefaultSubobject<UCapsuleComponent>(CapsuleComponentName);
+	Capsule->InitCapsuleSize(30.0f, 90.0f);
+	Capsule->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	Capsule->CanCharacterStepUpOn = ECB_No;
+	Capsule->SetShouldUpdatePhysicsVolume(true);
+	Capsule->SetCanEverAffectNavigation(false);
+	Capsule->bDynamicObstacle = true;
+	RootComponent = Capsule;
 
-	GetCapsuleComponent()->InitCapsuleSize(30.0f, 90.0f);
+	ProneCapsule = CreateDefaultSubobject<UCapsuleComponent>(ProneCapsuleComponentName);
+	ProneCapsule->InitCapsuleSize(30.0f, 30.0f);
+	ProneCapsule->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	ProneCapsule->CanCharacterStepUpOn = ECB_No;
+	ProneCapsule->SetShouldUpdatePhysicsVolume(true);
+	ProneCapsule->SetCanEverAffectNavigation(false);
+	ProneCapsule->bDynamicObstacle = true;
+	ProneCapsule->SetupAttachment(Capsule);
+	ProneCapsule->WeldTo(Capsule, NAME_None, true); // https://www.hakobuneworks.com/posts/2022/12/02/
+	ProneCapsule->SetRelativeLocation_Direct({0.0f, 0.0f, -40.0f});
+	ProneCapsule->SetRelativeRotation_Direct({0.0f, 0.0f, -90.0f});
 
-	if (IsValid(GetMesh()))
+	Mesh = CreateOptionalDefaultSubobject<USkeletalMeshComponent>(SkeletalMeshComponentName);
+	if (Mesh)
 	{
-		GetMesh()->SetRelativeLocation_Direct({0.0f, 0.0f, -92.0f});
-		GetMesh()->SetRelativeRotation_Direct({0.0f, -90.0f, 0.0f});
-
-		GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
-		GetMesh()->bEnableUpdateRateOptimizations = false;
+		Mesh->AlwaysLoadOnClient = true;
+		Mesh->AlwaysLoadOnServer = true;
+		Mesh->bOwnerNoSee = false;
+		//Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPose;
+		Mesh->bCastDynamicShadow = true;
+		Mesh->bAffectDynamicIndirectLighting = true;
+		Mesh->PrimaryComponentTick.TickGroup = TG_PrePhysics;
+		Mesh->SetupAttachment(Capsule);
+		static FName MeshCollisionProfileName(TEXT("CharacterMesh"));
+		Mesh->SetCollisionProfileName(MeshCollisionProfileName);
+		Mesh->SetGenerateOverlapEvents(false);
+		Mesh->SetCanEverAffectNavigation(false);
+		Mesh->SetRelativeLocation_Direct({0.0f, 0.0f, -92.0f});
+		Mesh->SetRelativeRotation_Direct({0.0f, -90.0f, 0.0f});
+		Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickMontagesWhenNotRendered;
+		Mesh->bEnableUpdateRateOptimizations = false;
 	}
 
-	GarCharacterMovement = Cast<UGarCharacterMovementComponent>(GetCharacterMovement());
-
-	PhysicalAnimation = CreateDefaultSubobject<UGarPhysicalAnimationComponent>(PhysicalAnimationComponentName);
-
-	AbilitySystem = CreateOptionalDefaultSubobject<UGarAbilitySystemComponent>(AbilitySystemComponentName);
+	CharacterMover = CreateDefaultSubobject<UGarCharacterMoverComponent>(CharacterMoverComponentName);
+	if (CharacterMover && Mesh)
+	{
+		CharacterMover->SetPrimaryVisualComponent(Mesh);
+	}
 
 	MotionWarping = CreateDefaultSubobject<UMotionWarpingComponent>(MotionWarpingComponentName);
 
-	// This will prevent the editor from combining component details with actor details.
-	// Component details can still be accessed from the actor's component hierarchy.
+	PhysicalAnimation = CreateDefaultSubobject<UGarPhysicalAnimationComponent>(PhysicalAnimationComponentName);
 
-#if WITH_EDITOR
-	StaticClass()->FindPropertyByName(FName{TEXTVIEW("Mesh")})->SetPropertyFlags(CPF_DisableEditOnInstance);
-	StaticClass()->FindPropertyByName(FName{TEXTVIEW("CapsuleComponent")})->SetPropertyFlags(CPF_DisableEditOnInstance);
-	StaticClass()->FindPropertyByName(FName{TEXTVIEW("CharacterMovement")})->SetPropertyFlags(CPF_DisableEditOnInstance);
-#endif
+	AbilitySystem = CreateDefaultSubobject<UGarAbilitySystemComponent>(AbilitySystemComponentName);
 }
-
-#if WITH_EDITOR
-bool AGarCharacter::CanEditChange(const FProperty* Property) const
-{
-	return Super::CanEditChange(Property) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, bUseControllerRotationPitch) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, bUseControllerRotationYaw) &&
-		   Property->GetFName() != GET_MEMBER_NAME_CHECKED(ThisClass, bUseControllerRotationRoll);
-}
-#endif
 
 // IAbilitySystemInterface
 
@@ -111,22 +128,6 @@ void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) co
 	{
 		TagContainer.AddLeafTag(DesiredGait);
 	}
-	if (LocomotionMode.IsValid())
-	{
-		TagContainer.AddLeafTag(LocomotionMode);
-	}
-	if (GetRotationMode().IsValid())
-	{
-		TagContainer.AddLeafTag(GetRotationMode());
-	}
-	if (GetStance().IsValid())
-	{
-		TagContainer.AddLeafTag(GetStance());
-	}
-	if (GetGait().IsValid())
-	{
-		TagContainer.AddLeafTag(GetGait());
-	}
 	if (Perspective.IsValid())
 	{
 		TagContainer.AddLeafTag(Perspective);
@@ -135,6 +136,7 @@ void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) co
 	{
 		TagContainer.AddLeafTag(OverlayMode);
 	}
+	CharacterMover->AppendOwnedGameplayTags(TagContainer);
 }
 
 bool AGarCharacter::HasMatchingGameplayTag(FGameplayTag TagToCheck) const
@@ -167,7 +169,6 @@ void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredGait, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredRotationMode, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, OverlayMode, Parameters)
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, bIsLied, Parameters)
 }
 
 void AGarCharacter::PreRegisterAllComponents()
@@ -177,9 +178,9 @@ void AGarCharacter::PreRegisterAllComponents()
 
 	if (IsValid(Settings))
 	{
-		SetRotationMode(DesiredToActual(DesiredRotationMode));
-		SetStance(DesiredToActual(DesiredStance));
-		SetGait(DesiredToActual(DesiredGait));
+		InputRotationMode = DesiredToActual(DesiredRotationMode);
+		InputStance = DesiredToActual(DesiredStance);
+		InputGait = DesiredToActual(DesiredGait);
 	}
 
 	Super::PreRegisterAllComponents();
@@ -189,10 +190,21 @@ void AGarCharacter::PostInitializeComponents()
 {
 	// Make sure the mesh and animation blueprint are ticking after the character so they can access the most up-to-date character state.
 
-	GetMesh()->AddTickPrerequisiteActor(this);
+	if (Mesh)
+	{
+		AnimationInstance = Cast<UGarAnimationInstance>(Mesh->GetAnimInstance());
+	}
 
-	AnimationInstance = Cast<UGarAnimationInstance>(GetMesh()->GetAnimInstance());
-
+	if (CharacterMover)
+	{
+		CharacterMover->AddGameplayTag(InputRotationMode);
+		CharacterMover->AddGameplayTag(InputRotationMode);
+		CharacterMover->AddGameplayTag(InputRotationMode);
+		if (USceneComponent* UpdatedComponent = CharacterMover->GetUpdatedComponent())
+		{
+			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
+		}
+	}
 	// workaround for crash since 5.6
 	//PhysicalAnimation->SetSkeletalMeshComponent(GetMesh());
 
@@ -202,38 +214,27 @@ void AGarCharacter::PostInitializeComponents()
 	}
 
 	Super::PostInitializeComponents();
+
+	Capsule->GetUnscaledCapsuleSize(InitialCapsuleRadius, InitialCapsuleHalfHeight);
+	ProneCapsule->GetUnscaledCapsuleSize(InitialProneCapsuleRadius, InitialProneCapsuleHalfHeight);
+	InitialEyeHeight = BaseEyeHeight;
+	InitialMeshZ = Mesh->GetRelativeLocation().Z;
+	InitialProneCapsuleZ = ProneCapsule->GetRelativeLocation().Z;
+	InitialProneCapsuleX = ProneCapsule->GetRelativeLocation().X;
 }
 
 void AGarCharacter::BeginPlay()
 {
 	if(!ensure(IsValid(Settings))) return;
+	if(!ensure(IsValid(CharacterMover))) return;
 	if(!ensure(IsValid(PhysicalAnimation))) return;
 	if(!ensure(IsValid(MotionWarping))) return;
-	if(!ensure(GarCharacterMovement.IsValid())) return;
 	if(!ensure(AnimationInstance.IsValid())) return;
-
-	if(!ensureMsgf(!bUseControllerRotationPitch && !bUseControllerRotationYaw && !bUseControllerRotationRoll,
-					   TEXT("These settings are not allowed and must be turned off!"))) return;
 
 	Super::BeginPlay();
 
-	//if (GetLocalRole() >= ROLE_AutonomousProxy)
-	//{
-	//	// Teleportation of simulated proxies is detected differently, see
-	//	// AGarCharacter::PostNetReceiveLocationAndRotation() and AGarCharacter::OnRep_ReplicatedBasedMovement().
-
-	//	GetCapsuleComponent()->TransformUpdated.AddWeakLambda(
-	//		this, [this](USceneComponent*, const EUpdateTransformFlags, const ETeleportType TeleportType)
-	//		{
-	//			if (TeleportType != ETeleportType::None && AnimationInstance.IsValid())
-	//			{
-	//				AnimationInstance->MarkTeleported();
-	//			}
-	//		});
-	//}
-
 	// workaround for crash since 5.6
-	PhysicalAnimation->SetSkeletalMeshComponent(GetMesh());
+	PhysicalAnimation->SetSkeletalMeshComponent(Mesh);
 
 	// Update states to use the initial desired values.
 
@@ -277,6 +278,11 @@ void AGarCharacter::ClientUnPossessed_Implementation()
 	OnUnPossessed_Client.Broadcast(GetController());
 }
 
+FVector AGarCharacter::GetVelocity() const
+{
+	return GetMover()->GetVelocity();
+}
+
 void AGarCharacter::SetupPlayerInputComponent(UInputComponent* Input)
 {
 	Super::SetupPlayerInputComponent(Input);
@@ -284,73 +290,93 @@ void AGarCharacter::SetupPlayerInputComponent(UInputComponent* Input)
 	OnSetupPlayerInputComponent.Broadcast(Input);
 }
 
-void AGarCharacter::PostNetReceiveLocationAndRotation()
+void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdContext& InputCmd)
 {
-	// AActor::PostNetReceiveLocationAndRotation() function is only called on simulated proxies, so there is no need to check roles here.
+	// Generate user commands. Called right before the Character movement simulation will tick (for a locally controlled pawn)
+	// This isn't meant to be the best way of doing a camera system. It is just meant to show a couple of ways it may be done
+	// and to make sure we can keep distinct the movement, rotation, and view angles.
+	// Styles 1-3 are really meant to be used with a gamepad.
+	//
+	// Its worth calling out: the code that happens here is happening *outside* of the Character movement simulation. All we are doing
+	// is generating the input being fed into that simulation. That said, this means that A) the code below does not run on the server
+	// (and non controlling clients) and B) the code is not rerun during reconcile/resimulates. Use this information guide any
+	// decisions about where something should go (such as aim assist, lock on targeting systems, etc): it is hard to give absolute
+	// answers and will depend on the game and its specific needs. In general, at this time, I'd recommend aim assist and lock on 
+	// targeting systems to happen /outside/ of the system, i.e, here. But I can think of scenarios where that may not be ideal too.
 
-	const auto PreviousLocation{GetActorLocation()};
+	auto& CharacterInputs{InputCmd.InputCollection.FindOrAddMutableDataByType<FGarCharacterMoverInputs>()};
 
-	Super::PostNetReceiveLocationAndRotation();
-
-	// Detect teleportation of simulated proxies.
-
-	//auto bTeleported{static_cast<bool>(bSimGravityDisabled)};
-
-	//if (!bTeleported && !ReplicatedBasedMovement.HasRelativeLocation())
-	//{
-	//	const auto NewLocation{FRepMovement::RebaseOntoLocalOrigin(GetReplicatedMovement().Location, this)};
-
-	//	bTeleported |= FVector::DistSquared(PreviousLocation, NewLocation) > GarCharacterConstants::TeleportDistanceThresholdSquared;
-	//}
-
-	//if (bTeleported && AnimationInstance.IsValid())
-	//{
-	//	AnimationInstance->MarkTeleported();
-	//}
-}
-
-void AGarCharacter::OnRep_ReplicatedBasedMovement()
-{
-	// ACharacter::OnRep_ReplicatedBasedMovement() is only called on simulated proxies, so there is no need to check roles here.
-
-	const auto PreviousLocation{GetActorLocation()};
-
-	// Ignore server-replicated rotation on simulated proxies because GAR itself has full control over character rotation.
-
-	if (ReplicatedBasedMovement.HasRelativeRotation())
+	if (GetController() == nullptr)
 	{
-		FVector MovementBaseLocation;
-		FQuat MovementBaseRotation;
+		if (GetLocalRole() == ENetRole::ROLE_Authority && GetRemoteRole() == ENetRole::ROLE_SimulatedProxy)
+		{
+			static const FGarCharacterMoverInputs DoNothingInput;
+			// If we get here, that means this pawn is not currently possessed and we're choosing to provide default do-nothing input
+			CharacterInputs = DoNothingInput;
+		}
 
-		MovementBaseUtility::GetMovementBaseTransform(ReplicatedBasedMovement.MovementBase, ReplicatedBasedMovement.BoneName,
-													  MovementBaseLocation, MovementBaseRotation);
-
-		ReplicatedBasedMovement.Rotation = (MovementBaseRotation.Inverse() * GetActorQuat()).Rotator();
-	}
-	else
-	{
-		ReplicatedBasedMovement.Rotation = GetActorRotation();
+		// We don't have a local controller so we can't run the code below. This is ok. Simulated proxies will just use previous input when extrapolating
+		return;
 	}
 
-	Super::OnRep_ReplicatedBasedMovement();
+	CharacterInputs.ControlRotation = GetControlRotation();
+	CharacterInputs.SetMoveInput(EMoveInputType::DirectionalIntent, MovementInputVector);
 
-	// Detect teleportation of simulated proxies.
+	static float RotationMagMin(1e-3);
 
-	auto bTeleported{static_cast<bool>(bSimGravityDisabled)};
+	const bool bHasAffirmativeMoveInput = (CharacterInputs.GetMoveInput().Size() >= RotationMagMin);
+	
+	// Figure out intended orientation
+	CharacterInputs.OrientationIntent = FVector::ZeroVector;
 
-	if (!bTeleported && BasedMovement.HasRelativeLocation())
+	if (bHasAffirmativeMoveInput || GetRotationMode() == GarRotationModeTags::Aiming)
 	{
-		const auto NewLocation{
-			GetCharacterMovement()->OldBaseLocation + GetCharacterMovement()->OldBaseQuat.RotateVector(BasedMovement.Location)
-		};
+		if (GetRotationMode() == GarRotationModeTags::VelocityDirection)
+		{
+			// set the intent to the actors movement direction
+			CharacterInputs.OrientationIntent = CharacterInputs.GetMoveInput().GetSafeNormal();
+		}
+		else
+		{
+			// set intent to the the control rotation - often a player's camera rotation
+			CharacterInputs.OrientationIntent = CharacterInputs.ControlRotation.Vector().GetSafeNormal();
+		}
+	}
+	
+	CharacterInputs.bIsJumpPressed = bIsJumpPressed;
+	CharacterInputs.bIsJumpJustPressed = bIsJumpJustPressed;
+	CharacterInputs.SuggestedMovementMode = NAME_None;
 
-		bTeleported |= FVector::DistSquared(PreviousLocation, NewLocation) > GarCharacterConstants::TeleportDistanceThresholdSquared;
+	// Convert inputs to be relative to the current movement base (depending on options and state)
+	CharacterInputs.bUsingMovementBase = false;
+
+	if (bUseBaseRelativeMovement)
+	{
+		if (UPrimitiveComponent* MovementBase = CharacterMover->GetMovementBase())
+		{
+			FName MovementBaseBoneName = CharacterMover->GetMovementBaseBoneName();
+
+			FVector RelativeMoveInput, RelativeOrientDir;
+
+			UBasedMovementUtils::TransformWorldDirectionToBased(MovementBase, MovementBaseBoneName, CharacterInputs.GetMoveInput(), RelativeMoveInput);
+			UBasedMovementUtils::TransformWorldDirectionToBased(MovementBase, MovementBaseBoneName, CharacterInputs.OrientationIntent, RelativeOrientDir);
+
+			CharacterInputs.SetMoveInput(CharacterInputs.GetMoveInputType(), RelativeMoveInput);
+			CharacterInputs.OrientationIntent = RelativeOrientDir;
+
+			CharacterInputs.bUsingMovementBase = true;
+			CharacterInputs.MovementBase = MovementBase;
+			CharacterInputs.MovementBaseBoneName = MovementBaseBoneName;
+		}
 	}
 
-	//if (bTeleported && AnimationInstance.IsValid())
-	//{
-	//	AnimationInstance->MarkTeleported();
-	//}
+	CharacterInputs.RotationMode = InputRotationMode;
+	CharacterInputs.Stance = InputStance;
+	CharacterInputs.Gait = InputGait;
+
+	// Clear/consume temporal movement inputs. We are not consuming others in the event that the game world is ticking at a lower rate than the Mover simulation. 
+	// In that case, we want most input to carry over between simulation frames.
+	bIsJumpJustPressed = false;
 }
 
 void AGarCharacter::Tick(const float DeltaTime)
@@ -366,10 +392,13 @@ void AGarCharacter::Tick(const float DeltaTime)
 	TryAdjustControllRotation(DeltaTime);
 
 	RefreshCapsuleSize(DeltaTime);
+	CheckCanUnCrouchIfNeeded();
+	CheckCanCrouchIfNeeded();
 
-	RefreshInput(DeltaTime);
+	RefreshInput();
 
 	RefreshRotationMode();
+	ApplyDesiredStance();
 	RefreshSprintState();
 	RefreshGait();
 
@@ -378,11 +407,14 @@ void AGarCharacter::Tick(const float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AGarCharacter::Restart()
+void AGarCharacter::AddMovementInput(FVector WorldDirection, float ScaleValue, bool bForce)
 {
-	Super::Restart();
+	Internal_AddMovementInput(WorldDirection * ScaleValue, bForce);
+}
 
-	ApplyDesiredStance();
+FVector AGarCharacter::ConsumeMovementInputVector()
+{
+	return Internal_ConsumeMovementInputVector();
 }
 
 void AGarCharacter::SetOverlayMode(const FGameplayTag& NewOverlayMode)
@@ -458,67 +490,9 @@ void AGarCharacter::SetPerspective(const FGameplayTag& NewPerspective)
 
 void AGarCharacter::OnPerspectiveChanged_Implementation(const FGameplayTag& PreviousPerspective) {}
 
-void AGarCharacter::OnMovementModeChanged(const EMovementMode PreviousMovementMode, const uint8 PreviousCustomMode)
+FGameplayTag AGarCharacter::GetLocomotionMode() const
 {
-	// Use the character movement mode to set the locomotion mode to the right value. This allows you to have a
-	// custom set of movement modes but still use the functionality of the default character movement component.
-
-	switch (GetCharacterMovement()->MovementMode)
-	{
-		case MOVE_Walking:
-		case MOVE_NavWalking:
-			SetLocomotionMode(GarLocomotionModeTags::Grounded);
-			break;
-
-		case MOVE_Falling:
-		case MOVE_Flying:
-			SetLocomotionMode(GarLocomotionModeTags::InAir);
-			break;
-	}
-
-	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
-}
-
-void AGarCharacter::SetLocomotionMode(const FGameplayTag& NewLocomotionMode)
-{	
-	if (LocomotionMode == NewLocomotionMode)
-	{
-		return;
-	}
-
-	const auto PreviousLocomotionMode{LocomotionMode};
-
-	LocomotionMode = NewLocomotionMode;
-
-	NotifyLocomotionModeChanged(PreviousLocomotionMode);
-}
-
-void AGarCharacter::NotifyLocomotionModeChanged(const FGameplayTag& PreviousLocomotionMode)
-{
-	ApplyDesiredStance();
-
-	if (LocomotionMode == GarLocomotionModeTags::Grounded && PreviousLocomotionMode == GarLocomotionModeTags::InAir && IsValid(AbilitySystem))
-	{
-		if (!AbilitySystem->TryActivateAbilitiesBySingleTag(GarLocomotionActionTags::Landing))
-		{
-			static constexpr auto HasInputBrakingFrictionFactor{0.5f};
-			static constexpr auto NoInputBrakingFrictionFactor{3.0f};
-
-			GetCharacterMovement()->BrakingFrictionFactor = HasInput()
-															? HasInputBrakingFrictionFactor
-															: NoInputBrakingFrictionFactor;
-
-			static constexpr auto ResetDelay{0.5f};
-
-			GetWorldTimerManager().SetTimer(BrakingFrictionFactorResetTimer,
-											FTimerDelegate::CreateWeakLambda(this, [this]
-											{
-												GetCharacterMovement()->BrakingFrictionFactor = 0.0f;
-											}), ResetDelay, false);
-		}
-	}
-
-	OnLocomotionModeChanged(PreviousLocomotionMode);
+	return CharacterMover->GetLocomotionMode();
 }
 
 void AGarCharacter::OnLocomotionModeChanged_Implementation(const FGameplayTag& PreviousLocomotionMode) {}
@@ -535,22 +509,9 @@ void AGarCharacter::SetDesiredRotationMode(const FGameplayTag& NewDesiredRotatio
 	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredRotationMode, this)
 }
 
-void AGarCharacter::SetRotationMode(const FGameplayTag& NewRotationMode)
+FGameplayTag AGarCharacter::GetRotationMode() const
 {
-	const FGameplayTag PreviousRotationMode{GetRotationMode()};
-	if (PreviousRotationMode == NewRotationMode)
-	{
-		return;
-	}
-	GarCharacterMovement->SetRotationMode(NewRotationMode);
-	OnRotationModeChanged(PreviousRotationMode);
-}
-
-void AGarCharacter::OnRotationModeChanged_Implementation(const FGameplayTag& PreviousRotationMode) {}
-
-const FGameplayTag& AGarCharacter::GetRotationMode() const
-{
-	return GarCharacterMovement->GetRotationMode();
+	return CharacterMover->GetRotationMode();
 }
 
 void AGarCharacter::RefreshRotationMode()
@@ -560,11 +521,11 @@ void AGarCharacter::RefreshRotationMode()
 
 	if (Perspective == GarPerspectiveTags::FirstPerson)
 	{
-		if (LocomotionMode == GarLocomotionModeTags::InAir)
+		if (GetLocomotionMode() == GarLocomotionModeTags::InAir)
 		{
 			if (bAiming && Settings->bAllowAimingWhenInAir)
 			{
-				SetRotationMode(GarRotationModeTags::Aiming);
+				InputRotationMode = GarRotationModeTags::Aiming;
 			}
 
 			return;
@@ -574,11 +535,11 @@ void AGarCharacter::RefreshRotationMode()
 
 		if (bAiming && (!bSprinting || !Settings->bSprintHasPriorityOverAiming))
 		{
-			SetRotationMode(GarRotationModeTags::Aiming);
+			InputRotationMode = GarRotationModeTags::Aiming;
 		}
 		else
 		{
-			SetRotationMode(GarRotationModeTags::ViewDirection);
+			InputRotationMode = GarRotationModeTags::ViewDirection;
 		}
 
 		return;
@@ -586,15 +547,15 @@ void AGarCharacter::RefreshRotationMode()
 
 	// Third person and other view modes.
 
-	if (LocomotionMode == GarLocomotionModeTags::InAir)
+	if (GetLocomotionMode() == GarLocomotionModeTags::InAir)
 	{
 		if (bAiming && Settings->bAllowAimingWhenInAir)
 		{
-			SetRotationMode(GarRotationModeTags::Aiming);
+			InputRotationMode = GarRotationModeTags::Aiming;
 		}
 		else if (bAiming)
 		{
-			SetRotationMode(GarRotationModeTags::ViewDirection);
+			InputRotationMode = GarRotationModeTags::ViewDirection;
 		}
 
 		return;
@@ -606,30 +567,30 @@ void AGarCharacter::RefreshRotationMode()
 	{
 		if (bAiming && !Settings->bSprintHasPriorityOverAiming)
 		{
-			SetRotationMode(GarRotationModeTags::Aiming);
+			InputRotationMode = GarRotationModeTags::Aiming;
 		}
 		else if (Settings->bRotateToVelocityWhenSprinting)
 		{
-			SetRotationMode(GarRotationModeTags::VelocityDirection);
+			InputRotationMode = GarRotationModeTags::VelocityDirection;
 		}
 		else if (bAiming)
 		{
-			SetRotationMode(GarRotationModeTags::ViewDirection);
+			InputRotationMode = GarRotationModeTags::ViewDirection;
 		}
 		else
 		{
-			SetRotationMode(DesiredToActual(DesiredRotationMode));
+			InputRotationMode = DesiredToActual(DesiredRotationMode);
 		}
 	}
 	else // Not sprinting.
 	{
 		if (bAiming)
 		{
-			SetRotationMode(GarRotationModeTags::Aiming);
+			InputRotationMode = GarRotationModeTags::Aiming;
 		}
 		else
 		{
-			SetRotationMode(DesiredToActual(DesiredRotationMode));
+			InputRotationMode = DesiredToActual(DesiredRotationMode);
 		}
 	}
 }
@@ -644,123 +605,220 @@ void AGarCharacter::SetDesiredStance(const FGameplayTag& NewDesiredStance)
 	DesiredStance = NewDesiredStance;
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredStance, this)
-
-	ApplyDesiredStance();
 }
 
 void AGarCharacter::ApplyDesiredStance()
 {
 	if (!GetLocomotionAction().IsValid())
 	{
+		auto LocomotionMode{GetLocomotionMode()};
 		if (LocomotionMode == GarLocomotionModeTags::Grounded)
 		{
 			if (DesiredStance == GarDesiredStanceTags::Standing)
 			{
-				UnCrouch();
+				if(CanUnCrouch())
+				{
+					InputStance = GarStanceTags::Standing;
+				}
 			}
 			else if (DesiredStance == GarDesiredStanceTags::Crouching)
 			{
-				Crouch();
+				if(CanCrouch())
+				{
+					InputStance = GarStanceTags::Crouching;
+				}
 			}
 			else if (DesiredStance == GarDesiredStanceTags::Lying)
 			{
-				Lie();
+				if(CanLie())
+				{
+					InputStance = GarStanceTags::Lying;
+				}
 			}
 		}
 		else if (LocomotionMode == GarLocomotionModeTags::InAir)
 		{
-			UnCrouch();
+			if(CanUnCrouch())
+			{
+				InputStance = GarStanceTags::Standing;
+			}
 		}
 	}
 }
 
-bool AGarCharacter::CanCrouch() const
+void AGarCharacter::CheckCanUnCrouchIfNeeded()
 {
-	// This allows the ACharacter::Crouch() function to execute properly when bIsCrouched is true.
-	// TODO Wait for https://github.com/EpicGames/UnrealEngine/pull/9558 to be merged into the engine.
+	if (DesiredStance != GarDesiredStanceTags::Standing || GetStance() == GarStanceTags::Standing)
+	{
+		bUnCrouchBlocked = false;
+		return;
+	}
 
-	return bIsCrouched || Super::CanCrouch();
+	const UWorld* MyWorld = GetWorld();
+	const float UpOffset = 5.f;
+	FCollisionQueryParams CapsuleParams(SCENE_QUERY_STAT(UnCrouchTrace), false, this);
+	FCollisionResponseParams ResponseParam;
+	Capsule->InitSweepCollisionParams(CapsuleParams, ResponseParam);
+	float Radius, HalfHeight;
+	Capsule->GetScaledCapsuleSize(Radius, HalfHeight);
+
+	// Compensate for the difference between current capsule size and standing size
+	const FCollisionShape StandingCapsuleShape = FCollisionShape::MakeCapsule({InitialCapsuleRadius, InitialCapsuleRadius, InitialCapsuleHalfHeight - 0.5f * UpOffset});
+	const ECollisionChannel CollisionChannel = Capsule->GetCollisionObjectType();
+
+	auto Location{GetActorLocation() + GetActorUpVector() * (InitialCapsuleHalfHeight + UpOffset - HalfHeight)};
+
+	bUnCrouchBlocked = MyWorld->OverlapBlockingTestByChannel(Location, FQuat::Identity, CollisionChannel, StandingCapsuleShape, CapsuleParams, ResponseParam);
 }
 
-void AGarCharacter::Crouch(bool bClientSimulation)
+void AGarCharacter::CheckCanCrouchIfNeeded()
 {
-	Super::Crouch(bClientSimulation);
-	if (GarCharacterMovement.IsValid())
+	if (DesiredStance != GarDesiredStanceTags::Crouching || GetStance() == GarStanceTags::Crouching)
 	{
-		GarCharacterMovement->bWantsToLie = false;
+		bCrouchBlocked = false;
+		return;
+	}
+
+	const UWorld* MyWorld = GetWorld();
+	const float UpOffset = 5.f;
+	FCollisionQueryParams CapsuleParams(SCENE_QUERY_STAT(UnCrouchTrace), false, this);
+	FCollisionResponseParams ResponseParam;
+	Capsule->InitSweepCollisionParams(CapsuleParams, ResponseParam);
+	float Radius, HalfHeight;
+	Capsule->GetScaledCapsuleSize(Radius, HalfHeight);
+
+	// Compensate for the difference between current capsule size and standing size
+	const FCollisionShape StandingCapsuleShape = FCollisionShape::MakeCapsule({InitialCapsuleRadius, InitialCapsuleRadius, CrouchedCapsuleHalfHeight - 0.5f * UpOffset});
+	const ECollisionChannel CollisionChannel = Capsule->GetCollisionObjectType();
+
+	auto Location{GetActorLocation() + GetActorUpVector() * (CrouchedCapsuleHalfHeight + UpOffset - HalfHeight)};
+
+	bCrouchBlocked = MyWorld->OverlapBlockingTestByChannel(Location, FQuat::Identity, CollisionChannel, StandingCapsuleShape, CapsuleParams, ResponseParam);
+}
+
+void AGarCharacter::CheckCanLieIfNeeded()
+{
+	if (DesiredStance != GarDesiredStanceTags::Lying || GetStance() == GarStanceTags::Lying)
+	{
+		bLieBlocked = false;
+		return;
 	}
 }
 
-void AGarCharacter::UnCrouch(bool bClientSimulation)
+bool AGarCharacter::CanCrouch_Implementation() const
 {
-	Super::UnCrouch(bClientSimulation);
-	if (GarCharacterMovement.IsValid())
+	return !bCrouchBlocked;
+}
+
+bool AGarCharacter::CanUnCrouch_Implementation() const
+{
+	return !bUnCrouchBlocked;
+}
+
+bool AGarCharacter::CanLie_Implementation() const
+{
+	return !bLieBlocked;
+}
+
+void AGarCharacter::Crouch()
+{
+	SetDesiredStance(GarDesiredStanceTags::Crouching);
+}
+
+void AGarCharacter::UnCrouch()
+{
+	SetDesiredStance(GarDesiredStanceTags::Standing);
+}
+
+void AGarCharacter::Lie()
+{
+	SetDesiredStance(GarDesiredStanceTags::Lying);
+}
+
+FGameplayTag AGarCharacter::GetStance() const
+{
+	return CharacterMover->GetStance();
+}
+
+void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
+{
+	TargetRadius = FMath::Max(0.f, TargetRadius);
+	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
+
+	const float OldUnscaledHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+	const float OldUnscaledRadius = Capsule->GetUnscaledCapsuleRadius();
+	const float HalfHeight = FMath::FInterpConstantTo(OldUnscaledHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
+	const float Radius = FMath::FInterpConstantTo(OldUnscaledRadius, TargetRadius, DeltaTime, RadiusSpeed);
+	
+	if (OldUnscaledHalfHeight != HalfHeight || OldUnscaledRadius != Radius)
 	{
-		GarCharacterMovement->bWantsToLie = false;
+		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
+		Capsule->SetCapsuleSize(Radius, HalfHeight, false);
+		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (HalfHeight - InitialCapsuleHalfHeight) + (Radius - InitialCapsuleRadius);
+
+		if (IsValid(Mesh))
+		{
+			Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (HalfHeight - InitialCapsuleHalfHeight) + (Radius - InitialCapsuleRadius);
+		}
+
+		AddActorLocalOffset(FVector{0.0, 0.0, HalfHeight - OldUnscaledHalfHeight});
 	}
 }
 
-void AGarCharacter::OnStartCrouch(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust)
+void AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
 {
-	auto* PredictionData{GetCharacterMovement()->GetPredictionData_Client_Character()};
+	TargetRadius = FMath::Max(0.f, TargetRadius);
+	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
 
-	if (PredictionData != nullptr && GetLocalRole() <= ROLE_SimulatedProxy &&
-	    ScaledHalfHeightAdjust > 0.0f && IsPlayingNetworkedRootMotionMontage())
+	const float OldUnscaledHalfHeight = ProneCapsule->GetUnscaledCapsuleHalfHeight();
+	const float OldUnscaledRadius = ProneCapsule->GetUnscaledCapsuleRadius();
+	const float HalfHeight = FMath::FInterpConstantTo(OldUnscaledHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
+	const float Radius = FMath::FInterpConstantTo(OldUnscaledRadius, TargetRadius, DeltaTime, RadiusSpeed);
+	
+	if (OldUnscaledHalfHeight != HalfHeight || OldUnscaledRadius != Radius)
 	{
-		// The code below essentially undoes the changes that will be made later at the end of the UCharacterMovementComponent::Crouch()
-		// function because they literally break network smoothing when crouching while the root motion montage is playing, causing the
-		// mesh to take an incorrect location for a while.
-
-		// TODO Check the need for this fix in future engine versions.
-
-		PredictionData->MeshTranslationOffset.Z += ScaledHalfHeightAdjust;
-		PredictionData->OriginalMeshTranslationOffset = PredictionData->MeshTranslationOffset;
-	}
-
-	K2_OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	if (!bIsLied)
-	{
-		SetStance(GarStanceTags::Crouching);
+		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
+		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
+		ProneCapsule->GetRelativeLocation_DirectMutable().X = InitialProneCapsuleX + (HalfHeight - InitialProneCapsuleHalfHeight);
 	}
 }
 
-void AGarCharacter::OnEndCrouch(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust)
+void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 {
-	auto* PredictionData{GetCharacterMovement()->GetPredictionData_Client_Character()};
-
-	if (PredictionData != nullptr && GetLocalRole() <= ROLE_SimulatedProxy &&
-		ScaledHalfHeightAdjust > 0.0f && IsPlayingNetworkedRootMotionMontage())
-	{
-		// Same fix as in AGarCharacter::OnStartCrouch().
-
-		PredictionData->MeshTranslationOffset.Z -= ScaledHalfHeightAdjust;
-		PredictionData->OriginalMeshTranslationOffset = PredictionData->MeshTranslationOffset;
-	}
-
-	K2_OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	SetStance(GarStanceTags::Standing);
-}
-
-void AGarCharacter::SetStance(const FGameplayTag& NewStance)
-{
-	const FGameplayTag PreviousStance{GetStance()};
-
-	if (PreviousStance == NewStance)
+	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
 	{
 		return;
 	}
 
-	GarCharacterMovement->SetStance(NewStance);
-	OnStanceChanged(PreviousStance);
-}
-
-void AGarCharacter::OnStanceChanged_Implementation(const FGameplayTag& PreviousStance) {}
-
-const FGameplayTag& AGarCharacter::GetStance() const
-{
-	return GarCharacterMovement->GetStance();
+	// Update capsule height and radius
+	auto Stance{GetStance()};
+	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
+	auto RadiusSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleRadius - LiedCapsuleRadius) / CapsuleUpdateSpeed : .0f};
+	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+	if (Stance == GarStanceTags::Lying)
+	{
+		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedEyeHeight - LiedEyeHeight) / CapsuleUpdateSpeed : .0f};
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, LiedEyeHeight, DeltaTime, EyeHeightSpeed);
+		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, LiedCapsuleHalfHeight, RadiusSpeed);
+		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+	}
+	else if (Stance == GarStanceTags::Crouching)
+	{
+		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, CrouchedEyeHeight, DeltaTime, EyeHeightSpeed);
+		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
+		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+	}
+	else
+	{
+		auto EyeHeightSpeed{ CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f };
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, InitialEyeHeight, DeltaTime, EyeHeightSpeed);
+		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
+		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+	}
 }
 
 void AGarCharacter::SetDesiredGait(const FGameplayTag& NewDesiredGait)
@@ -785,33 +843,9 @@ void AGarCharacter::ServerSetDesiredGait_Implementation(const FGameplayTag& NewD
 	SetDesiredGait(NewDesiredGait);
 }
 
-void AGarCharacter::SetGait(const FGameplayTag& NewGait)
+FGameplayTag AGarCharacter::GetGait() const
 {
-	const FGameplayTag PreviousGait{GetGait()};
-	auto ActualNewGait{LimitGaitIfNeeded(NewGait)};
-	if (PreviousGait == ActualNewGait)
-	{
-		return;
-	}
-	GarCharacterMovement->SetGait(ActualNewGait);
-	OnGaitChanged(PreviousGait);
-}
-
-void AGarCharacter::OnGaitChanged_Implementation(const FGameplayTag& PreviousGait) {}
-
-const FGameplayTag& AGarCharacter::GetGait() const
-{
-	return GarCharacterMovement->GetGait();
-}
-
-void AGarCharacter::RefreshGait()
-{
-	if (LocomotionMode != GarLocomotionModeTags::Grounded)
-	{
-		return;
-	}
-
-	SetGait(DesiredToActual(DesiredGait));
+	return CharacterMover->GetGait();
 }
 
 FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag& NewGait) const
@@ -820,15 +854,30 @@ FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag&
 	// to be in and can be determined by the desired gait, the rotation mode, the stance, etc. For example,
 	// if you wanted to force the character into a walking state while indoors, this could be done here.
 
-	if (NewGait == GarGaitTags::Sprinting && !CanSprint())
+	if (NewGait == GarGaitTags::Sprinting && CanSprint())
 	{
-		return GarGaitTags::Running;
+		return GarGaitTags::Sprinting;
 	}
 
-	return NewGait;
+	if (NewGait == GarGaitTags::Walking)
+	{
+		return GarGaitTags::Walking;
+	}
+
+	return MovementInputVector.Size2D() < (GetGait() == GarGaitTags::Running ? 0.5 : 0.75) ? GarGaitTags::Walking : GarGaitTags::Running;
 }
 
-bool AGarCharacter::CanSprint() const
+void AGarCharacter::RefreshGait()
+{
+	if (GetLocomotionMode() != GarLocomotionModeTags::Grounded)
+	{
+		return;
+	}
+
+	InputGait = LimitGaitIfNeeded(DesiredToActual(DesiredGait));
+}
+
+bool AGarCharacter::CanSprint_Implementation() const
 {
 	// Determine if the character can sprint based on the rotation mode and input direction.
 	// If the character is in view direction rotation mode, only allow sprinting if there is
@@ -858,13 +907,10 @@ void AGarCharacter::SetInputDirection(FVector NewInputDirection)
 	InputDirection = NewInputDirection.GetSafeNormal();
 }
 
-void AGarCharacter::RefreshInput(const float DeltaTime)
+void AGarCharacter::RefreshInput()
 {
-	if (GetLocalRole() >= ROLE_AutonomousProxy)
-	{
-		SetInputDirection(GetCharacterMovement()->GetCurrentAcceleration() / GetCharacterMovement()->GetMaxAcceleration());
-	}
-
+	MovementInputVector = ConsumeMovementInputVector();
+	SetInputDirection(MovementInputVector);
 	if (HasInput())
 	{
 		InputYawAngle = UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(InputDirection));
@@ -911,18 +957,30 @@ void AGarCharacter::RefreshSprintState()
 {
 	if (Settings->bAutoTurnOffSprint
 		&& (GetLocomotionAction().IsValid() || GetLocomotionMode() == GarLocomotionModeTags::Grounded)
-		&& GetVelocity().Size2D() < GarCharacterMovement->GetGaitSettings().WalkSpeed && GetDesiredGait() == GarDesiredGaitTags::Sprinting)
+		&& (GetVelocity().Size2D() < Settings->SprintOffSpeed || MovementInputVector.Size2D() < 0.75f)
+		&& GetDesiredGait() == GarDesiredGaitTags::Sprinting)
 	{
 		SetDesiredGait(GarDesiredGaitTags::Running);
 	}
 }
 
+bool AGarCharacter::CanJump_Implementation() const
+{
+	return GetStance() == GarStanceTags::Standing && !GetLocomotionAction().IsValid() && GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+}
+
 void AGarCharacter::Jump()
 {
-	if (GetStance() == GarStanceTags::Standing && !GetLocomotionAction().IsValid() && LocomotionMode == GarLocomotionModeTags::Grounded)
+	if (CanJump())
 	{
-		Super::Jump();
+		bIsJumpJustPressed = true;
+		bIsJumpPressed = true;
 	}
+}
+
+void AGarCharacter::StopJumping()
+{
+	bIsJumpPressed = false;
 }
 
 float AGarCharacter::GetAimAmount() const
@@ -955,137 +1013,4 @@ bool AGarCharacter::HasServerRole() const
 {
 	auto NetMode{GetWorld()->GetNetMode()};
 	return (NetMode == NM_DedicatedServer || NetMode == NM_ListenServer) && GetLocalRole() == ROLE_Authority;
-}
-
-bool AGarCharacter::CanLie() const
-{
-	return true;
-}
-
-void AGarCharacter::Lie()
-{
-	if (GarCharacterMovement.IsValid())
-	{
-		if (CanLie())
-		{
-			GarCharacterMovement->bWantsToLie = true;
-		}
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-		else if (!GarCharacterMovement->CanEverCrouch())
-		{
-			UE_LOG(LogGar, Log, TEXT("%s is trying to lie, but lying is disabled on this character! (check CharacterMovement NavAgentSettings)"), *GetName());
-		}
-#endif
-	}
-}
-
-void AGarCharacter::OnStartLie(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust)
-{
-	auto* PredictionData{GetCharacterMovement()->GetPredictionData_Client_Character()};
-
-	if (PredictionData != nullptr && GetLocalRole() <= ROLE_SimulatedProxy &&
-		ScaledHalfHeightAdjust > 0.0f && IsPlayingNetworkedRootMotionMontage())
-	{
-		// The code below essentially undoes the changes that will be made later at the end of the UCharacterMovementComponent::Crouch()
-		// function because they literally break network smoothing when crouching while the root motion montage is playing, causing the
-		// mesh to take an incorrect location for a while.
-
-		// TODO Check the need for this fix in future engine versions.
-
-		PredictionData->MeshTranslationOffset.Z += ScaledHalfHeightAdjust;
-		PredictionData->OriginalMeshTranslationOffset = PredictionData->MeshTranslationOffset;
-	}
-
-	K2_OnStartLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	SetStance(GarStanceTags::Lying);
-}
-
-void AGarCharacter::OnEndLie(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust)
-{
-	auto* PredictionData{GetCharacterMovement()->GetPredictionData_Client_Character()};
-
-	if (PredictionData != nullptr && GetLocalRole() <= ROLE_SimulatedProxy &&
-		ScaledHalfHeightAdjust > 0.0f && IsPlayingNetworkedRootMotionMontage())
-	{
-		// Same fix as in AGarCharacter::OnStartCrouch().
-
-		PredictionData->MeshTranslationOffset.Z -= ScaledHalfHeightAdjust;
-		PredictionData->OriginalMeshTranslationOffset = PredictionData->MeshTranslationOffset;
-	}
-
-	K2_OnEndLie(HalfHeightAdjust, ScaledHalfHeightAdjust);
-
-	if (bIsCrouched)
-	{
-		SetStance(GarStanceTags::Crouching);
-	}
-	else
-	{
-		SetStance(GarStanceTags::Standing);
-	}
-}
-
-void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
-{
-	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
-	{
-		return;
-	}
-
-	// Update capsule height and radius
-	auto DefaultCharacter = GetDefault<AGarCharacter>(GetClass());
-	auto InitialEyeHeight = DefaultCharacter->BaseEyeHeight;
-	auto InitialHalfHeight = DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight();
-	auto InitialRadius = DefaultCharacter->GetCapsuleComponent()->GetUnscaledCapsuleRadius();
-	auto CrouchedHalfHeight = GarCharacterMovement->GetCrouchedHalfHeight();
-	auto EyeHeightSpeed = CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f;
-	auto HalfHeightSpeed = CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialHalfHeight - CrouchedHalfHeight) / CapsuleUpdateSpeed : .0f;
-	if (bIsLied)
-	{
-		UpdateCapsule(DeltaTime, CrouchedEyeHeight, EyeHeightSpeed, CrouchedHalfHeight, HalfHeightSpeed, InitialRadius, 0.0f);
-	}
-	else if (bIsCrouched)
-	{
-		UpdateCapsule(DeltaTime, CrouchedEyeHeight, EyeHeightSpeed, CrouchedHalfHeight, HalfHeightSpeed, InitialRadius, 0.0f);
-	}
-	else
-	{
-		UpdateCapsule(DeltaTime, InitialEyeHeight, EyeHeightSpeed, InitialHalfHeight, HalfHeightSpeed, InitialRadius, 0.0f);
-	}
-}
-
-void AGarCharacter::UpdateCapsule(float DeltaTime, float EyeHeight, float EyeHeightSpeed, float HalfHeight, float HalfHeightSpeed, float Radius, float RadiusSpeed)
-{
-	BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, EyeHeight, DeltaTime, EyeHeightSpeed);
-	BaseTranslationOffset.Z = FMath::FInterpConstantTo(BaseTranslationOffset.Z, -HalfHeight, DeltaTime, HalfHeightSpeed);
-
-	GarCharacterMovement->UpdateCapsuleSize(DeltaTime, HalfHeight, HalfHeightSpeed, Radius, RadiusSpeed);
-}
-
-void AGarCharacter::SetIsLied(bool bNewIsLied)
-{
-	if (bIsLied != bNewIsLied)
-	{
-		bIsLied = bNewIsLied;
-		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, bIsLied, this)
-	}
-}
-
-void AGarCharacter::OnRep_IsLied()
-{
-	if (GarCharacterMovement.IsValid())
-	{
-		if (bIsLied)
-		{
-			GarCharacterMovement->bWantsToLie = true;
-			GarCharacterMovement->Lie(true);
-		}
-		else
-		{
-			GarCharacterMovement->bWantsToLie = false;
-			GarCharacterMovement->UnLie(true);
-		}
-		GarCharacterMovement->bNetworkUpdateReceived = true;
-	}
 }

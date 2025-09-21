@@ -2,7 +2,7 @@
 
 #include "CharacterTasks/GarRagdollingTask.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"

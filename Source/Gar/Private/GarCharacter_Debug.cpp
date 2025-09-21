@@ -123,7 +123,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()))
 	{
 		DisplayDebugHeader(Canvas, MantlingHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
-		DisplayDebugMantling(Canvas, Scale, HorizontalLocation, VerticalLocation);
+		DisplayDebugTraversal(Canvas, Scale, HorizontalLocation, VerticalLocation);
 	}
 	else
 	{
@@ -322,14 +322,12 @@ void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
 
 	VerticalLocation += RowOffset;
 
-	static const auto LocomotionModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, LocomotionMode), false))
-	};
+	static const auto LocomotionModeText{FText::AsCultureInvariant(TEXT("LocomotionMode"))};
 
 	Text.Text = LocomotionModeText;
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(LocomotionMode).ToString(), false));
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetLocomotionMode()).ToString(), false));
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
@@ -490,7 +488,7 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	DebugStringBuilder.Reset();
 
 #if ENABLE_DRAW_DEBUG
-	const auto FeetLocation{GetActorLocation() - FVector{0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight()}};
+	const auto FeetLocation{GetActorLocation() - FVector{0.0f, 0.0f, Capsule->GetScaledCapsuleHalfHeight()}};
 
 	DrawDebugDirectionalArrow(GetWorld(),
 	                          FeetLocation + FVector{0.0f, 0.0f, 3.0f},
@@ -540,8 +538,8 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	VerticalLocation += RowOffset;
 
 #if ENABLE_DRAW_DEBUG
-	DrawDebugCapsule(GetWorld(), GetActorLocation(), GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),
-	                 GetCapsuleComponent()->GetScaledCapsuleRadius(), GetActorRotation().Quaternion(),
+	DrawDebugCapsule(GetWorld(), GetActorLocation(), Capsule->GetScaledCapsuleHalfHeight(),
+	                 Capsule->GetScaledCapsuleRadius(), GetActorRotation().Quaternion(),
 	                 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 #endif
 }
@@ -591,8 +589,7 @@ void AGarCharacter::DisplayDebugTraces(const UCanvas* Canvas, const float Scale,
 	VerticalLocation += RowOffset;
 }
 
-void AGarCharacter::DisplayDebugMantling(const UCanvas* Canvas, const float Scale,
-                                         const float HorizontalLocation, float& VerticalLocation) const
+void AGarCharacter::DisplayDebugTraversal(const UCanvas* Canvas, const float Scale, const float HorizontalLocation, float& VerticalLocation) const
 {
 	VerticalLocation += 4.0f * Scale;
 

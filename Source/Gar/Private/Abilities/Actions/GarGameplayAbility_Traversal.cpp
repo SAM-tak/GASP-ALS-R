@@ -9,8 +9,9 @@
 #include "AnimationWarpingLibrary.h"
 #include "MotionWarpingComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "MoveLibrary/FloorQueryUtils.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarAnimationInstance.h"
 #include "GarGameplayTags.h"
@@ -90,7 +91,7 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	ChooserInputs.bHasBackLedge = true;
 	ChooserInputs.bHasBackFloor = TraceResult.bHasBackFloor;
 	ChooserInputs.ObstacleHeight = UE_REAL_TO_FLOAT(
-		Params.FrontLedgeLocation.Z - Character->GetActorLocation().Z + Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
+		Params.FrontLedgeLocation.Z - Character->GetActorLocation().Z + Character->GetCapsule()->GetScaledCapsuleHalfHeight()
 	);
 	ChooserInputs.ObstacleDepth = UE_REAL_TO_FLOAT(FVector::DistXY(Params.FrontLedgeLocation, Params.BackLedgeLocation));
 	ChooserInputs.BackFloorFall = Params.BackLedgeLocation.Z - Params.BackFloorLocation.Z;
@@ -153,7 +154,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName())};
 #endif
 
-	const auto* Capsule{Character->GetCapsuleComponent()};
+	const auto* Capsule{Character->GetCapsule()};
 
 	const auto CapsuleScale{Capsule->GetComponentScale().Z};
 	const auto CapsuleRadius{Capsule->GetScaledCapsuleRadius()};
@@ -175,7 +176,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	auto ForwardTraceStart{CapsuleBottomLocation - ForwardTraceDirection * CapsuleRadius};
 	ForwardTraceStart.Z += (TraceSettings.LedgeHeight.X + TraceSettings.LedgeHeight.Y) *
-							0.5f * CapsuleScale - UCharacterMovementComponent::MAX_FLOOR_DIST;
+							0.5f * CapsuleScale - UGarCharacterMoverComponent::MAX_FLOOR_DIST;
 
 	auto ForwardTraceEnd{ForwardTraceStart + ForwardTraceDirection * (CapsuleRadius + (TraceSettings.ReachDistance + 1.0f) * CapsuleScale)};
 
@@ -215,14 +216,14 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	const FVector FrontLedgeTraceStart{
 		ForwardTraceHit.ImpactPoint.X + TargetLocationOffset.X,
 		ForwardTraceHit.ImpactPoint.Y + TargetLocationOffset.Y,
-		CapsuleBottomLocation.Z + LedgeHeightDelta + 2.5f * TraceCapsuleRadius + UCharacterMovementComponent::MIN_FLOOR_DIST
+		CapsuleBottomLocation.Z + LedgeHeightDelta + 2.5f * TraceCapsuleRadius + UGarCharacterMoverComponent::MIN_FLOOR_DIST
 	};
 
 	const FVector FrontLedgeTraceEnd{
 		FrontLedgeTraceStart.X,
 		FrontLedgeTraceStart.Y,
 		CapsuleBottomLocation.Z +
-		TraceSettings.LedgeHeight.GetMin() * CapsuleScale + TraceCapsuleRadius - UCharacterMovementComponent::MAX_FLOOR_DIST
+		TraceSettings.LedgeHeight.GetMin() * CapsuleScale + TraceCapsuleRadius - UGarCharacterMoverComponent::MAX_FLOOR_DIST
 	};
 
 	FHitResult FrontLedgeTraceHit;
@@ -237,7 +238,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	    !IsValid(TargetPrimitive) ||
 		TargetPrimitive->GetComponentVelocity().SizeSquared() > FMath::Square(TargetPrimitiveSpeedThreshold) ||
 	    !TargetPrimitive->CanCharacterStepUp(Character) ||
-		Character->GetCharacterMovement()->IsWalkable(ForwardTraceHit))
+		Character->GetMover()->IsWalkable(ForwardTraceHit))
 	{
 #if ENABLE_DRAW_DEBUG
 		if (bDisplayDebug)
@@ -268,7 +269,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	if (SlopeAngleCos < SlopeAngleThresholdCos ||
 	    ApproximateSlopeAngleCos < SlopeAngleThresholdCos ||
-	    !Character->GetCharacterMovement()->IsWalkable(FrontLedgeTraceHit))
+	    !Character->GetMover()->IsWalkable(FrontLedgeTraceHit))
 	{
 #if ENABLE_DRAW_DEBUG
 		if (bDisplayDebug)
@@ -290,7 +291,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	static const FName TargetLocationTraceTag{FString::Printf(TEXT("%hs (Target Location Overlap)"), __FUNCTION__)};
 
-	const FVector TargetLocation{FrontLedgeTraceHit.ImpactPoint + FVector{0.0f, 0.0f, UCharacterMovementComponent::MIN_FLOOR_DIST}};
+	const FVector TargetLocation{FrontLedgeTraceHit.ImpactPoint + FVector{0.0f, 0.0f, UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
 
 	const FVector TargetCapsuleLocation{TargetLocation.X, TargetLocation.Y, TargetLocation.Z + CapsuleHalfHeight};
 
@@ -374,12 +375,13 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	static const FName EndLocationTraceTag{FString::Printf(TEXT("%hs (End Location Overlap)"), __FUNCTION__)};
 
 	const FVector EndLocationTraceStart{TargetLocation + TargetDirection * (MinimumDepth + CapsuleRadius + Character->GetVelocity().Size2D() * RisingTime)
-		+ FVector{0.f, 0.f, TraceCapsuleRadius + UCharacterMovementComponent::MIN_FLOOR_DIST}};
+		+ FVector{0.f, 0.f, TraceCapsuleRadius + UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
 
 	const FVector EndLocationTraceEnd{
 		EndLocationTraceStart.X,
 		EndLocationTraceStart.Y,
-		Character->GetCharacterMovement()->GetActorFeetLocation().Z
+		//Character->GetMover()->GetActorFeetLocation().Z
+		0.0f //Character->GetActorFeetLocation().Z // TODO
 	};
 
 	FHitResult EndLocationTraceHit;
@@ -605,23 +607,23 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 
 	// Reset network smoothing.
 
-	Character->GetCharacterMovement()->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
+	//Character->GetMover()->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
 
-	Character->GetMesh()->SetRelativeLocationAndRotation(Character->GetBaseTranslationOffset(),
-		Character->GetMesh()->IsUsingAbsoluteRotation()
-		? Character->GetActorQuat() * Character->GetBaseRotationOffset()
-		: Character->GetBaseRotationOffset(), false, nullptr, ETeleportType::TeleportPhysics);
+	//Character->GetMesh()->SetRelativeLocationAndRotation(Character->GetBaseTranslationOffset(),
+	//	Character->GetMesh()->IsUsingAbsoluteRotation()
+	//	? Character->GetActorQuat() * Character->GetBaseRotationOffset()
+	//	: Character->GetBaseRotationOffset(), false, nullptr, ETeleportType::TeleportPhysics);
 
 	// Clear the character movement mode and set the locomotion action to traverse.
 
-	Character->GetCharacterMovement()->FlushServerMoves();
-	Character->GetCharacterMovement()->SetMovementMode(MOVE_Custom);
-	Character->GetGarCharacterMovement()->SetMovementModeLocked(true);
-	Character->GetCharacterMovement()->SetBase(CurrentTargetPrimitive.Get());
-	Character->GetCharacterMovement()->Velocity = FVector::ZeroVector;
+	//Character->GetMover()->FlushServerMoves();
+	//Character->GetMover()->SetMovementMode(MOVE_Custom);
+	//Character->GetMover()->SetMovementModeLocked(true);
+	//Character->GetMover()->SetBase(CurrentTargetPrimitive.Get());
+	//Character->GetMover()->SetVelocity(FVector::ZeroVector);
 	Character->SetActorRotation((Parameters.FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D().ToOrientationRotator());
 
-	auto CapsuleComponent{Character->GetCapsuleComponent()};
+	auto CapsuleComponent{Character->GetCapsule()};
 	OriginalUnscaledCapsuleHalfHeight = CapsuleComponent->GetUnscaledCapsuleHalfHeight();
 	OriginalUnscaledCapsuleRadius = CapsuleComponent->GetUnscaledCapsuleRadius();
 	CapsuleComponent->SetCapsuleHalfHeight(CapsuleHalfHeightWhileInAction);
@@ -641,13 +643,13 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 void UGarGameplayAbility_Traversal::Tick_Implementation(const float DeltaTime)
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	auto* CharacterMovement{Character->GetGarCharacterMovement()};
+	auto* CharacterMovement{Character->GetMover()};
 
-	if (CharacterMovement->MovementMode != MOVE_Custom)
-	{
-		EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
-		return;
-	}
+	//if (Mover->MovementMode != MOVE_Custom)
+	//{
+	//	EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+	//	return;
+	//}
 
 #if ENABLE_DRAW_DEBUG
 	if (UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName()))
@@ -674,22 +676,22 @@ void UGarGameplayAbility_Traversal::EndAbility(const FGameplayAbilitySpecHandle 
 
 	auto* Character{GetGarCharacterFromActorInfo()};
 	auto* AnimInstance{Character->GetGarAnimationInstace()};
-	auto CharacterMovement{Character->GetGarCharacterMovement()};
+	auto Mover{Character->GetMover()};
 	auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
 
 	AbilitySystem->RemoveLooseGameplayTags(ActionTags);
 
-	auto CapsuleComponent{Character->GetCapsuleComponent()};
+	auto CapsuleComponent{Character->GetCapsule()};
 	CapsuleComponent->SetCapsuleHalfHeight(OriginalUnscaledCapsuleHalfHeight);
 	CapsuleComponent->SetCapsuleRadius(OriginalUnscaledCapsuleRadius);
 
-	CharacterMovement->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 
-	CharacterMovement->SetMovementModeLocked(false);
-	if (CharacterMovement->MovementMode == MOVE_Custom)
-	{
-		CharacterMovement->SetMovementMode(MOVE_Walking);
-	}
+	//Mover->SetMovementModeLocked(false);
+	//if (Mover->MovementMode == MOVE_Custom)
+	//{
+	//	Mover->SetMovementMode(MOVE_Walking);
+	//}
 
 	Character->ForceNetUpdate();
 }

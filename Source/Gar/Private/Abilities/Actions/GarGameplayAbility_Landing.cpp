@@ -3,7 +3,7 @@
 #include "Abilities/Actions/GarGameplayAbility_Landing.h"
 
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarGameplayTags.h"
 #include "Utility/GarMath.h"

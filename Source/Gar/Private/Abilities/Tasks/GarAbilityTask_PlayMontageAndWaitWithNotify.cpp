@@ -3,11 +3,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilityTask_PlayMontageAndWaitWithNotify)
 
-UGarAbilityTask_PlayMontageAndWaitWithNotify::UGarAbilityTask_PlayMontageAndWaitWithNotify(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer)
-{
-}
-
 UGarAbilityTask_PlayMontageAndWaitWithNotify* UGarAbilityTask_PlayMontageAndWaitWithNotify::CreatePlayMontageAndWaitWithNotify(UGameplayAbility* OwningAbility,
 	FName TaskInstanceName, UAnimMontage *MontageToPlay, float Rate, FName StartSection, bool bStopWhenAbilityEnds, float AnimRootMotionTranslationScale, float StartTimeSeconds, bool bAllowInterruptAfterBlendOut)
 {

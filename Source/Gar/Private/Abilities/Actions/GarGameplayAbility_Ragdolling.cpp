@@ -3,7 +3,7 @@
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "Abilities/Tasks/GarAbilityTask_Tick.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarAnimationInstance.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarPhysicalAnimationComponent.h"
@@ -76,6 +76,7 @@ void UGarGameplayAbility_Ragdolling::ActivateAbility(const FGameplayAbilitySpecH
 
 	if (IsActive())
 	{
+		auto* Character{GetGarCharacterFromActorInfo()};
 		TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Ragdolling")));
 		if (TickTask.IsValid())
 		{

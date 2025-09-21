@@ -3,13 +3,13 @@
 #include "EnhancedInputComponent.h"
 #include "Animation/AnimMontage.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "Abilities/GarGameplayAbility.h"
 #include "Abilities/GarAbilitySet.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilitySystemComponent)
 
-UGarAbilitySystemComponent::UGarAbilitySystemComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+UGarAbilitySystemComponent::UGarAbilitySystemComponent()
 {
 	SetIsReplicated(true);
 	SetReplicationMode(EGameplayEffectReplicationMode::Mixed);

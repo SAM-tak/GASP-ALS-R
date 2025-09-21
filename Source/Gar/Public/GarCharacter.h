@@ -1,48 +1,95 @@
 #pragma once
 
-#include "GameFramework/Character.h"
+#include "CoreMinimal.h"
+#include "MoverSimulationTypes.h"
+#include "GameFramework/Pawn.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayCueInterface.h"
 #include "GameplayTagAssetInterface.h"
 #include "GarGameplayTags.h"
 #include "GarCharacter.generated.h"
 
+class UCapsuleComponent;
+class UMotionWarpingComponent;
 class UGarCharacterSettings;
 class UGarAnimationInstance;
-class UGarCharacterMovementComponent;
+class UGarCharacterMoverComponent;
 class UGarPhysicalAnimationComponent;
 class UGarAbilitySystemComponent;
-class UMotionWarpingComponent;
 
-DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnControllerChanged, AController*);
+DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnPossessorChanged, AController*);
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnSetupPlayerInputComponent, UInputComponent*);
-
-DECLARE_EVENT_FourParams(AGarCharacter, FGarCharacter_OnDebugDisplayDelegate, UCanvas*, const FDebugDisplayInfo&, float&, float&);
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnRefresh, float);
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnChangeGameplayTag, const FGameplayTag &);
 
+#if !UE_BUILD_SHIPPING
+DECLARE_EVENT_FourParams(AGarCharacter, FGarCharacter_OnDebugDisplayDelegate, UCanvas*, const FDebugDisplayInfo&, float&, float&);
+#endif
+
 UCLASS(Abstract, AutoExpandCategories = ("GarCharacter|Settings"))
-class GAR_API AGarCharacter : public ACharacter, public IAbilitySystemInterface, public IGameplayCueInterface, public IGameplayTagAssetInterface
+class GAR_API AGarCharacter : public APawn,
+	public IMoverInputProducerInterface, public IAbilitySystemInterface, public IGameplayCueInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
 
 	friend UGarPhysicalAnimationComponent;
+	friend UGarCharacterMoverComponent;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
-	TObjectPtr<UGarPhysicalAnimationComponent> PhysicalAnimation;
+	/** The root capsule collider associated with this Character (optional sub-object). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCapsuleComponent> Capsule;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
-	TObjectPtr<UGarAbilitySystemComponent> AbilitySystem;
+	/** The alternative capsule collider for prone (optional sub-object). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCapsuleComponent> ProneCapsule;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter")
+	/** The main skeletal mesh associated with this Character (optional sub-object). */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USkeletalMeshComponent> Mesh;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarCharacterMoverComponent> CharacterMover;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
 	TObjectPtr<UMotionWarpingComponent> MotionWarping;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarAbilitySystemComponent> AbilitySystem;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarPhysicalAnimationComponent> PhysicalAnimation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	TObjectPtr<UGarCharacterSettings> Settings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float CrouchedCapsuleHalfHeight{55.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float CrouchedEyeHeight{45.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float LiedCapsuleHalfHeight{40.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float LiedCapsuleRadius{30.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float LiedProneCapsuleHalfHeight{40.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float LiedEyeHeight{35.0f};
+
+	// Whether or not we author our movement inputs relative to whatever base we're standing on, or leave them in world space. Only applies if standing on a base of some sort.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarCharacter|Settings")
+	bool bUseBaseRelativeMovement = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NavMovement|MovementCapabilities", meta = (DisplayName = "Can Lie"))
+	uint8 NavAgentProps_bCanLie : 1{true};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
 	FGameplayTag DesiredRotationMode{GarDesiredRotationModeTags::ViewDirection};
@@ -56,17 +103,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
 	FGameplayTag OverlayMode{GarOverlayModeTags::Default};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	TWeakObjectPtr<UGarCharacterMovementComponent> GarCharacterMovement;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	TWeakObjectPtr<UGarAnimationInstance> AnimationInstance;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FVector InputDirection;
@@ -77,32 +118,65 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FRotator PendingFocalRotationRelativeAdjustment{ForceInit};
 
-	FTimerHandle BrakingFrictionFactorResetTimer;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialEyeHeight{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialCapsuleHalfHeight{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialCapsuleRadius{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialProneCapsuleHalfHeight{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialProneCapsuleRadius{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialMeshZ{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialProneCapsuleX{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
+	float InitialProneCapsuleZ{0.0f};
 
 public:
-#if WITH_EDITOR
-	virtual bool CanEditChange(const FProperty* Property) const override;
-#endif
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual void PreRegisterAllComponents() override;
 
 	virtual void PostInitializeComponents() override;
 
-	FORCEINLINE UGarCharacterMovementComponent* GetGarCharacterMovement() const { return GarCharacterMovement.Get(); }
+	/** Name of the PhysicalAnimationComponent. */
+	static FName CapsuleComponentName;
 
-	FORCEINLINE UGarAnimationInstance* GetGarAnimationInstace() const { return AnimationInstance.Get(); }
+	// Accessor for the character's skeletal mesh component
+	FORCEINLINE UCapsuleComponent* GetCapsule() const { return Capsule; }
+
+	/** Name of the PhysicalAnimationComponent. */
+	static FName ProneCapsuleComponentName;
+
+	// Accessor for the character's skeletal mesh component
+	FORCEINLINE UCapsuleComponent* GetProneCapsule() const { return ProneCapsule; }
+
+	/** Name of the PhysicalAnimationComponent. */
+	static FName SkeletalMeshComponentName;
+
+	// Accessor for the character's skeletal mesh component
+	FORCEINLINE USkeletalMeshComponent* GetMesh() const { return Mesh; }
+
+	/** Name of the GarCharacterMoverComponent. */
+	static FName CharacterMoverComponentName;
+
+	// Accessor for the actor's movement component
+	FORCEINLINE UGarCharacterMoverComponent* GetMover() const { return CharacterMover; }
 
 	/** Name of the PhysicalAnimationComponent. */
 	static FName PhysicalAnimationComponentName;
 
 	/** Returns PhysicalAnimation subobject **/
-	template <class T>
-	FORCEINLINE_DEBUGGABLE T* GetPhysicalAnimation() const
-	{
-		return CastChecked<T>(PhysicalAnimation, ECastCheckedType::NullAllowed);
-	}
 	FORCEINLINE UGarPhysicalAnimationComponent* GetPhysicalAnimation() const { return PhysicalAnimation; }
 
 	/** Name of the PhysicalAnimationComponent. */
@@ -115,23 +189,26 @@ public:
 
 	FORCEINLINE UMotionWarpingComponent* GetMotionWarping() const { return MotionWarping; }
 
+	// Accessor for the mesh's GarAnimationInstance
+	FORCEINLINE UGarAnimationInstance* GetGarAnimationInstace() const { return AnimationInstance.Get(); }
+
 protected:
 	virtual void BeginPlay() override;
 
 	virtual void SetupPlayerInputComponent(UInputComponent* Input) override;
 
-public:
-	FGarCharacter_OnControllerChanged OnPossessed_Client;
+	// Entry point for input production. Do not override. To extend in derived character types,
+	// override OnProduceInput for native types or implement "Produce Input" blueprint event
+	virtual void ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdContext& InputCmdResult) override;
 
-	FGarCharacter_OnControllerChanged OnUnPossessed_Client;
+public:
+	FGarCharacter_OnPossessorChanged OnPossessed_Client;
+
+	FGarCharacter_OnPossessorChanged OnUnPossessed_Client;
 
 	FGarCharacter_OnSetupPlayerInputComponent OnSetupPlayerInputComponent;
 
 	FGarCharacter_OnRefresh OnRefresh;
-
-	virtual void PostNetReceiveLocationAndRotation() override;
-
-	virtual void OnRep_ReplicatedBasedMovement() override;
 
 	virtual void Tick(float DeltaTime) override;
 
@@ -139,7 +216,9 @@ public:
 
 	virtual void UnPossessed() override;
 
-	virtual void Restart() override;
+	virtual void AddMovementInput(FVector WorldDirection, float ScaleValue = 1.0f, bool bForce = false) override;
+
+	virtual FVector ConsumeMovementInputVector() override;
 
 	// IAbilitySystemInterface
 
@@ -152,7 +231,7 @@ public:
 	virtual bool HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
 	virtual bool HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
 
-	void ReplaceGarAbilitySystem(UGarAbilitySystemComponent *NewAbilitySystem);
+	virtual FVector GetVelocity() const override;
 
 private:
 	UFUNCTION(Client, Reliable)
@@ -163,10 +242,19 @@ private:
 
 	mutable FGameplayTagContainer TempTagContainer;
 
+	// Locomotion
+
+public:
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	FGameplayTag GetLocomotionMode() const;
+
+	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
+	void OnLocomotionModeChanged(const FGameplayTag& PreviousLocomotionMode);
+
 	// Perspective
 
 public:
-	const FGameplayTag& GetPerspective() const;
+	FORCEINLINE const FGameplayTag& GetPerspective() const { return Perspective; }
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	void SetPerspective(const FGameplayTag& NewPerspective);
@@ -176,28 +264,10 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
 	void OnPerspectiveChanged(const FGameplayTag& PreviousPerspective);
 
-	// Locomotion Mode
-
-public:
-	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode = 0) override;
-
-public:
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	const FGameplayTag& GetLocomotionMode() const;
-
-protected:
-	void SetLocomotionMode(const FGameplayTag& NewLocomotionMode);
-
-	UFUNCTION()
-	virtual void NotifyLocomotionModeChanged(const FGameplayTag& PreviousLocomotionMode);
-
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
-	void OnLocomotionModeChanged(const FGameplayTag& PreviousLocomotionMode);
-
 	// Desired Rotation Mode
 
 public:
-	const FGameplayTag& GetDesiredRotationMode() const;
+	FORCEINLINE const FGameplayTag& GetDesiredRotationMode() const { return DesiredRotationMode; }
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredRotationMode"))
 	void SetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode);
@@ -205,20 +275,17 @@ public:
 	// Rotation Mode
 
 public:
-	const FGameplayTag& GetRotationMode() const;
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	FGameplayTag GetRotationMode() const;
 
 protected:
-	void SetRotationMode(const FGameplayTag& NewRotationMode);
-
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
-	void OnRotationModeChanged(const FGameplayTag& PreviousRotationMode);
 
 	void RefreshRotationMode();
 
 	// Desired Stance
 
 public:
-	const FGameplayTag& GetDesiredStance() const;
+	FORCEINLINE const FGameplayTag& GetDesiredStance() const { return DesiredStance; }
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredStance"))
 	void SetDesiredStance(const FGameplayTag& NewDesiredStance);
@@ -229,29 +296,51 @@ protected:
 	// Stance
 
 public:
-	virtual bool CanCrouch() const override;
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	FGameplayTag GetStance() const;
 
-	virtual void Crouch(bool bClientSimulation = false) override;
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
+	bool CanCrouch() const;
 
-	virtual void UnCrouch(bool bClientSimulation = false) override;
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
+	bool CanUnCrouch() const;
 
-	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
+	bool CanLie() const;
 
-	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void Crouch();
 
-public:
-	const FGameplayTag& GetStance() const;
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void UnCrouch();
+
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void Lie();
 
 protected:
-	void SetStance(const FGameplayTag& NewStance);
+	void CheckCanUnCrouchIfNeeded();
 
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
-	void OnStanceChanged(const FGameplayTag& PreviousStance);
+	void CheckCanCrouchIfNeeded();
+
+	void CheckCanLieIfNeeded();
+
+	void UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
+
+	void UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
+
+	void RefreshCapsuleSize(float DeltaTime);
+
+private:
+	FVector MovementInputVector = FVector::ZeroVector;
+
+	bool bUnCrouchBlocked = false;
+	bool bCrouchBlocked = false;
+	bool bLieBlocked = false;
 
 	// Desired Gait
 
 public:
-	const FGameplayTag& GetDesiredGait() const;
+	FORCEINLINE const FGameplayTag& GetDesiredGait() const { return DesiredGait; }
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredGait"))
 	void SetDesiredGait(const FGameplayTag& NewDesiredGait);
@@ -264,26 +353,22 @@ private:
 
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	const FGameplayTag& GetGait() const;
+	FGameplayTag GetGait() const;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
+	bool CanSprint() const;
 
 protected:
-	void SetGait(const FGameplayTag& NewGait);
-
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
-	void OnGaitChanged(const FGameplayTag& PreviousGait);
-
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
 	FGameplayTag LimitGaitIfNeeded(const FGameplayTag& NewGait) const;
 
 private:
 	void RefreshGait();
 
-	bool CanSprint() const;
-
 	// Overlay Mode
 
 public:
-	const FGameplayTag& GetOverlayMode() const;
+	FORCEINLINE const FGameplayTag& GetOverlayMode() const { return OverlayMode; }
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewOverlayMode"))
 	void SetOverlayMode(const FGameplayTag& NewOverlayMode);
@@ -313,21 +398,30 @@ public:
 	// Input
 
 public:
-	const FVector& GetInputDirection() const;
+	FORCEINLINE const FVector& GetInputDirection() const { return InputDirection; }
 
-	inline bool HasInput() const { return InputDirection.SizeSquared() > UE_KINDA_SMALL_NUMBER; }
+	FORCEINLINE bool HasInput() const { return InputDirection.SizeSquared() > UE_KINDA_SMALL_NUMBER; }
 
-	inline float GetInputYawAngle() const { return InputYawAngle; }
+	FORCEINLINE float GetInputYawAngle() const { return InputYawAngle; }
 
 protected:
 	void SetInputDirection(FVector NewInputDirection);
 
-	virtual void RefreshInput(float DeltaTime);
+	virtual void RefreshInput();
 
 private:
-	inline bool HasSpeed() const { return GetVelocity().Size2D() > 1.0; }
+	FORCEINLINE bool HasSpeed() const { return GetVelocity().Size2D() > 1.0; }
 
 	bool IsMoving() const;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "GarCharacter|State", Transient)
+	FGameplayTag InputRotationMode{GarRotationModeTags::ViewDirection};
+
+	UPROPERTY(VisibleInstanceOnly, Category = "GarCharacter|State", Transient)
+	FGameplayTag InputStance{GarStanceTags::Standing};
+
+	UPROPERTY(VisibleInstanceOnly, Category = "GarCharacter|State", Transient)
+	FGameplayTag InputGait{GarGaitTags::Running};
 
 	// Controll Rotation Adjustment
 
@@ -346,7 +440,18 @@ private:
 	// Jumping
 
 public:
-	virtual void Jump() override;
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
+	bool CanJump() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void Jump();
+
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void StopJumping();
+
+private:
+	bool bIsJumpJustPressed = false;
+	bool bIsJumpPressed = false;
 
 	// ADS
 
@@ -372,45 +477,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	bool HasServerRole() const;
 
-	// Others
-
-public:
-	bool IsLied() const;
-
-	void SetIsLied(bool bNewIsLied);
-
-	UFUNCTION(BlueprintCallable, Category = Character)
-	virtual bool CanLie() const;
-
-	UFUNCTION(BlueprintCallable, Category = Character)
-	virtual void Lie();
-
-	virtual void OnStartLie(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust);
-
-	virtual void OnEndLie(const float HalfHeightAdjust, const float ScaledHalfHeightAdjust);
-
-	UFUNCTION(BlueprintImplementableEvent, Meta = (DisplayName = "OnStartLie", ScriptName = "OnStartLie"))
-	void K2_OnStartLie(float HalfHeightAdjust, float ScaledHalfHeightAdjust);
-
-	UFUNCTION(BlueprintImplementableEvent, Meta = (DisplayName = "OnEndLie", ScriptName = "OnEndLie"))
-	void K2_OnEndLie(float HalfHeightAdjust, float ScaledHalfHeightAdjust);
-
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings", Meta = (ForceUnits = "s"))
-	float CapsuleUpdateSpeed;
-
-	UPROPERTY(BlueprintReadOnly, Category = "GarCharacter|State", replicatedUsing = OnRep_IsLied)
-	uint32 bIsLied : 1;
-
-private:
-	void RefreshCapsuleSize(float DeltaTime);
-
-	void UpdateCapsule(float DeltaTime, float EyeHeight, float EyeHeightSpeed, float HalfHeight, float HalfHeightSpeed, float Radius, float RadiusSpeed);
-
-	/** Handle Lying replicated from server */
-	UFUNCTION()
-	virtual void OnRep_IsLied();
-
 #if !UE_BUILD_SHIPPING
 	// Debug
 
@@ -435,51 +501,6 @@ private:
 
 	void DisplayDebugTraces(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 
-	void DisplayDebugMantling(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
+	void DisplayDebugTraversal(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 #endif // !UE_BUILD_SHIPPING
 };
-
-inline void AGarCharacter::ReplaceGarAbilitySystem(UGarAbilitySystemComponent* NewAbilitySystem)
-{
-	AbilitySystem = NewAbilitySystem;
-}
-
-inline const FGameplayTag& AGarCharacter::GetDesiredRotationMode() const
-{
-	return DesiredRotationMode;
-}
-
-inline const FGameplayTag& AGarCharacter::GetDesiredStance() const
-{
-	return DesiredStance;
-}
-
-inline const FGameplayTag& AGarCharacter::GetDesiredGait() const
-{
-	return DesiredGait;
-}
-
-inline const FGameplayTag& AGarCharacter::GetLocomotionMode() const
-{
-	return LocomotionMode;
-}
-
-inline const FGameplayTag& AGarCharacter::GetPerspective() const
-{
-	return Perspective;
-}
-
-inline const FGameplayTag& AGarCharacter::GetOverlayMode() const
-{
-	return OverlayMode;
-}
-
-inline const FVector& AGarCharacter::GetInputDirection() const
-{
-	return InputDirection;
-}
-
-inline bool AGarCharacter::IsLied() const
-{
-	return bIsLied;
-}

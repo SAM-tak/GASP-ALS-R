@@ -12,9 +12,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGarAbilityTask_OnTickDelegate, floa
 UCLASS()
 class GAR_API UGarAbilityTask_Tick : public UAbilityTask
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
+	UGarAbilityTask_Tick();
+
 	UPROPERTY(BlueprintAssignable)
 	FGarAbilityTask_OnTickDelegate OnTick;
 

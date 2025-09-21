@@ -3,7 +3,7 @@
 
 #include "Engine/InputDelegateBinding.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarAbilitySystemComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility)
@@ -116,9 +116,17 @@ void UGarGameplayAbility::StopCurrentMontage(float OverrideBlendOutTime) const
 void UGarGameplayAbility::SetInputBlocked(bool bBlocked) const
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	if (Character->GetLocalRole() < ROLE_Authority)
+	auto* PlayerController{Cast<APlayerController>(Character->GetController())};
+	if (PlayerController && Character->GetLocalRole() < ROLE_Authority)
 	{
-		Character->GetGarCharacterMovement()->SetInputBlocked(bBlocked);
+		if(bBlocked)
+		{
+			Character->DisableInput(PlayerController);
+		}
+		else
+		{
+			Character->EnableInput(PlayerController);
+		}
 	}
 }
 

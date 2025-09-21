@@ -3,10 +3,10 @@
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
 #include "Curves/CurveFloat.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "MotionWarpingComponent.h"
 #include "GarAnimationInstanceProxy.h"
 #include "GarCharacter.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarConstants.h"
 #include "LinkedAnimLayers/GarLayeringAnimInstance.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
@@ -58,32 +58,10 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 		return;
 	}
 
-	auto* Mesh{GetSkelMeshComponent()};
-
-	if (Mesh->IsUsingAbsoluteRotation() && IsValid(Mesh->GetAttachParent()))
-	{
-		const auto& ParentTransform{Mesh->GetAttachParent()->GetComponentTransform()};
-
-		// Manually synchronize mesh rotation with character rotation.
-
-		Mesh->MoveComponent(FVector::ZeroVector, ParentTransform.GetRotation() * Character->GetBaseRotationOffset(), false);
-
-		// Re-cache proxy transforms to match the modified mesh transform.
-
-		const auto& Proxy{GetProxyOnGameThread<FAnimInstanceProxy>()};
-
-		const_cast<FTransform&>(Proxy.GetComponentTransform()) = Mesh->GetComponentTransform();
-		const_cast<FTransform&>(Proxy.GetComponentRelativeTransform()) = Mesh->GetRelativeTransform();
-		const_cast<FTransform&>(Proxy.GetActorTransform()) = Character->GetActorTransform();
-	}
-
-#if WITH_EDITORONLY_DATA && ENABLE_DRAW_DEBUG
-	bDisplayDebugTraces = UGarUtility::ShouldDisplayDebugForActor(Character.Get(), UGarConstants::TracesDebugDisplayName());
-#endif
-
 	PreviousGameplayTags = CurrentGameplayTags;
 	Character->GetOwnedGameplayTags(CurrentGameplayTags);
 
+	auto* Mesh{GetSkelMeshComponent()};
 	CharacterTransform = Mesh->GetComponentTransform();
 
 	const auto WarpTarget {Character->GetMotionWarping()->FindWarpTarget(FName(TEXTVIEW("FrontLedge")))};
@@ -173,21 +151,24 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 {
 	check(IsInGameThread())
 
-	const auto* Movement{Character->GetCharacterMovement()};
+	const auto* Mover{Character->GetMover()};
 
-	CharacterMovement.Acceleration = Movement->GetCurrentAcceleration();
-	CharacterMovement.MaxAcceleration = Movement->GetMaxAcceleration();
-	CharacterMovement.MaxBrakingDeceleration = Movement->GetMaxBrakingDeceleration();
-	CharacterMovement.VelocityLastFrame = CharacterMovement.Velocity;
-	CharacterMovement.Velocity = Movement->Velocity;
-	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - CharacterMovement.VelocityLastFrame) / FMath::Max(DeltaTime, 0.001f);
+	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - Mover->GetVelocity()) / FMath::Max(DeltaTime, 0.001f);
+	CharacterMovement.Velocity = Mover->GetVelocity();
+	CharacterMovement.CurrentMaxSpeed = Mover->CurrentMaxSpeed;
+	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
+	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
+	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
+	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
 
+	if (Mover->GetLocomotionMode() == GarLocomotionModeTags::InAir)
+	{
+		CharacterMovement.LatestVelocityInAir = CharacterMovement.Velocity;
+	}
 	if (CharacterMovement.Velocity.Size2D() > 5.0f)
 	{
 		CharacterMovement.LastNonZeroVelocity = CharacterMovement.Velocity;
 	}
-
-	CharacterMovement.WalkableFloorZ = Movement->GetWalkableFloorZ();
 }
 
 float UGarAnimationInstance::GetCurveValueClamped01(const FName& CurveName) const

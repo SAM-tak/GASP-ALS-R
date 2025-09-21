@@ -13,13 +13,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
+#include "MoveLibrary/FloorQueryUtils.h"
 #include "GarCharacter.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
 #include "GarAnimationInstance.h"
 #include "GarLinkedAnimationInstance.h"
 #include "GarAbilitySystemComponent.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
 #include "Settings/GarRagdollingSettings.h"
@@ -552,11 +553,11 @@ void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
 
 		if (RagdollingState.bGrounded)
 		{
-			Character->SetLocomotionMode(GarLocomotionModeTags::Grounded);
+			//Character->SetLocomotionMode(GarLocomotionModeTags::Grounded);
 		}
 		else
 		{
-			Character->SetLocomotionMode(GarLocomotionModeTags::InAir);
+			//Character->SetLocomotionMode(GarLocomotionModeTags::InAir);
 		}
 	}
 	else
@@ -804,12 +805,12 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	bFreezing = false;
 	PrevActorLocation = Character->GetActorLocation();
 
-	auto* CharacterMovement{Character->GetGarCharacterMovement()};
+	auto* Mover{Character->GetMover()};
 
 	// Initialize bFacingUpward flag by current movement direction. If Velocity is Zero, it is chosen bFacingUpward is true.
 	// And determine target yaw angle of the character.
 
-	const auto PoleDirection = CharacterMovement->Velocity.GetSafeNormal2D();
+	const auto PoleDirection = Mover->GetVelocity().GetSafeNormal2D();
 
 	if (PoleDirection.SizeSquared2D() > 0.0)
 	{
@@ -829,12 +830,12 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	// Disable movement corrections and reset network smoothing.
 
-	CharacterMovement->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
-	CharacterMovement->bIgnoreClientMovementErrorChecksAndCorrection = true;
+	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
+	//Mover->bIgnoreClientMovementErrorChecksAndCorrection = true;
 
 	// Disable capsule collision. other physics states will be changed by physical aniamtion process
 
-	Character->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (Character->IsLocallyControlled() || (Character->GetLocalRole() >= ROLE_Authority && !IsValid(Character->GetController())))
 	{
@@ -843,17 +844,17 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	// Clear the character movement mode and set the locomotion action to ragdolling.
 
-	CharacterMovement->SetMovementMode(MOVE_Custom);
-	CharacterMovement->SetMovementModeLocked(true);
+	//Mover->SetMovementMode(MOVE_Custom);
+	//Mover->SetMovementModeLocked(true);
 
 	RagdollingAnimInstance->Refresh(*this, true);
 }
 
 FVector FGarRagdollingState::TraceGround()
 {
-	auto* CharacterMovement{Character->GetGarCharacterMovement()};
+	auto* Mover{Character->GetMover()};
 
-	const auto Capsule{Character->GetCapsuleComponent()};
+	const auto Capsule{Character->GetCapsule()};
 	const auto CapsuleHalfHeight{Capsule->GetScaledCapsuleHalfHeight()};
 
 	const auto TraceStart{!TargetLocation.IsZero() ? FVector{TargetLocation}: Character->GetActorLocation()};
@@ -865,11 +866,11 @@ FVector FGarRagdollingState::TraceGround()
 													{__FUNCTION__, false, Character},
 													Capsule->GetCollisionResponseToChannel(Capsule->GetCollisionObjectType()));
 
-	bGrounded = CharacterMovement->IsWalkable(Hit);
+	bGrounded = Mover->IsWalkable(Hit);
 
 	return {
 		TraceStart.X, TraceStart.Y,
-		bGrounded ? Hit.ImpactPoint.Z + CapsuleHalfHeight + UCharacterMovementComponent::MIN_FLOOR_DIST : TraceStart.Z
+		bGrounded ? Hit.ImpactPoint.Z + CapsuleHalfHeight + UGarCharacterMoverComponent::MIN_FLOOR_DIST : TraceStart.Z
 	};
 }
 
@@ -885,7 +886,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		return;
 	}
 
-	auto* CharacterMovement{Character->GetGarCharacterMovement()};
+	auto* Mover{Character->GetMover()};
 
 	auto NetMode{Character->GetWorld()->GetNetMode()};
 	bool bCharacterSelf{Character->IsCharacterSelf()};
@@ -896,9 +897,9 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	}
 
 	// just for info.
-	CharacterMovement->Velocity = FMath::VInterpTo(CharacterMovement->Velocity,
-												   DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
-												   DeltaTime, Settings->VelocityInterpolationSpeed);
+	Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
+											DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
+											DeltaTime, Settings->VelocityInterpolationSpeed);
 	PrevActorLocation = Character->GetActorLocation();
 
 	// Prevent the capsule from going through the ground when the ragdoll is lying on the ground.
@@ -975,7 +976,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	if (Settings->bAllowFreeze)
 	{
-		RootBoneSpeed = CharacterMovement->Velocity.Size();
+		RootBoneSpeed = Mover->GetVelocity().Size();
 
 		RagdollingAnimInstance->UnFreeze();
 
@@ -1030,7 +1031,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	if (ElapsedTime <= Settings->StartBlendTime && ElapsedTime + DeltaTime > Settings->StartBlendTime)
 	{
 		// Re-initialize bFacingUpward flag by current movement direction. If Velocity is Zero, it is chosen bFacingUpward is true.
-		bFacingUpward = Character->GetActorForwardVector().Dot(CharacterMovement->Velocity.GetSafeNormal2D()) <= 0.0f;
+		bFacingUpward = Character->GetActorForwardVector().Dot(Mover->GetVelocity().GetSafeNormal2D()) <= 0.0f;
 	}
 
 	if (bPreviousGrounded != bGrounded)
@@ -1051,17 +1052,17 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnimation)
 {
-	auto CharacterMovement{Character->GetGarCharacterMovement()};
+	auto Mover{Character->GetMover()};
 
 	RagdollingAnimInstance->Freeze();
 	RagdollingAnimInstance->Refresh(*this, false);
 
 	// Re-enable capsule collision.
 
-	Character->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
-	CharacterMovement->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
-	CharacterMovement->bIgnoreClientMovementErrorChecksAndCorrection = false;
+	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
+	//Mover->bIgnoreClientMovementErrorChecksAndCorrection = false;
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
@@ -1096,14 +1097,14 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 	// If the ragdoll is on the ground, set the movement mode to walking and play a get up montage. If not, set
 	// the movement mode to falling and update the character movement velocity to match the last ragdoll velocity.
 
-	CharacterMovement->SetMovementModeLocked(false);
+	//Mover->SetMovementModeLocked(false);
 
 	if (bGrounded)
 	{
-		CharacterMovement->SetMovementMode(MOVE_Walking);
+		//Mover->SetMovementMode(MOVE_Walking);
 	}
 	else
 	{
-		CharacterMovement->SetMovementMode(MOVE_Falling);
+		//Mover->SetMovementMode(MOVE_Falling);
 	}
 }

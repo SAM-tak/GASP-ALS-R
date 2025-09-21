@@ -15,7 +15,10 @@ class AGarCharacter;
 UCLASS()
 class GAR_API UGarAbilitySystemComponent : public UAbilitySystemComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UGarAbilitySystemComponent();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbilitySystem|Settings")

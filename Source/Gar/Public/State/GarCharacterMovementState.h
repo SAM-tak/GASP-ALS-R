@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "GarCharacterMovementState.generated.h"
 
 USTRUCT(BlueprintType)
@@ -7,27 +8,31 @@ struct GAR_API FGarCharacterMovementState
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	FVector Velocity{ForceInit};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector VelocityLastFrame{ForceInit};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	FVector VelocityAcceleration{ForceInit};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	FVector LatestVelocityInAir{ForceInit};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	FVector LastNonZeroVelocity{ForceInit};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FVector Acceleration{ForceInit};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	FVector GravityAcceleration{ForceInit};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0))
-	float MaxAcceleration{0.0f};
+	/** X = Forward Speed, Y = Strafe Speed, Z = Backwards Speed */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	FVector CurrentMaxSpeed{ForceInit};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0))
-	float MaxBrakingDeceleration{0.0f};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	float CurrentAcceleration{0.0f};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	float WalkableFloorZ{0.0f};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	float CurrentDeceleration{0.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CharacterMovement")
+	TObjectPtr<class UMoverTrajectoryPredictor> TrajectoryPredictor;
 };

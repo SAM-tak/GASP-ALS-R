@@ -11,7 +11,7 @@
 UCLASS()
 class GAR_API UGarAbilityTask_PlayLocalMontage : public UAbilityTask
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)

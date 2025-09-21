@@ -13,7 +13,7 @@ void UGarGameplayAbility_Action::EndAbility(const FGameplayAbilitySpecHandle Han
 	auto* Character{GetGarCharacterFromActorInfo()};
 	if (Character)
 	{
-		auto& LocomotionMode{Character->GetLocomotionMode()};
+		auto LocomotionMode{Character->GetLocomotionMode()};
 		if (LocomotionMode == GarLocomotionModeTags::Grounded)
 		{
 			auto& DesiredStance{Character->GetDesiredStance()};

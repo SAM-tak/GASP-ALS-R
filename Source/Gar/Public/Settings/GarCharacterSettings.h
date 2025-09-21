@@ -23,6 +23,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ClampMax = 180, ForceUnits = "deg/s"))
 	float AdjustControllRotationSpeed{15.0f};
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceUnits = "s"))
+	float CapsuleUpdateSpeed{0.3f};
+
 	// When FirstPerson Or RotateToVelocityWhenSprinting is False And DesiredRotationMode is not VelocityDirection,
 	// sprint will allow if View Relative Angle less than this value. 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ClampMax = 180, ForceUnits = "deg"))
@@ -42,6 +45,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	uint8 bAutoTurnOffSprint : 1{false};
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
+	float SprintOffSpeed = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
 	FGameplayTagContainer OverlayModeTags{GarOverlayModeTags::Root};

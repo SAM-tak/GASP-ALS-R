@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GarCharacter.h"
 #include "GarAbilitySystemComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 

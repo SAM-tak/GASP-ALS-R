@@ -5,7 +5,7 @@
 #include "GarCharacter.h"
 #include "GarAnimationInstance.h"
 #include "GarAbilitySystemComponent.h"
-#include "GarCharacterMovementComponent.h"
+#include "GarCharacterMoverComponent.h"
 #include "GarGameplayTags.h"
 #include "Utility/GarMath.h"
 
@@ -41,7 +41,7 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 
 		if (Character->GetLocalRole() < ROLE_Authority)
 		{
-			Character->GetCharacterMovement()->FlushServerMoves();
+			//Character->GetMover()->FlushServerMoves();
 		}
 
 		Character->SetActorRotation(FRotator(0.0, CalcTargetYawAngle(), 0.0));
