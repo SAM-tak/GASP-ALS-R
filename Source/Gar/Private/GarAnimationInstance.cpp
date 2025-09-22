@@ -4,6 +4,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Curves/CurveFloat.h"
 #include "MotionWarpingComponent.h"
+#include "MoverPoseSearchTrajectoryPredictor.h"
 #include "GarAnimationInstanceProxy.h"
 #include "GarCharacter.h"
 #include "GarCharacterMoverComponent.h"
@@ -159,8 +160,14 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
 	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
 	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
+	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
+	CharacterMovement.ControlRotation = Mover->GetControlRotation();
 
+	if (CharacterMovement.GravityAcceleration.SquaredLength() > 0.001)
+	{
+		CharacterMovement.UpVector = -CharacterMovement.GravityAcceleration.GetUnsafeNormal();
+	}
 	if (Mover->GetLocomotionMode() == GarLocomotionModeTags::InAir)
 	{
 		CharacterMovement.LatestVelocityInAir = CharacterMovement.Velocity;

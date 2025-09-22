@@ -12,6 +12,7 @@
 #include "MoverComponent.h"
 #include "MoverLog.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
 #include "GarCharacterMoverComponent.h"
@@ -22,6 +23,7 @@ UGarMoverWalkingMode::UGarMoverWalkingMode(const FObjectInitializer& ObjectIniti
 	: Super(ObjectInitializer)
 {
 	SharedSettingsClasses.Add(UGarMovementSettings::StaticClass());
+	SharedSettingsClasses.Add(UCommonLegacyMovementSettings::StaticClass()); // For InstantMovementEffect like Jump
 
 	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
 }
@@ -32,8 +34,6 @@ void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData
 	const FGarCharacterMoverInputs* CharacterInputs = StartState.InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
 	check(StartingSyncState);
-	auto TurnSettings = Settings->GetTurnSettings(CharacterInputs->RotationMode, GameplayTags.First());
-	auto SpeedSettings = Settings->GetSpeedSettings(CharacterInputs->Stance, CharacterInputs->Gait);
 
 	const float DeltaSeconds = TimeStep.StepMs * 0.001f;
 	FFloorCheckResult LastFloorResult;
@@ -66,9 +66,14 @@ void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData
 	IntendedOrientation_WorldSpace = UMovementUtils::ApplyGravityToOrientationIntent(IntendedOrientation_WorldSpace, MoverComp->GetWorldToGravityTransform(), Settings->bShouldRemainVertical);
 	
 	FGroundMoveParams Params;
+	const FGarMovementTurnSettings* TurnSettings;
+	const FGarMovementSpeedSettings* SpeedSettings;
 
 	if (CharacterInputs)
 	{
+		TurnSettings = Settings->GetTurnSettings(CharacterInputs->RotationMode, GameplayTags.First());
+		SpeedSettings = Settings->GetSpeedSettings(CharacterInputs->Stance, CharacterInputs->Gait);
+
 		Params.MoveInputType = CharacterInputs->GetMoveInputType();
 
 		const bool bMaintainInputMagnitude = true;
@@ -76,6 +81,9 @@ void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData
 	}
 	else
 	{
+		TurnSettings = Settings->GetTurnSettings(FGameplayTag::EmptyTag, GameplayTags.First());
+		SpeedSettings = Settings->GetSpeedSettings(FGameplayTag::EmptyTag, FGameplayTag::EmptyTag);
+
 		Params.MoveInputType = EMoveInputType::None;
 		Params.MoveInput = FVector::ZeroVector;
 	}
@@ -109,12 +117,134 @@ void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData
 		Params.Friction *= SpeedSettings->BrakingFrictionFactor;
 	}
 
-	OutProposedMove = UGroundMovementUtils::ComputeControlledGroundMove(Params);
+	if (bUseCustomGroundMove)
+	{
+		OutProposedMove = ComputeControlledGroundMove(Params);
+	}
+	else
+	{
+		OutProposedMove = UGroundMovementUtils::ComputeControlledGroundMove(Params);
+	}
 
 	if (TurnGenerator)
 	{
 		OutProposedMove.AngularVelocity = ITurnGeneratorInterface::Execute_GetTurn(TurnGenerator, IntendedOrientation_WorldSpace, StartState, *StartingSyncState, TimeStep, OutProposedMove, SimBlackboard);
 	}
+}
+
+FProposedMove UGarMoverWalkingMode::ComputeControlledGroundMove(const FGroundMoveParams& InParams)
+{
+	FProposedMove OutMove;
+
+	const FVector MoveDirIntent = UMovementUtils::ComputeDirectionIntent(InParams.MoveInput, InParams.MoveInputType, InParams.MaxSpeed);
+
+	const FPlane MovementPlane(FVector::ZeroVector, InParams.UpDirection);
+	FVector MoveDirIntentInMovementPlane = UMovementUtils::ConstrainToPlane(MoveDirIntent, MovementPlane, true);
+
+	const FPlane GroundSurfacePlane(FVector::ZeroVector, InParams.GroundNormal);
+	OutMove.DirectionIntent = UMovementUtils::ConstrainToPlane(MoveDirIntentInMovementPlane, GroundSurfacePlane, true);
+	
+	OutMove.bHasDirIntent = !OutMove.DirectionIntent.IsNearlyZero();
+
+	FComputeVelocityParams ComputeVelocityParams;
+	ComputeVelocityParams.DeltaSeconds = InParams.DeltaSeconds;
+	ComputeVelocityParams.InitialVelocity = InParams.PriorVelocity;
+	ComputeVelocityParams.MoveDirectionIntent = MoveDirIntentInMovementPlane;
+	ComputeVelocityParams.MaxSpeed = InParams.MaxSpeed;
+	ComputeVelocityParams.TurningBoost = InParams.TurningBoost;
+	ComputeVelocityParams.Deceleration = InParams.Deceleration;
+	ComputeVelocityParams.Acceleration = InParams.Acceleration;
+	ComputeVelocityParams.Friction = InParams.Friction;
+	ComputeVelocityParams.MoveInputType = InParams.MoveInputType;
+	ComputeVelocityParams.MoveInput = InParams.MoveInput;
+	ComputeVelocityParams.bUseAccelerationForVelocityMove = InParams.bUseAccelerationForVelocityMove;
+	
+	// Figure out linear velocity
+	const FVector Velocity = UMovementUtils::ComputeVelocity(ComputeVelocityParams);
+	OutMove.LinearVelocity = UMovementUtils::ConstrainToPlane(Velocity, GroundSurfacePlane, true);
+
+	// Linearly rotate in place
+	OutMove.AngularVelocity = UMovementUtils::ComputeAngularVelocity(InParams.PriorOrientation, InParams.OrientationIntent, InParams.WorldToGravityQuat, InParams.DeltaSeconds, InParams.TurningRate);
+
+	return OutMove;
+}
+
+FVector UGarMoverWalkingMode::ComputeVelocity(const FComputeVelocityParams& InParams)
+{
+	FVector Acceleration = FVector::ZeroVector;
+	FVector Velocity = InParams.InitialVelocity;
+	float DesiredSpeed = 0.0f;
+
+	if (InParams.MoveInputType == EMoveInputType::Velocity)
+	{
+		const float RequestedSpeed = FMath::Min(InParams.MaxSpeed,  InParams.MoveInput.Size());
+		const FVector RequestedMoveDir = InParams.MoveInput.GetSafeNormal();
+		DesiredSpeed = RequestedSpeed;
+
+		// Compute acceleration. Use MaxAccel to limit speed increase
+		if (InParams.bUseAccelerationForVelocityMove && InParams.InitialVelocity.Size() < RequestedSpeed * 1.01f /*UE::MoverUtils::VELOCITY_INPUT_NO_ACCELERATION_DIFFERENCE*/)
+		{
+			// Turn in the same manner as with input acceleration.
+			Velocity = Velocity - (Velocity - RequestedMoveDir * RequestedSpeed) * FMath::Min(InParams.DeltaSeconds * InParams.Friction, 1.f);
+
+			// How much do we need to accelerate to get to the new velocity?
+			Acceleration = (InParams.MoveInput - Velocity) / InParams.DeltaSeconds;
+			Acceleration = Acceleration.GetClampedToMaxSize(InParams.Acceleration);
+		}
+		else
+		{
+			// Just set velocity directly.
+			// If decelerating we do so instantly, so we don't slide through the destination if we can't brake fast enough.
+			Velocity = InParams.MoveInput;
+		}
+	}
+	else if (InParams.MoveInputType == EMoveInputType::DirectionalIntent)
+	{
+		const FVector ControlAcceleration = InParams.MoveDirectionIntent.GetClampedToMaxSize(1.f);
+		const float AnalogInputModifier = (ControlAcceleration.SizeSquared() > 0.f ? ControlAcceleration.Size() : 0.f);
+		DesiredSpeed = InParams.MaxSpeed * AnalogInputModifier;
+		const FVector VelocityAlongInput = Velocity.ProjectOnTo(InParams.MoveDirectionIntent);
+		const bool bExceedingMaxSpeedAlongInput = UMovementUtils::IsExceedingMaxSpeed(VelocityAlongInput, DesiredSpeed);
+
+		if (Velocity.SizeSquared() > 0.f)
+		{
+			if (AnalogInputModifier > 0.f && !bExceedingMaxSpeedAlongInput)
+			{
+				// Apply change in velocity direction
+				// Change direction faster than only using acceleration, but never increase velocity magnitude.
+				const float TimeScale = FMath::Clamp(InParams.DeltaSeconds * InParams.TurningBoost, 0.f, 1.f);
+				Velocity = Velocity + (ControlAcceleration * Velocity.Size() - Velocity) * FMath::Min(TimeScale * InParams.Friction, 1.f);
+			}
+			const bool bExceedingMaxSpeed = UMovementUtils::IsExceedingMaxSpeed(Velocity, DesiredSpeed);
+			if (bExceedingMaxSpeed)
+			{
+				// Dampen velocity magnitude based on deceleration.
+				const FVector OldVelocity = Velocity;
+				const float VelSize = FMath::Max(Velocity.Size() - FMath::Abs(InParams.Friction * Velocity.Size() + InParams.Deceleration) * InParams.DeltaSeconds, 0.f);
+				Velocity = Velocity.GetSafeNormal() * VelSize;
+
+				// Don't allow braking to lower us below max speed if we started above it.
+				if (bExceedingMaxSpeed && Velocity.SizeSquared() < FMath::Square(DesiredSpeed))
+				{
+					Velocity = OldVelocity.GetSafeNormal() * DesiredSpeed;
+				}
+			}
+		}
+		
+		Acceleration = ControlAcceleration * FMath::Abs(InParams.Acceleration);
+	}
+	else
+	{
+		UE_CLOG((InParams.MoveInputType == EMoveInputType::Invalid), LogMover, Warning, TEXT("Mover Compute Velocity has received an invalid input type and no velocity will be generated!"));
+		return FVector::ZeroVector;
+	}
+
+	// Apply acceleration and clamp velocity magnitude.
+	const float NewMaxSpeed = (UMovementUtils::IsExceedingMaxSpeed(Velocity, DesiredSpeed)) ? Velocity.Size() : DesiredSpeed;
+	Velocity += Acceleration * InParams.DeltaSeconds;
+	Velocity = Velocity.GetClampedToMaxSize(NewMaxSpeed);
+
+	return Velocity;
 }
 
 void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState)
@@ -134,7 +264,6 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 	check(StartingSyncState);
 
 	FMoverDefaultSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FMoverDefaultSyncState>();
-
 
 	const float DeltaSeconds = Params.TimeStep.StepMs * 0.001f;
 
@@ -268,7 +397,6 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 	}
 	else
 	{
-
 		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 		
 		FHitResult Hit(CurrentFloor.HitResult);

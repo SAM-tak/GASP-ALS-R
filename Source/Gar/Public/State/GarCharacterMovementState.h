@@ -23,6 +23,9 @@ struct GAR_API FGarCharacterMovementState
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	FVector GravityAcceleration{ForceInit};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	FVector UpVector{FVector::UpVector};
+
 	/** X = Forward Speed, Y = Strafe Speed, Z = Backwards Speed */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	FVector CurrentMaxSpeed{ForceInit};
@@ -33,6 +36,12 @@ struct GAR_API FGarCharacterMovementState
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
 	float CurrentDeceleration{0.0f};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	bool bIsGrounded{true};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
+	FRotator ControlRotation;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CharacterMovement")
-	TObjectPtr<class UMoverTrajectoryPredictor> TrajectoryPredictor;
+	TWeakObjectPtr<class UMoverTrajectoryPredictor> TrajectoryPredictor;
 };

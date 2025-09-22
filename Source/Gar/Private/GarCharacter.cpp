@@ -21,6 +21,8 @@
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 
+#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h" // TODO: remove it
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarCharacter)
 
 namespace GarCharacterConstants
@@ -205,8 +207,11 @@ void AGarCharacter::PostInitializeComponents()
 			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
 		}
 	}
-	// workaround for crash since 5.6
-	//PhysicalAnimation->SetSkeletalMeshComponent(GetMesh());
+
+	if (PhysicalAnimation)
+	{
+		PhysicalAnimation->SetSkeletalMeshComponent(Mesh);
+	}
 
 	if (IsValid(AbilitySystem))
 	{
@@ -232,9 +237,6 @@ void AGarCharacter::BeginPlay()
 	if(!ensure(AnimationInstance.IsValid())) return;
 
 	Super::BeginPlay();
-
-	// workaround for crash since 5.6
-	PhysicalAnimation->SetSkeletalMeshComponent(Mesh);
 
 	// Update states to use the initial desired values.
 
@@ -391,7 +393,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 
 	TryAdjustControllRotation(DeltaTime);
 
-	RefreshCapsuleSize(DeltaTime);
+	RefreshEyeHeight(DeltaTime);
 	CheckCanUnCrouchIfNeeded();
 	CheckCanCrouchIfNeeded();
 
@@ -745,23 +747,30 @@ void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 	TargetRadius = FMath::Max(0.f, TargetRadius);
 	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
 
-	const float OldUnscaledHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
-	const float OldUnscaledRadius = Capsule->GetUnscaledCapsuleRadius();
-	const float HalfHeight = FMath::FInterpConstantTo(OldUnscaledHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
-	const float Radius = FMath::FInterpConstantTo(OldUnscaledRadius, TargetRadius, DeltaTime, RadiusSpeed);
+	const float OldHalfHeight = Capsule->GetUnscaledCapsuleHalfHeight();
+	const float OldRadius = Capsule->GetUnscaledCapsuleRadius();
+	const float HalfHeight = FMath::FInterpConstantTo(OldHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
+	const float Radius = FMath::FInterpConstantTo(OldRadius, TargetRadius, DeltaTime, RadiusSpeed);
 	
-	if (OldUnscaledHalfHeight != HalfHeight || OldUnscaledRadius != Radius)
+	if (OldHalfHeight != HalfHeight || OldRadius != Radius)
 	{
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		Capsule->SetCapsuleSize(Radius, HalfHeight, false);
-		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (HalfHeight - InitialCapsuleHalfHeight) + (Radius - InitialCapsuleRadius);
+		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
 
-		if (IsValid(Mesh))
+		auto TeleportEffect = MakeShared<FTeleportEffect>();
+		TeleportEffect->TargetLocation = GetActorLocation() + GetActorUpVector() * (HalfHeight - OldHalfHeight);
+		CharacterMover->QueueInstantMovementEffect(TeleportEffect);
+
+		// Add offset to visual component as the base location has changed
+		if (Mesh)
 		{
-			Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (HalfHeight - InitialCapsuleHalfHeight) + (Radius - InitialCapsuleRadius);
+			auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
+			auto Location{MoverVisualComponentOffset.GetLocation()};
+			Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
+			MoverVisualComponentOffset.SetLocation(Location);
+			CharacterMover->SetBaseVisualComponentTransform(MoverVisualComponentOffset);
 		}
-
-		AddActorLocalOffset(FVector{0.0, 0.0, HalfHeight - OldUnscaledHalfHeight});
 	}
 }
 
@@ -779,11 +788,11 @@ void AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, 
 	{
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
-		ProneCapsule->GetRelativeLocation_DirectMutable().X = InitialProneCapsuleX + (HalfHeight - InitialProneCapsuleHalfHeight);
+		ProneCapsule->GetRelativeLocation_DirectMutable().X = InitialProneCapsuleX + (InitialProneCapsuleHalfHeight - HalfHeight);
 	}
 }
 
-void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
+void AGarCharacter::RefreshCapsuleSize(float DeltaTime) // TODO: move to GarCharatcerMoverComponent
 {
 	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
 	{
@@ -797,27 +806,44 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 	if (Stance == GarStanceTags::Lying)
 	{
-		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedEyeHeight - LiedEyeHeight) / CapsuleUpdateSpeed : .0f};
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, LiedEyeHeight, DeltaTime, EyeHeightSpeed);
 		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, LiedCapsuleHalfHeight, RadiusSpeed);
 		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
 	}
 	else if (Stance == GarStanceTags::Crouching)
 	{
-		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, CrouchedEyeHeight, DeltaTime, EyeHeightSpeed);
 		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
 		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
 	}
 	else
 	{
-		auto EyeHeightSpeed{ CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f };
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, InitialEyeHeight, DeltaTime, EyeHeightSpeed);
 		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
 		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+	}
+}
+
+void AGarCharacter::RefreshEyeHeight(float DeltaTime)
+{
+	// Update eye height
+
+	auto Stance{GetStance()};
+	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
+	if (Stance == GarStanceTags::Lying)
+	{
+		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedEyeHeight - LiedEyeHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, LiedEyeHeight, DeltaTime, EyeHeightSpeed);
+	}
+	else if (Stance == GarStanceTags::Crouching)
+	{
+		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, CrouchedEyeHeight, DeltaTime, EyeHeightSpeed);
+	}
+	else
+	{
+		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
+		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, InitialEyeHeight, DeltaTime, EyeHeightSpeed);
 	}
 }
 
@@ -919,6 +945,7 @@ void AGarCharacter::RefreshInput()
 
 void AGarCharacter::SetFocalRotation(const FRotator& NewFocalRotation)
 {
+	GetControlRotation();
 	if (IsLocallyControlled())
 	{
 		PendingFocalRotationRelativeAdjustment = (NewFocalRotation - GetViewRotation()).GetNormalized();

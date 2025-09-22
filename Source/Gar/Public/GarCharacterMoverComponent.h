@@ -25,20 +25,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
 	FGameplayTagContainer LocomotionModeTags{GarLocomotionModeTags::Root};
 
-	// Whether this component should directly handle jumping or not 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarCharacterMover|Settings")
-	uint8 bHandleJump : 1 = 1;
-
-	// Whether this component should directly handle stance changes, including crouching input
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarCharacterMover|Settings")
-	uint8 bHandleStanceChanges : 1 = 1;
-
 	// Broadcast when this actor changes stances.
 	UPROPERTY(BlueprintAssignable, Category = GarCharacterMover)
 	FGarMover_OnStanceChanged OnStanceChanged;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
+	FRotator ControlRotation;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
@@ -93,6 +88,8 @@ protected:
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|CharacterMover")
 	const UGarMovementSettings* GetSettings() const { return Settings; }
+
+	const FRotator& GetControlRotation() const { return ControlRotation; }
 
 	const FGameplayTag& GetLocomotionMode() const { return LocomotionMode; }
 

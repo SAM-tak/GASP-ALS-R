@@ -416,6 +416,38 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	return true;
 }
 
+void UGarGameplayAbility_Traversal::ChooseCandidate_Implementation(
+	const FGarTraversalChooserInputs& Input, FGarTraversalChooserOutput& Output, TArray<UAnimMontage*>& OutMontages) const
+{
+	if(!IsValid(Chooser)) return;
+
+	const FInstancedStruct ChooserInstance = UChooserFunctionLibrary::MakeEvaluateChooser(Chooser);
+
+	FChooserEvaluationContext Context;
+
+	FInstancedStruct InputStruct;
+	InputStruct.InitializeAs<FGarTraversalChooserInputs>();
+	InputStruct.GetMutable<FGarTraversalChooserInputs>() = Input;
+	Context.Params.Add(InputStruct);
+
+	FInstancedStruct OutputStruct;
+	OutputStruct.InitializeAs<FGarTraversalChooserOutput>();
+	Context.Params.Add(OutputStruct);
+
+	auto Results = UChooserFunctionLibrary::EvaluateObjectChooserBaseMulti(Context, ChooserInstance, UAnimSequence::StaticClass());
+
+	Output = OutputStruct.Get<FGarTraversalChooserOutput>();
+
+	OutMontages.Reset();
+	for (UObject* Obj : Results)
+	{
+		if (UAnimMontage* Montage = Cast<UAnimMontage>(Obj))
+		{
+			OutMontages.Add(Montage);
+		}
+	}
+}
+
 void UGarGameplayAbility_Traversal::CommitParameters(const FGameplayAbilitySpecHandle Handle, const FGarTraversalParameters& Parameters) const
 {
 	ParameterMap.Add(Handle, Parameters);

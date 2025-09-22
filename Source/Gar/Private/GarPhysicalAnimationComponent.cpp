@@ -636,6 +636,13 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 		RefreshBodyState(DeltaTime);
 	}
 
+	// workaround for crash since 5.6
+	const TArray<FTransform>& SpaceBases = GetSkeletalMesh()->GetEditableComponentSpaceTransforms();
+	if (SpaceBases.IsEmpty())
+	{
+		return;
+	}
+
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 

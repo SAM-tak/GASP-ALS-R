@@ -8,7 +8,6 @@
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "MoveLibrary/MovementUtils.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
-#include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
 #include "MoverPoseSearchTrajectoryPredictor.h"
 #include "MotionWarpingMoverAdapter.h"
 #include "GarCharacter.h"
@@ -24,7 +23,7 @@
 
 UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 {
-	PrimaryComponentTick.TickGroup = TG_PostPhysics;
+	//PrimaryComponentTick.TickGroup = TG_PostPhysics;
 
 	// https://unrealengine.hatenablog.com/entry/2019/01/16/231404
 
@@ -64,10 +63,11 @@ void UGarCharacterMoverComponent::BeginPlay()
 void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd)
 {
 	auto CharacterInputs = InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
-
 	if (CharacterInputs)
 	{
 		auto& OldStance = GetStance();
+
+		ControlRotation = CharacterInputs->ControlRotation;
 
 		if (CharacterInputs->RotationMode.IsValid())
 		{
@@ -93,6 +93,8 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 		{
 			OnStanceChanged.Broadcast(OldStance, CharacterInputs->Stance);
 		}
+
+		Character->RefreshCapsuleSize(TimeStep.StepMs * 0.001f);
 	}
 }
 
@@ -104,7 +106,10 @@ void UGarCharacterMoverComponent::OnMoverMovementModeChanged(const FName& Previo
 		auto OldLocomotionMode{LocomotionMode};
 		LocomotionMode = MovementMode->GameplayTags.Filter(LocomotionModeTags).First();
 
-		Character->OnLocomotionModeChanged(OldLocomotionMode);
+		if (OldLocomotionMode != LocomotionMode)
+		{
+			Character->OnLocomotionModeChanged(OldLocomotionMode);
+		}
 	}
 }
 
@@ -115,7 +120,7 @@ bool UGarCharacterMoverComponent::Jump()
 		TSharedPtr<FJumpImpulseEffect> JumpMove = MakeShared<FJumpImpulseEffect>();
 		JumpMove->UpwardsSpeed = Settings->JumpUpwardsSpeed;
 		
-		QueueInstantMovementEffect(JumpMove);
+ 		QueueInstantMovementEffect(JumpMove);
 
 		return true;
 	}

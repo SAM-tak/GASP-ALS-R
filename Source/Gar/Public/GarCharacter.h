@@ -330,6 +330,8 @@ protected:
 
 	void RefreshCapsuleSize(float DeltaTime);
 
+	void RefreshEyeHeight(float DeltaTime);
+
 private:
 	FVector MovementInputVector = FVector::ZeroVector;
 
