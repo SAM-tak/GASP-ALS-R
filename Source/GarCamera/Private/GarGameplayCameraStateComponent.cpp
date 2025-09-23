@@ -369,34 +369,6 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 	UpdatePerspective();
 	UpdateFocalLength();
 
-	//if (FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold)
-	//{
-	//	Character->SetLookRotation(Character->GetViewRotation());
-	//}
-	//else
-	//{
-	//	if (Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
-	//	{
-	//		if (bIsSightOffsetValid)
-	//		{
-	//			auto ControlRotation = Character->GetControlRotation();
-	//			auto Location{ControlRotation.RotateVector(SightLocationOffset) + GetEyeCameraLocation()};
-	//			auto Rotation{(ControlRotation.Quaternion() * SightRotationOffset).Rotator()};
-	//			Location = FVector::PointPlaneProject(Location, GetEyeCameraLocation(), Rotation.Vector())
-	//				- Rotation.Vector() * Settings->FirstPerson.RetreatDistance;
-	//			Character->SetLookRotation((GetCurrentFocusLocation() - Location).Rotation());
-	//		}
-	//		else
-	//		{
-	//			Character->SetLookRotation((GetCurrentFocusLocation() - GetEyeCameraLocation()).Rotation());
-	//		}
-	//	}
-	//	else
-	//	{
-	//		Character->SetLookRotation((GetCurrentFocusLocation() - GetFirstPersonCameraLocation()).Rotation());
-	//	}
-	//}
-
 	Character->SetPerspective(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold ? GarPerspectiveTags::FirstPerson : GarPerspectiveTags::ThirdPerson);
 }
 

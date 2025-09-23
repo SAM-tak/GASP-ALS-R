@@ -93,5 +93,3 @@ protected:
 
 	TObjectPtr<const UGarMovementSettings> Settings;
 };
-
-#undef UE_API

@@ -162,7 +162,7 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
 	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
-	CharacterMovement.ControlRotation = Mover->GetControlRotation();
+	CharacterMovement.ControlRotation = Character->IsLocallyControlled() ? Character->GetControlRotation() : Character->GetReplicatedControlRotation();
 
 	if (CharacterMovement.GravityAcceleration.SquaredLength() > 0.001)
 	{

@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 #include "MoveLibrary/BasedMovementUtils.h"
+#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
 #include "Settings/GarCharacterSettings.h"
 #include "State/GarCharacterMoverInputs.h"
 #include "GarAnimationInstance.h"
@@ -20,8 +21,6 @@
 #include "Utility/GarUtility.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
-
-#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h" // TODO: remove it
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarCharacter)
 
@@ -171,6 +170,7 @@ void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredGait, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredRotationMode, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, OverlayMode, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ReplicatedControlRotation, Parameters)
 }
 
 void AGarCharacter::PreRegisterAllComponents()
@@ -394,6 +394,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 	TryAdjustControllRotation(DeltaTime);
 
 	RefreshEyeHeight(DeltaTime);
+	RefreshCapsuleSize(DeltaTime);
 	CheckCanUnCrouchIfNeeded();
 	CheckCanCrouchIfNeeded();
 
@@ -509,6 +510,16 @@ void AGarCharacter::SetDesiredRotationMode(const FGameplayTag& NewDesiredRotatio
 	DesiredRotationMode = NewDesiredRotationMode;
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredRotationMode, this)
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		ServerSetDesiredRotationMode(DesiredRotationMode);
+	}
+}
+
+void AGarCharacter::ServerSetDesiredRotationMode_Implementation(const FGameplayTag& NewDesiredRotationMode)
+{
+	SetDesiredRotationMode(NewDesiredRotationMode);
 }
 
 FGameplayTag AGarCharacter::GetRotationMode() const
@@ -607,6 +618,16 @@ void AGarCharacter::SetDesiredStance(const FGameplayTag& NewDesiredStance)
 	DesiredStance = NewDesiredStance;
 
 	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredStance, this)
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		ServerSetDesiredStance(DesiredStance);
+	}
+}
+
+void AGarCharacter::ServerSetDesiredStance_Implementation(const FGameplayTag& NewDesiredStance)
+{
+	SetDesiredStance(NewDesiredStance);
 }
 
 void AGarCharacter::ApplyDesiredStance()
@@ -758,11 +779,17 @@ void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 		Capsule->SetCapsuleSize(Radius, HalfHeight, false);
 		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
 
+		if (GetLocalRole() <= ROLE_SimulatedProxy)
+		{
+			return;
+		}
+
 		auto TeleportEffect = MakeShared<FTeleportEffect>();
 		TeleportEffect->TargetLocation = GetActorLocation() + GetActorUpVector() * (HalfHeight - OldHalfHeight);
 		CharacterMover->QueueInstantMovementEffect(TeleportEffect);
 
 		// Add offset to visual component as the base location has changed
+
 		if (Mesh)
 		{
 			auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
@@ -941,11 +968,37 @@ void AGarCharacter::RefreshInput()
 	{
 		InputYawAngle = UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(InputDirection));
 	}
+
+	if (IsLocallyControlled())
+	{
+		SetReplicatedControlRotation(GetControlRotation());
+	}
+}
+
+void AGarCharacter::SetReplicatedControlRotation(const FRotator& NewControlRotation)
+{
+	if (ReplicatedControlRotation == NewControlRotation || GetLocalRole() < ROLE_AutonomousProxy)
+	{
+		return;
+	}
+
+	ReplicatedControlRotation = NewControlRotation;
+
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ReplicatedControlRotation, this)
+
+	if(GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		ServerSetReplicatedControlRotation(ReplicatedControlRotation);
+	}
+}
+
+void AGarCharacter::ServerSetReplicatedControlRotation_Implementation(const FRotator& NewControlRotation)
+{
+	SetReplicatedControlRotation(NewControlRotation);
 }
 
 void AGarCharacter::SetFocalRotation(const FRotator& NewFocalRotation)
 {
-	GetControlRotation();
 	if (IsLocallyControlled())
 	{
 		PendingFocalRotationRelativeAdjustment = (NewFocalRotation - GetViewRotation()).GetNormalized();

@@ -103,6 +103,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
 	FGameplayTag OverlayMode{GarOverlayModeTags::Default};
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
+	FRotator ReplicatedControlRotation{ForceInit};
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
 
@@ -272,6 +275,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredRotationMode"))
 	void SetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode);
 
+private:
+	UFUNCTION(Server, Reliable)
+	void ServerSetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode);
+
 	// Rotation Mode
 
 public:
@@ -292,6 +299,10 @@ public:
 
 protected:
 	virtual void ApplyDesiredStance();
+
+private:
+	UFUNCTION(Server, Reliable)
+	void ServerSetDesiredStance(const FGameplayTag& NewDesiredStance);
 
 	// Stance
 
@@ -406,10 +417,17 @@ public:
 
 	FORCEINLINE float GetInputYawAngle() const { return InputYawAngle; }
 
+	FORCEINLINE const FRotator& GetReplicatedControlRotation() const { return ReplicatedControlRotation; }
+
 protected:
 	void SetInputDirection(FVector NewInputDirection);
 
 	virtual void RefreshInput();
+
+	void SetReplicatedControlRotation(const FRotator& NewControlRotation);
+
+	UFUNCTION(Server, Unreliable)
+	void ServerSetReplicatedControlRotation(const FRotator& NewReplicatedControlRotation);
 
 private:
 	FORCEINLINE bool HasSpeed() const { return GetVelocity().Size2D() > 1.0; }

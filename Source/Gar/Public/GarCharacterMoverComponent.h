@@ -9,13 +9,6 @@ class UMotionWarpingMoverAdapter;
 class AGarCharacter;
 class UGarMovementSettings;
 
-/**
- * Fires when a stance is changed, if stance handling is enabled (see @SetHandleStanceChanges)
- * Note: If a stance was just Activated it will fire with an invalid OldStance
- *		 If a stance was just Deactivated it will fire with an invalid NewStance
- */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FGarMover_OnStanceChanged, FGameplayTag, OldStance, FGameplayTag, NewStance);
-
 UCLASS(ClassGroup = "GAR", BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
 class GAR_API UGarCharacterMoverComponent : public UMoverComponent
 {
@@ -25,26 +18,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
 	FGameplayTagContainer LocomotionModeTags{GarLocomotionModeTags::Root};
 
-	// Broadcast when this actor changes stances.
-	UPROPERTY(BlueprintAssignable, Category = GarCharacterMover)
-	FGarMover_OnStanceChanged OnStanceChanged;
-
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
-	FRotator ControlRotation;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated, ReplicatedUsing = OnReplicated_LocomotionMode)
 	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
 	FGameplayTag Stance{GarStanceTags::Standing};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
 	FGameplayTag Gait{GarGaitTags::Running};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
@@ -72,24 +58,25 @@ public:
 public:
 	UGarCharacterMoverComponent();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
 
 protected:
-	virtual bool Jump();
-
 	UFUNCTION()
 	virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);
 
 	UFUNCTION()
 	virtual void OnMoverMovementModeChanged(const FName& PreviousMovementModeName, const FName& NewMovementModeName);
 
+	UFUNCTION()
+	void OnReplicated_LocomotionMode(const FGameplayTag& PreviousOverlayMode) const;
+
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|CharacterMover")
 	const UGarMovementSettings* GetSettings() const { return Settings; }
-
-	const FRotator& GetControlRotation() const { return ControlRotation; }
 
 	const FGameplayTag& GetLocomotionMode() const { return LocomotionMode; }
 

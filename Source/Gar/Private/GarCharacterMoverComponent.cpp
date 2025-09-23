@@ -4,6 +4,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Curves/CurveVector.h"
 #include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
 #include "GameFramework/Controller.h"
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "MoveLibrary/MovementUtils.h"
@@ -23,9 +24,7 @@
 
 UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 {
-	//PrimaryComponentTick.TickGroup = TG_PostPhysics;
-
-	// https://unrealengine.hatenablog.com/entry/2019/01/16/231404
+	SetIsReplicatedByDefault(true);
 
 	// Default movement modes
 	MovementModes.Add(DefaultModeNames::Walking, CreateDefaultSubobject<UGarMoverWalkingMode>(TEXT("DefaultWalkingMode")));
@@ -44,6 +43,20 @@ void UGarCharacterMoverComponent::InitializeComponent()
 	TrajectoryPredictor->Setup(this);
 	MotionWarpingMoverAdapter = NewObject<UMotionWarpingMoverAdapter>();
 	MotionWarpingMoverAdapter->SetMoverComp(this);
+}
+
+void UGarCharacterMoverComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams Parameters;
+	Parameters.bIsPushBased = true;
+
+	Parameters.Condition = COND_SkipOwner;
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, LocomotionMode, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, RotationMode, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, Stance, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, Gait, Parameters)
 }
 
 void UGarCharacterMoverComponent::BeginPlay()
@@ -65,46 +78,40 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 	auto CharacterInputs = InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
 	if (CharacterInputs)
 	{
-		auto& OldStance = GetStance();
-
-		ControlRotation = CharacterInputs->ControlRotation;
-
-		if (CharacterInputs->RotationMode.IsValid())
+		if (CharacterInputs->RotationMode.IsValid() && RotationMode == CharacterInputs->RotationMode)
 		{
 			RotationMode = CharacterInputs->RotationMode;
+			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, RotationMode, this)
 		}
 
-		if (CharacterInputs->Stance.IsValid())
+		if (CharacterInputs->Stance.IsValid() && Stance != CharacterInputs->Stance)
 		{
 			Stance = CharacterInputs->Stance;
+			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, Stance, this)
 		}
 
-		if (CharacterInputs->Gait.IsValid())
+		if (CharacterInputs->Gait.IsValid() && Gait != CharacterInputs->Gait)
 		{
 			Gait = CharacterInputs->Gait;
+			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, Gait, this)
 		}
 
-		if (CharacterInputs->bIsJumpJustPressed)
+		if (CharacterInputs->bIsJumpJustPressed && IsValid(Settings))
 		{
-			Jump();
+			auto JumpMove = MakeShared<FJumpImpulseEffect>();
+			JumpMove->UpwardsSpeed = Settings->JumpUpwardsSpeed;
+ 			QueueInstantMovementEffect(JumpMove);
 		}
-
-		if(CharacterInputs->Stance != OldStance)
-		{
-			OnStanceChanged.Broadcast(OldStance, CharacterInputs->Stance);
-		}
-
-		Character->RefreshCapsuleSize(TimeStep.StepMs * 0.001f);
 	}
 }
 
 void UGarCharacterMoverComponent::OnMoverMovementModeChanged(const FName& PreviousMovementModeName, const FName& NewMovementModeName)
 {
-	auto MovementMode{MovementModes[NewMovementModeName]};
-	if (MovementMode)
+	if (auto& MovementMode = MovementModes[NewMovementModeName])
 	{
 		auto OldLocomotionMode{LocomotionMode};
 		LocomotionMode = MovementMode->GameplayTags.Filter(LocomotionModeTags).First();
+		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, LocomotionMode, this)
 
 		if (OldLocomotionMode != LocomotionMode)
 		{
@@ -113,30 +120,20 @@ void UGarCharacterMoverComponent::OnMoverMovementModeChanged(const FName& Previo
 	}
 }
 
-bool UGarCharacterMoverComponent::Jump()
+void UGarCharacterMoverComponent::OnReplicated_LocomotionMode(const FGameplayTag& PreviousMovementMode) const
 {
-	if (IsValid(Settings))
-	{
-		TSharedPtr<FJumpImpulseEffect> JumpMove = MakeShared<FJumpImpulseEffect>();
-		JumpMove->UpwardsSpeed = Settings->JumpUpwardsSpeed;
-		
- 		QueueInstantMovementEffect(JumpMove);
-
-		return true;
-	}
-
-	return false;
+	Character->OnLocomotionModeChanged(PreviousMovementMode);
 }
 
 void UGarCharacterMoverComponent::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer)
 {
-	const FMoverSyncState& SyncState{MoverSyncStateDoubleBuffer.GetReadable()};
+	auto SyncState{MoverSyncStateDoubleBuffer.GetReadable()};
 
 	// Append loose / external tags
 	TagContainer.AppendTags(ExternalGameplayTags);
 
 	// Append active Movement Mode
-	if (const UBaseMovementMode* ActiveMovementMode = FindMovementModeByName(SyncState.MovementMode))
+	if (auto ActiveMovementMode = FindMovementModeByName(SyncState.MovementMode))
 	{
 		TagContainer.AppendTags(ActiveMovementMode->GameplayTags);
 	}
@@ -149,8 +146,7 @@ void UGarCharacterMoverComponent::AppendOwnedGameplayTags(FGameplayTagContainer&
 
 void UGarCharacterMoverComponent::SetInitialGameplayTags(const FGameplayTag& InRotationMode, const FGameplayTag& InStance, const FGameplayTag& InGait)
 {
-	auto MovementMode{FindMovementModeByName(StartingMovementMode)};
-	if (MovementMode)
+	if (auto MovementMode{FindMovementModeByName(StartingMovementMode)})
 	{
 		LocomotionMode = MovementMode->GameplayTags.Filter(LocomotionModeTags).First();
 	}
