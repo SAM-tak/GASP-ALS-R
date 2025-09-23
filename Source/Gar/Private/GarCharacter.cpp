@@ -779,11 +779,6 @@ void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 		Capsule->SetCapsuleSize(Radius, HalfHeight, false);
 		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
 
-		if (GetLocalRole() <= ROLE_SimulatedProxy)
-		{
-			return;
-		}
-
 		auto TeleportEffect = MakeShared<FTeleportEffect>();
 		TeleportEffect->TargetLocation = GetActorLocation() + GetActorUpVector() * (HalfHeight - OldHalfHeight);
 		CharacterMover->QueueInstantMovementEffect(TeleportEffect);
@@ -792,11 +787,18 @@ void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 
 		if (Mesh)
 		{
-			auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
-			auto Location{MoverVisualComponentOffset.GetLocation()};
-			Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
-			MoverVisualComponentOffset.SetLocation(Location);
-			CharacterMover->SetBaseVisualComponentTransform(MoverVisualComponentOffset);
+			if (GetLocalRole() <= ROLE_SimulatedProxy)
+			{
+				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
+			}
+			else
+			{
+				auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
+				auto Location{MoverVisualComponentOffset.GetLocation()};
+				Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
+				MoverVisualComponentOffset.SetLocation(Location);
+				CharacterMover->SetBaseVisualComponentTransform(MoverVisualComponentOffset);
+			}
 		}
 	}
 }
@@ -819,7 +821,7 @@ void AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, 
 	}
 }
 
-void AGarCharacter::RefreshCapsuleSize(float DeltaTime) // TODO: move to GarCharatcerMoverComponent
+void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 {
 	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
 	{
