@@ -73,13 +73,10 @@ protected:
 	float CrouchedEyeHeight{45.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
-	float LiedCapsuleHalfHeight{40.0f};
+	float LiedCapsuleHalfHeight{30.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
-	float LiedCapsuleRadius{30.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
-	float LiedProneCapsuleHalfHeight{40.0f};
+	float LiedProneCapsuleHalfHeight{60.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	float LiedEyeHeight{35.0f};
@@ -335,9 +332,9 @@ protected:
 
 	void CheckCanLieIfNeeded();
 
-	void UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
+	bool UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
 
-	void UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
+	bool UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
 
 	void RefreshCapsuleSize(float DeltaTime);
 

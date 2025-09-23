@@ -60,9 +60,7 @@ AGarCharacter::AGarCharacter(const FObjectInitializer& ObjectInitializer) : Supe
 	ProneCapsule->SetCanEverAffectNavigation(false);
 	ProneCapsule->bDynamicObstacle = true;
 	ProneCapsule->SetupAttachment(Capsule);
-	ProneCapsule->WeldTo(Capsule, NAME_None, true); // https://www.hakobuneworks.com/posts/2022/12/02/
-	ProneCapsule->SetRelativeLocation_Direct({0.0f, 0.0f, -40.0f});
-	ProneCapsule->SetRelativeRotation_Direct({0.0f, 0.0f, -90.0f});
+	ProneCapsule->SetRelativeRotation_Direct({-90.0f, 0.0f, 0.0f});
 
 	Mesh = CreateOptionalDefaultSubobject<USkeletalMeshComponent>(SkeletalMeshComponentName);
 	if (Mesh)
@@ -199,9 +197,7 @@ void AGarCharacter::PostInitializeComponents()
 
 	if (CharacterMover)
 	{
-		CharacterMover->AddGameplayTag(InputRotationMode);
-		CharacterMover->AddGameplayTag(InputRotationMode);
-		CharacterMover->AddGameplayTag(InputRotationMode);
+		CharacterMover->SetInitialGameplayTags(InputRotationMode, InputStance, InputGait);
 		if (USceneComponent* UpdatedComponent = CharacterMover->GetUpdatedComponent())
 		{
 			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
@@ -331,9 +327,9 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	// Figure out intended orientation
 	CharacterInputs.OrientationIntent = FVector::ZeroVector;
 
-	if (bHasAffirmativeMoveInput || GetRotationMode() == GarRotationModeTags::Aiming)
+	if (bHasAffirmativeMoveInput || InputRotationMode == GarRotationModeTags::Aiming)
 	{
-		if (GetRotationMode() == GarRotationModeTags::VelocityDirection)
+		if (InputRotationMode == GarRotationModeTags::VelocityDirection)
 		{
 			// set the intent to the actors movement direction
 			CharacterInputs.OrientationIntent = CharacterInputs.GetMoveInput().GetSafeNormal();
@@ -763,7 +759,7 @@ FGameplayTag AGarCharacter::GetStance() const
 	return CharacterMover->GetStance();
 }
 
-void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
+bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
 {
 	TargetRadius = FMath::Max(0.f, TargetRadius);
 	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
@@ -775,50 +771,60 @@ void AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 	
 	if (OldHalfHeight != HalfHeight || OldRadius != Radius)
 	{
+		double Scale{Capsule->GetComponentTransform().GetScale3D().Z};
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		Capsule->SetCapsuleSize(Radius, HalfHeight, false);
-		ProneCapsule->GetRelativeLocation_DirectMutable().Z = InitialProneCapsuleZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
-
-		auto TeleportEffect = MakeShared<FTeleportEffect>();
-		TeleportEffect->TargetLocation = GetActorLocation() + GetActorUpVector() * (HalfHeight - OldHalfHeight);
-		CharacterMover->QueueInstantMovementEffect(TeleportEffect);
 
 		// Add offset to visual component as the base location has changed
 
-		if (Mesh)
+		if (GetLocalRole() <= ROLE_SimulatedProxy)
 		{
-			if (GetLocalRole() <= ROLE_SimulatedProxy)
+			if (Mesh)
 			{
-				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
+				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight + InitialCapsuleRadius - Radius) * Scale;
 			}
-			else
+		}
+		else
+		{
+			auto TeleportEffect = MakeShared<FTeleportEffect>();
+			TeleportEffect->TargetLocation = CharacterMover->GetUpdatedComponentTransform().GetLocation()
+				+ CharacterMover->GetUpDirection() * (HalfHeight - OldHalfHeight + Radius - OldRadius) * Scale;
+			CharacterMover->QueueInstantMovementEffect(TeleportEffect);
+
+			if (Mesh)
 			{
 				auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
 				auto Location{MoverVisualComponentOffset.GetLocation()};
-				Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight) + (InitialCapsuleRadius - Radius);
+				Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight + InitialCapsuleRadius - Radius) * Scale;
 				MoverVisualComponentOffset.SetLocation(Location);
 				CharacterMover->SetBaseVisualComponentTransform(MoverVisualComponentOffset);
 			}
 		}
+		return true;
 	}
+	return false;
 }
 
-void AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
+bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
 {
 	TargetRadius = FMath::Max(0.f, TargetRadius);
 	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
 
-	const float OldUnscaledHalfHeight = ProneCapsule->GetUnscaledCapsuleHalfHeight();
-	const float OldUnscaledRadius = ProneCapsule->GetUnscaledCapsuleRadius();
-	const float HalfHeight = FMath::FInterpConstantTo(OldUnscaledHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
-	const float Radius = FMath::FInterpConstantTo(OldUnscaledRadius, TargetRadius, DeltaTime, RadiusSpeed);
+	const float OldHalfHeight = ProneCapsule->GetUnscaledCapsuleHalfHeight();
+	const float OldRadius = ProneCapsule->GetUnscaledCapsuleRadius();
+	const float HalfHeight = FMath::FInterpConstantTo(OldHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
+	const float Radius = FMath::FInterpConstantTo(OldRadius, TargetRadius, DeltaTime, RadiusSpeed);
 	
-	if (OldUnscaledHalfHeight != HalfHeight || OldUnscaledRadius != Radius)
+	if (OldHalfHeight != HalfHeight || OldRadius != Radius)
 	{
+		double Scale{ProneCapsule->GetComponentTransform().GetScale3D().Z};
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
-		ProneCapsule->GetRelativeLocation_DirectMutable().X = InitialProneCapsuleX + (InitialProneCapsuleHalfHeight - HalfHeight);
+		ProneCapsule->GetRelativeLocation_DirectMutable().X
+			= InitialProneCapsuleX + (HalfHeight - InitialProneCapsuleHalfHeight + InitialProneCapsuleRadius - Radius) * Scale;
+		return true;
 	}
+	return false;
 }
 
 void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
@@ -831,25 +837,49 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	// Update capsule height and radius
 	auto Stance{GetStance()};
 	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
-	auto RadiusSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleRadius - LiedCapsuleRadius) / CapsuleUpdateSpeed : .0f};
 	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 	if (Stance == GarStanceTags::Lying)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, LiedCapsuleHalfHeight, RadiusSpeed);
+		if (UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f))
+		{
+			if (ProneCapsule->IsWelded())
+			{
+				ProneCapsule->UnWeldFromParent();
+			}
+		}
 		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+		if (!ProneCapsule->IsWelded())
+		{
+			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			ProneCapsule->WeldTo(Capsule);
+		}
 	}
 	else if (Stance == GarStanceTags::Crouching)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
-		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f))
+		{
+			if (ProneCapsule->IsWelded())
+			{
+				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				ProneCapsule->UnWeldFromParent();
+			}
+		}
 	}
 	else
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, RadiusSpeed);
-		UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f))
+		{
+			if (ProneCapsule->IsWelded())
+			{
+				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				ProneCapsule->UnWeldFromParent();
+			}
+		}
 	}
 }
 

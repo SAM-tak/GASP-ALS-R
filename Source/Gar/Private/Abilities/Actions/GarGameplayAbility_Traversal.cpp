@@ -424,19 +424,10 @@ void UGarGameplayAbility_Traversal::ChooseCandidate_Implementation(
 	const FInstancedStruct ChooserInstance = UChooserFunctionLibrary::MakeEvaluateChooser(Chooser);
 
 	FChooserEvaluationContext Context;
+	Context.AddStructParam(const_cast<FGarTraversalChooserInputs&>(Input));
+	Context.AddStructParam(Output);
 
-	FInstancedStruct InputStruct;
-	InputStruct.InitializeAs<FGarTraversalChooserInputs>();
-	InputStruct.GetMutable<FGarTraversalChooserInputs>() = Input;
-	Context.Params.Add(InputStruct);
-
-	FInstancedStruct OutputStruct;
-	OutputStruct.InitializeAs<FGarTraversalChooserOutput>();
-	Context.Params.Add(OutputStruct);
-
-	auto Results = UChooserFunctionLibrary::EvaluateObjectChooserBaseMulti(Context, ChooserInstance, UAnimSequence::StaticClass());
-
-	Output = OutputStruct.Get<FGarTraversalChooserOutput>();
+	auto Results = UChooserFunctionLibrary::EvaluateObjectChooserBaseMulti(Context, ChooserInstance, UAnimMontage::StaticClass());
 
 	OutMontages.Reset();
 	for (UObject* Obj : Results)

@@ -78,7 +78,7 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 	auto CharacterInputs = InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
 	if (CharacterInputs)
 	{
-		if (CharacterInputs->RotationMode.IsValid() && RotationMode == CharacterInputs->RotationMode)
+		if (CharacterInputs->RotationMode.IsValid() && RotationMode != CharacterInputs->RotationMode)
 		{
 			RotationMode = CharacterInputs->RotationMode;
 			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, RotationMode, this)
