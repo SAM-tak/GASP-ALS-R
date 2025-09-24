@@ -32,9 +32,6 @@ public:
 	float ViewRelativeAngleThresholdForSprint{50.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	EGarInAirRotationMode InAirRotationMode{EGarInAirRotationMode::KeepRelativeRotation}; // TODO : unused?
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	uint8 bAllowAimingWhenInAir : 1{true};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
@@ -56,6 +53,9 @@ public:
 	FGameplayTagContainer ActionTags{GarLocomotionActionTags::Root};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
+	FGameplayTagContainer BlockMoveInputTags{GarLocomotionActionTags::Root};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
 	TMap<FGameplayTag, FGameplayTag> DesiredToActualMap{
 		{GarDesiredRotationModeTags::VelocityDirection, GarRotationModeTags::VelocityDirection},
 		{GarDesiredRotationModeTags::ViewDirection, GarRotationModeTags::ViewDirection},
@@ -65,5 +65,12 @@ public:
 		{GarDesiredGaitTags::Walking, GarGaitTags::Walking},
 		{GarDesiredGaitTags::Running, GarGaitTags::Running},
 		{GarDesiredGaitTags::Sprinting, GarGaitTags::Sprinting},
+	};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
+	TMap<FGameplayTag, FName> TagToMovementModeMap{
+		{GarLocomotionActionTags::Dying, TEXT("Ragdolling")},
+		{GarLocomotionActionTags::Unconsious, TEXT("Ragdolling")},
+		{GarLocomotionActionTags::FreeFalling, TEXT("Ragdolling")},
 	};
 };

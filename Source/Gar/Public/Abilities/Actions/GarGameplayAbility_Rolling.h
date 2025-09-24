@@ -5,6 +5,8 @@
 #include "Abilities/Actions/GarGameplayAbility_Montage.h"
 #include "GarGameplayAbility_Rolling.generated.h"
 
+struct FLayeredMove_AnimRootMotion;
+
 /**
  * Rolling Action
  */

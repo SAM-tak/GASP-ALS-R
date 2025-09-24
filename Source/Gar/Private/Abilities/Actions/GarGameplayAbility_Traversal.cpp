@@ -8,6 +8,7 @@
 #include "ChooserFunctionLibrary.h"
 #include "AnimationWarpingLibrary.h"
 #include "MotionWarpingComponent.h"
+#include "MotionWarpingMoverAdapter.h"
 #include "AbilitySystemGlobals.h"
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "GarCharacter.h"
@@ -380,8 +381,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	const FVector EndLocationTraceEnd{
 		EndLocationTraceStart.X,
 		EndLocationTraceStart.Y,
-		//Character->GetMover()->GetActorFeetLocation().Z
-		0.0f //Character->GetActorFeetLocation().Z // TODO
+		Character->GetMover()->GetBaseVisualComponentTransform().GetLocation().Z
 	};
 
 	FHitResult EndLocationTraceHit;
@@ -707,8 +707,6 @@ void UGarGameplayAbility_Traversal::EndAbility(const FGameplayAbilitySpecHandle 
 	auto CapsuleComponent{Character->GetCapsule()};
 	CapsuleComponent->SetCapsuleHalfHeight(OriginalUnscaledCapsuleHalfHeight);
 	CapsuleComponent->SetCapsuleRadius(OriginalUnscaledCapsuleRadius);
-
-	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
 
 	//Mover->SetMovementModeLocked(false);
 	//if (Mover->MovementMode == MOVE_Custom)

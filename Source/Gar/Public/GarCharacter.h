@@ -241,6 +241,7 @@ private:
 	void ClientUnPossessed();
 
 	mutable FGameplayTagContainer TempTagContainer;
+	mutable FGameplayTagContainer PrevTagContainer; // for ProduceInput
 
 	// Locomotion
 

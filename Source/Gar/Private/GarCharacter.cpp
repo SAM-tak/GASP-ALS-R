@@ -317,7 +317,43 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 		return;
 	}
 
+	CharacterInputs.SuggestedMovementMode = NAME_None;
+	CharacterInputs.bIsJumpPressed = bIsJumpPressed;
+	CharacterInputs.bIsJumpJustPressed = bIsJumpJustPressed;
+	CharacterInputs.RotationMode = InputRotationMode;
+	CharacterInputs.Stance = InputStance;
+	CharacterInputs.Gait = InputGait;
+
+	// Clear/consume temporal movement inputs. We are not consuming others in the event that the game world is ticking at a lower rate than the Mover simulation. 
+	// In that case, we want most input to carry over between simulation frames.
+	bIsJumpJustPressed = false;
+
+	if (AbilitySystem && Settings)
+	{
+		PrevTagContainer = TempTagContainer;
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+
+		//for(auto& KeyValue : Settings->TagToMovementModeMap)
+		//{
+		//	if (TempTagContainer.HasTagExact(KeyValue.Key))
+		//	{
+		//		CharacterInputs.SuggestedMovementMode = KeyValue.Value;
+		//		break;
+		//	}
+		//	else if (CharacterInputs.SuggestedMovementMode == NAME_None && !TempTagContainer.HasTagExact(KeyValue.Key) && PrevTagContainer.HasTagExact(KeyValue.Key))
+		//	{
+		//		CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
+		//	}
+		//}
+
+		if (!TempTagContainer.Filter(Settings->BlockMoveInputTags).IsEmpty())
+		{
+			return;
+		}
+	}
+
 	CharacterInputs.ControlRotation = GetControlRotation();
+
 	CharacterInputs.SetMoveInput(EMoveInputType::DirectionalIntent, MovementInputVector);
 
 	static float RotationMagMin(1e-3);
@@ -340,10 +376,6 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 			CharacterInputs.OrientationIntent = CharacterInputs.ControlRotation.Vector().GetSafeNormal();
 		}
 	}
-	
-	CharacterInputs.bIsJumpPressed = bIsJumpPressed;
-	CharacterInputs.bIsJumpJustPressed = bIsJumpJustPressed;
-	CharacterInputs.SuggestedMovementMode = NAME_None;
 
 	// Convert inputs to be relative to the current movement base (depending on options and state)
 	CharacterInputs.bUsingMovementBase = false;
@@ -367,14 +399,6 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 			CharacterInputs.MovementBaseBoneName = MovementBaseBoneName;
 		}
 	}
-
-	CharacterInputs.RotationMode = InputRotationMode;
-	CharacterInputs.Stance = InputStance;
-	CharacterInputs.Gait = InputGait;
-
-	// Clear/consume temporal movement inputs. We are not consuming others in the event that the game world is ticking at a lower rate than the Mover simulation. 
-	// In that case, we want most input to carry over between simulation frames.
-	bIsJumpJustPressed = false;
 }
 
 void AGarCharacter::Tick(const float DeltaTime)
@@ -995,6 +1019,7 @@ void AGarCharacter::SetInputDirection(FVector NewInputDirection)
 void AGarCharacter::RefreshInput()
 {
 	MovementInputVector = ConsumeMovementInputVector();
+
 	SetInputDirection(MovementInputVector);
 	if (HasInput())
 	{

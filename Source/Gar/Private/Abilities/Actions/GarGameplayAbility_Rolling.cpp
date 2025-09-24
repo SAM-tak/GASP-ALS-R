@@ -1,6 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Abilities/Actions/GarGameplayAbility_Rolling.h"
+
+#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "DefaultMovementSet/LayeredMoves/AnimRootMotionLayeredMove.h"
 #include "Abilities/Tasks/GarAbilityTask_Tick.h"
 #include "GarCharacter.h"
 #include "GarAnimationInstance.h"
@@ -39,12 +42,18 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 		auto* Character{GetGarCharacterFromActorInfo()};
 		auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
 
-		if (Character->GetLocalRole() < ROLE_Authority)
-		{
-			//Character->GetMover()->FlushServerMoves();
-		}
+		//Character->SetActorRotation(FRotator(0.0, CalcTargetYawAngle(), 0.0));
+		auto TeleportEffect = MakeShared<FTeleportEffect>();
+		TeleportEffect->TargetLocation = Character->GetMover()->GetUpdatedComponentTransform().GetLocation();
+		TeleportEffect->bUseActorRotation = false;
+		TeleportEffect->TargetRotation = FRotator(0.0, CalcTargetYawAngle(), 0.0);
+		Character->GetMover()->QueueInstantMovementEffect(TeleportEffect);
 
-		Character->SetActorRotation(FRotator(0.0, CalcTargetYawAngle(), 0.0));
+		auto LayeredMove_AnimRootMotion = MakeShared<FLayeredMove_AnimRootMotion>();
+		LayeredMove_AnimRootMotion->Montage = MontageToPlay;
+		LayeredMove_AnimRootMotion->StartingMontagePosition = StartTime;
+		LayeredMove_AnimRootMotion->PlayRate = PlayRate;
+		Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
 
 		TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Rolling")));
 		if (TickTask.IsValid())

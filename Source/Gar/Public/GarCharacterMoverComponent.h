@@ -88,8 +88,6 @@ public:
 
 	UMoverTrajectoryPredictor* GetTrajectoryPredictor() const { return TrajectoryPredictor; }
 
-	UMotionWarpingMoverAdapter* GetMotionWarpingMoverAdapter() const { return MotionWarpingMoverAdapter; }
-
 	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer);
 
 	void SetInitialGameplayTags(const FGameplayTag& InRotationMode, const FGameplayTag& InStance, const FGameplayTag& InGait);

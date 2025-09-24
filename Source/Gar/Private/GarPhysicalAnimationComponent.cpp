@@ -14,6 +14,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 #include "MoveLibrary/FloorQueryUtils.h"
+#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "ChooserFunctionLibrary.h"
 #include "GarCharacter.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
@@ -29,44 +31,6 @@
 #include "Utility/GarLog.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarPhysicalAnimationComponent)
-
-//# The naming convention for Physical Animation Profile names
-//
-//If a Physical Animation Profile with a name corresponding to GAR’s LocomotionMode, LocomotionAction, Stance, Gait, and OverlayMode exists, it will be applied.Only the physical bodies included in the Physical Animation Profile will be subject to simulation, and all others will be set to kinematic.
-//
-//Names should either match exactly with LocomotionMode or LocomotionAction, Stance, Gait, OverlayMode(such as Grounded or Ragdolling), or they should be a concatenation of LocomotionMode or LocomotionAction, Stance, Gait, OverlayMode in that order, separated by `:`.
-//
-//For example, if you want a profile to be applied only when LocomotionMode = Grounded, Stance = Standing, and Gait = Running, you would name it `Grounded:Standing:Running`.
-//
-//If there is no profile with a name that matches the current state, and there is a profile named “Default”, then the “Default” profile will be selected.
-//If a name starts with `+`, it means that the profile is to be added and applied to any other matching profiles.
-//
-//If a name starts with `*`, it can overwrite only the physical animation parameters without affecting the on / off state of the physical simulation, after applying other matching profiles.
-//
-//![Example of physical aniImation profile](https://github.com/Sixze/GAR-Refactored/assets/250165/455644f3-e7cf-4885-a858-2124f8f3d1c5)
-//
-//The `*Injured` profile, when the overlay mode is Injured, changes only the physical animation parameters without changing the range of physical simulation, after the Default or Mantle profile is applied.
-//
-//During ragdolling, only profiles named `Ragdolling` or those containing `Ragdolling` in their names, such as `Ragdolling:Injured`, will be applied.
-//
-//If you only create the `Ragdolling` profile and do not create a `Default` profile, the effects of the physical animation will only be applied during ragdolling.
-//
-//# Animation Curve
-//
-//Added new curves below :
-//
-//- PALockArmLeft
-//- PALockArmRight
-//- PALockLegLeft
-//- PALockLegRight
-//- PALockHandLeft
-//- PALockHandRight
-//- PALockFootLeft
-//- PALockFootRight
-//
-//By setting a value greater than 0 to these animation curves in animation sequence or animation montage, you can temporarily disable the corresponding physical animation without switching profiles.
-//
-//For example, during Mantling, these curves are set to disable the physical animation of the corresponding parts temporarily, so as not to interfere with the action of lifting the leg high.
 
 UGarPhysicalAnimationComponent::UGarPhysicalAnimationComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -243,256 +207,45 @@ void UGarPhysicalAnimationComponent::RefreshBodyState(float DeltaTime)
 	}
 }
 
-namespace GarPhysicalAnimationTagCombination
+void UGarPhysicalAnimationComponent::ChooseProfile_Implementation(FGarPAProfileChooserResult& OutResult) const
 {
-	struct FIterator
-	{
-		const struct FContainer* Container;
-		TArray<FName> CurrentNames;
-		TArray<int> Indices;
+	if(!IsValid(ProfileChooser)) return;
 
-		const TArray<FName>& operator*() const { return CurrentNames; }
-		FIterator& operator++();
-		bool operator!=(const FIterator& lhs) const { return Container != Container || Indices != lhs.Indices || CurrentNames != lhs.CurrentNames; }
-	};
+	auto* Character{Cast<AGarCharacter>(GetOwner())};
 
-	struct FContainer
-	{
-		TArray<FName> SourceNames;
-		FIterator begin() const { return {this, SourceNames}; }
-		FIterator end() const { return {nullptr}; }
-	};
+	if(!IsValid(Character)) return;
 
-	FIterator& FIterator::operator++()
-	{
-		if (!Container)
-		{
-			CurrentNames.Reset();
-			Indices.Reset();
-			return *this;
-		}
+	const FInstancedStruct ChooserInstance = UChooserFunctionLibrary::MakeEvaluateChooser(ProfileChooser);
 
-		auto SourceNum{Container->SourceNames.Num()};
+	FChooserEvaluationContext Context;
+	Context.AddStructParam(const_cast<FGameplayTagContainer&>(CurrentGameplayTags));
+	Context.AddStructParam(OutResult);
 
-		// ex. SourceNum = 5
-		// SourceNum - IndicesNum(1) = 4
-		// 11110 0
-		// 11101 1
-		// 11011 2
-		// 10111 3
-		// 01111 4
-		// 
-		// SourceNum - IndicesNum(2) = 3
-		// 11100 0 0
-		// 11010 0 1
-		// 11001 1 1
-		// 10110 0 2
-		// 10101 1 2
-		// 10011 2 2
-		// 01110 0 3
-		// 01101 1 3
-		// 01011 2 3
-		// 00111 3 3
-		// 
-		// SourceNum - IndicesNum(3) = 2
-		// 11000 0 0 0
-		// 10100 0 0 1
-		// 10010 0 1 1
-		// 10001 1 1 1
-		// 01100 0 0 2
-		// 01010 0 1 2
-		// 01001 1 1 2
-		// 00110 0 2 2
-		// 00101 1 2 2
-		// 00011 2 2 2
-		// 
-		// SourceNum - IndicesNum(4) = 1
-		// 10000 0 0 0 0
-		// 01000 0 0 0 1
-		// 00100 0 0 1 1
-		// 00010 0 1 1 1
-		// 00001 1 1 1 1
-
-		if (Indices.IsEmpty())
-		{
-			Indices.Push(0);
-		}
-		else
-		{
-			bool bNextDepth = false;
-			auto IndicesNum{Indices.Num()};
-			for (int Index = 0; Index < IndicesNum; ++Index)
-			{
-				if (Index + 1 < IndicesNum)
-				{
-					if (Indices[Index] < Indices[Index + 1])
-					{
-						Indices[Index]++;
-						break;
-					}
-					else
-					{
-						Indices[Index] = 0;
-					}
-				}
-				else
-				{
-					if (Indices[Index] < SourceNum - IndicesNum)
-					{
-						Indices[Index]++;
-					}
-					else
-					{
-						Indices[Index] = 0;
-						bNextDepth = true;
-					}
-				}
-			}
-			if (bNextDepth)
-			{
-				if(IndicesNum + 1 < SourceNum)
-				{
-					Indices.Push(0);
-				}
-				else
-				{
-					Container = nullptr;
-					CurrentNames.Reset();
-					Indices.Reset();
-					return *this;
-				}
-			}
-		}
-
-		CurrentNames = Container->SourceNames;
-
-		if (SourceNum > 1)
-		{
-			for (auto Index : Indices)
-			{
-				CurrentNames.RemoveAt(CurrentNames.Num() - 1 - Index);
-			}
-		}
-
-		return *this;
-	}
+	UChooserFunctionLibrary::EvaluateObjectChooserBase(Context, ChooserInstance, nullptr);
 }
 
 void UGarPhysicalAnimationComponent::SelectProfile()
 {
-	using namespace GarPhysicalAnimationTagCombination;
-	TArray<FName> NextProfileNames;
-	FName NextBaseProfileName;
-	TArray<FName> NextAdditiveProfileNames;
-	TArray<FName> NextMultiplyProfileNames;
-	TStringBuilder<256> StringBuilder;
-	TStringBuilder<256> AdditionalStringBuilder;
+	FGarPAProfileChooserResult Choosen;
+	ChooseProfile(Choosen);
 
-	FName RagdollingModeName{CurrentRagdolling.IsValid() ? UGarUtility::GetSimpleTagName(CurrentRagdolling) : NAME_None};
-
-	FContainer Container;
-
-	for (auto& Mask : GameplayTagMasks)
-	{
-		auto Name{UGarUtility::GetSimpleTagName(CurrentGameplayTags.Filter(Mask).First())};
-		if (Name.IsValid() && !Name.IsNone())
-		{
-			Container.SourceNames.Add(Name);
-		}
-	}
-
-	for (auto& Names : Container)
-	{
-		if(bRagdolling && !Names.Contains(RagdollingModeName))
-		{
-			continue;
-		}
-
-		for(auto& Name : Names)
-		{
-			if (StringBuilder.Len() > 0)
-			{
-				StringBuilder << TEXT(":");
-			}
-			StringBuilder << Name;
-		}
-
-		UE_LOG(LogGar, VeryVerbose, TEXT("Try Physical Animation Profile '%s'"), *StringBuilder);
-
-		// determin base profile
-
-		if (NextBaseProfileName.IsNone())
-		{
-			FName ProfileName(StringBuilder, FNAME_Find);
-			if (IsProfileExist(ProfileName))
-			{
-				NextBaseProfileName = ProfileName;
-			}
-		}
-
-		// add additive profile if exists
-
-		AdditionalStringBuilder << TEXT("+");
-		AdditionalStringBuilder.Append(StringBuilder);
-		FName AdditiveProfileName(AdditionalStringBuilder, FNAME_Find);
-		AdditionalStringBuilder.Reset();
-		if (IsProfileExist(AdditiveProfileName))
-		{
-			NextAdditiveProfileNames.Add(AdditiveProfileName);
-		}
-
-		// add multiply profile if exists
-
-		AdditionalStringBuilder << TEXT("*");
-		AdditionalStringBuilder.Append(StringBuilder);
-		FName MultiplyProfileName(AdditionalStringBuilder, FNAME_Find);
-		AdditionalStringBuilder.Reset();
-		if (IsProfileExist(MultiplyProfileName))
-		{
-			NextMultiplyProfileNames.Add(MultiplyProfileName);
-		}
-
-		StringBuilder.Reset();
-	}
-
-	if (NextBaseProfileName.IsNone() && bRagdolling && IsProfileExist(RagdollingModeName))
-	{
-		NextBaseProfileName = RagdollingModeName;
-	}
-	if (NextBaseProfileName.IsNone() && !bRagdolling && IsProfileExist(DefaultProfileName))
-	{
-		NextBaseProfileName = DefaultProfileName;
-	}
-
-	if (NextBaseProfileName.IsNone())
-	{
-		NextAdditiveProfileNames.Reset();
-		NextMultiplyProfileNames.Reset();
-	}
-	else
-	{
-		NextProfileNames.Add(NextBaseProfileName);
-		NextProfileNames.Append(NextAdditiveProfileNames);
-		NextMultiplyProfileNames.Append(MultiplyProfileNames);
-	}
-
-	if (NextProfileNames != CurrentProfileNames || NextMultiplyProfileNames != CurrentMultiplyProfileNames)
+	if (Choosen.ProfileNames != CurrentProfileNames || Choosen.MultiplyProfileNames != CurrentMultiplyProfileNames)
 	{
 		bool bFirst = true;
-		for (const auto& NextProfileName : NextProfileNames)
+		for (const auto& NextProfileName : Choosen.ProfileNames)
 		{
 			ApplyPhysicalAnimationProfileBelow(NAME_None, NextProfileName);
 			GetSkeletalMesh()->SetConstraintProfileForAll(NextProfileName, bFirst);
 			bFirst = false;
 		}
-		CurrentProfileNames = NextProfileNames;
+		CurrentProfileNames = Choosen.ProfileNames;
 
-		for (const auto& NextMultiplyProfileName : NextMultiplyProfileNames)
+		for (const auto& NextMultiplyProfileName : Choosen.MultiplyProfileNames)
 		{
 			ApplyPhysicalAnimationProfileBelow(NAME_None, NextMultiplyProfileName);
 			GetSkeletalMesh()->SetConstraintProfileForAll(NextMultiplyProfileName);
 		}
-		CurrentMultiplyProfileNames = NextMultiplyProfileNames;
+		CurrentMultiplyProfileNames = Choosen.MultiplyProfileNames;
 	}
 }
 
@@ -842,7 +595,24 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	// Disable capsule collision. other physics states will be changed by physical aniamtion process
 
-	Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // TODO: Change
+	auto Capsule{ Character->GetCapsule() };
+	// オブジェクトタイプをPawnに設定（必要に応じてWorldDynamicでも可）
+	Capsule->SetCollisionObjectType(ECC_Pawn);
+
+	// 全チャンネルをIgnoreで初期化
+	Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	// 地形と動的オブジェクトにはBlock
+	Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
+
+	// 他のPawnとはOverlap（押しのけられるが干渉しない）
+	Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+
+	// 必要に応じて Visibility や Camera も Ignore
+	Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
 	if (Character->IsLocallyControlled() || (Character->GetLocalRole() >= ROLE_Authority && !IsValid(Character->GetController())))
 	{
@@ -850,6 +620,8 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	}
 
 	// Clear the character movement mode and set the locomotion action to ragdolling.
+
+	Mover->SetPrimaryVisualComponent(nullptr);
 
 	//Mover->SetMovementMode(MOVE_Custom);
 	//Mover->SetMovementModeLocked(true);
@@ -907,7 +679,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
 											DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
 											DeltaTime, Settings->VelocityInterpolationSpeed);
-	PrevActorLocation = Character->GetActorLocation();
+	PrevActorLocation = Mover->GetUpdatedComponentTransform().GetLocation();
 
 	// Prevent the capsule from going through the ground when the ragdoll is lying on the ground.
 
@@ -917,11 +689,13 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	if (bCharacterSelf || NetMode == NM_DedicatedServer)
 	{
-		Character->SetActorLocation(TraceGround(), true);
+		auto TeleportEffect = MakeShared<FTeleportEffect>();
+		TeleportEffect->TargetLocation = TraceGround();
+		Mover->QueueInstantMovementEffect(TeleportEffect);
 	}
 	else
 	{
-		Character->SetActorLocation(FMath::VInterpTo(Character->GetActorLocation(), TraceGround(), DeltaTime, Settings->SimulatedProxyInterpolationSpeed), true);
+		//Character->SetActorLocation(FMath::VInterpTo(Character->GetActorLocation(), TraceGround(), DeltaTime, Settings->SimulatedProxyInterpolationSpeed), true);
 	}
 
 	// Zero target location means that it hasn't been replicated yet, so we can't apply the logic below.
@@ -1066,10 +840,17 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 	// Re-enable capsule collision.
 
-	Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	auto Capsule{Character->GetCapsule()};
+	// 全チャンネルを Ignore に初期化
+	Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Exponential;
-	//Mover->bIgnoreClientMovementErrorChecksAndCorrection = false;
+	// 必要なチャンネルに Block を設定
+	Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);     // 地形
+	Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);    // 動的オブジェクト
+	Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);            // 他のPawn
+	Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);      // トレース用
+	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);         // カメラは無視（任意）
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
@@ -1078,12 +859,18 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 		// Determine yaw angle of the character.
 
-		auto NewActorRotation{Character->GetActorRotation()};
+		auto NewActorRotation{Mover->GetUpdatedComponentTransform().GetRotation().Rotator()};
 		NewActorRotation.Yaw = UGarMath::DirectionToAngleXY(TopRotation.RotateVector(
 			FMath::Abs(TopRotation.RotateVector(FVector::ForwardVector).GetSafeNormal2D().Dot(FVector::UpVector)) > 0.5f ?
 			(bFacingUpward ? FVector::RightVector : FVector::LeftVector) :
 			(bFacingUpward ? FVector::BackwardVector : FVector::ForwardVector)).GetSafeNormal2D());
-		Character->SetActorRotation(NewActorRotation, ETeleportType::TeleportPhysics);
+		//Character->SetActorRotation(NewActorRotation, ETeleportType::TeleportPhysics);
+
+		auto TeleportEffect = MakeShared<FTeleportEffect>();
+		TeleportEffect->TargetLocation = Mover->GetUpdatedComponentTransform().GetLocation();
+		TeleportEffect->bUseActorRotation = true;
+		TeleportEffect->TargetRotation = NewActorRotation;
+		Mover->QueueInstantMovementEffect(TeleportEffect);
 
 		// Restore the pelvis transform to the state it was in before we changed
 		// the character and mesh transforms to keep its world transform unchanged.
@@ -1097,6 +884,8 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 			// We expect the pelvis bone to be the root bone or attached to it, so we can safely use the mesh transform here.
 			FinalRagdollPose.LocalTransforms[TopBoneIndex] = TopTransform.GetRelativeTransform(Character->GetMesh()->GetComponentTransform());
 		}
+
+		Mover->SetPrimaryVisualComponent(Character->GetMesh());
 	}
 
 	TargetLocation = FVector::ZeroVector;

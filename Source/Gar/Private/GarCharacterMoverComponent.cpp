@@ -10,10 +10,12 @@
 #include "MoveLibrary/MovementUtils.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
 #include "MoverPoseSearchTrajectoryPredictor.h"
+#include "MotionWarpingComponent.h"
 #include "MotionWarpingMoverAdapter.h"
 #include "GarCharacter.h"
 #include "MoverModes/GarMoverFallingMode.h"
 #include "MoverModes/GarMoverWalkingMode.h"
+#include "MoverModes/GarMoverRagdollingMode.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
@@ -29,6 +31,7 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 	// Default movement modes
 	MovementModes.Add(DefaultModeNames::Walking, CreateDefaultSubobject<UGarMoverWalkingMode>(TEXT("DefaultWalkingMode")));
 	MovementModes.Add(DefaultModeNames::Falling, CreateDefaultSubobject<UGarMoverFallingMode>(TEXT("DefaultFallingMode")));
+	MovementModes.Add(TEXT("Ragdolling"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultRagdollingMode")));
 
 	StartingMovementMode = DefaultModeNames::Walking;
 }
@@ -41,7 +44,7 @@ void UGarCharacterMoverComponent::InitializeComponent()
 
 	TrajectoryPredictor = NewObject<UMoverTrajectoryPredictor>();
 	TrajectoryPredictor->Setup(this);
-	MotionWarpingMoverAdapter = NewObject<UMotionWarpingMoverAdapter>();
+	MotionWarpingMoverAdapter = Character->GetMotionWarping()->CreateOwnerAdapter<UMotionWarpingMoverAdapter>();
 	MotionWarpingMoverAdapter->SetMoverComp(this);
 }
 
