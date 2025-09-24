@@ -842,15 +842,18 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	auto Capsule{Character->GetCapsule()};
-	// 全チャンネルを Ignore に初期化
-	Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+	//// 全チャンネルを Ignore に初期化
+	//Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
 
-	// 必要なチャンネルに Block を設定
-	Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);     // 地形
-	Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);    // 動的オブジェクト
-	Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);            // 他のPawn
-	Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);      // トレース用
-	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);         // カメラは無視（任意）
+	//// 必要なチャンネルに Block を設定
+	//Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);     // 地形
+	//Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);    // 動的オブジェクト
+	//Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);            // 他のPawn
+	//Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);      // トレース用
+	//Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);         // カメラは無視（任意）
+
+	Character->GetCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+	Character->GetProneCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
