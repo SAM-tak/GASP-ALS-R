@@ -11,7 +11,7 @@
 UCLASS()
 class GAR_API UGarAbilityTask_PlayMontageAndWaitWithNotify : public UAbilityTask_PlayMontageAndWait
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
 	UPROPERTY(BlueprintAssignable)

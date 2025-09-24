@@ -205,6 +205,7 @@ public:
 	// Rotation Mode
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	const FGameplayTag& GetRotationMode() const;
 
 protected:
@@ -240,6 +241,7 @@ public:
 	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	const FGameplayTag& GetStance() const;
 
 protected:
@@ -435,7 +437,7 @@ private:
 
 	void DisplayDebugTraces(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 
-	void DisplayDebugMantling(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
+	void DisplayDebugTraversal(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 #endif // !UE_BUILD_SHIPPING
 };
 

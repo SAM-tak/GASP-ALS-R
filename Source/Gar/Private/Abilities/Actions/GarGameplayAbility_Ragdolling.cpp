@@ -3,7 +3,6 @@
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "Abilities/Tasks/GarAbilityTask_Tick.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
 #include "GarAnimationInstance.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarPhysicalAnimationComponent.h"

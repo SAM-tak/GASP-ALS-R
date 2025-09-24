@@ -10,7 +10,10 @@ class UCameraShakeBase;
 UCLASS(DisplayName = "Gar Camera Shake Animation Notify")
 class GAR_API UGarAnimNotify_CameraShake : public UAnimNotify
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
+
+public:
+	UGarAnimNotify_CameraShake();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")

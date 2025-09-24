@@ -5,10 +5,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilityTask_PlayLocalMontage)
 
-UGarAbilityTask_PlayLocalMontage::UGarAbilityTask_PlayLocalMontage(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 UGarAbilityTask_PlayLocalMontage* UGarAbilityTask_PlayLocalMontage::CreatePlayLocalMontage(UGameplayAbility* OwningAbility, FName TaskInstanceName,
 																						   FGameplayTag _LocalMontageTag)
 {

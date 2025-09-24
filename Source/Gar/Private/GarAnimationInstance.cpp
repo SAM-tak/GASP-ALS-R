@@ -3,10 +3,10 @@
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
 #include "Curves/CurveFloat.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "MotionWarpingComponent.h"
 #include "GarAnimationInstanceProxy.h"
 #include "GarCharacter.h"
+#include "GarCharacterMovementComponent.h"
 #include "GarConstants.h"
 #include "LinkedAnimLayers/GarLayeringAnimInstance.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
@@ -173,7 +173,7 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 {
 	check(IsInGameThread())
 
-	const auto* Movement{Character->GetCharacterMovement()};
+	const auto* Movement{Character->GetGarCharacterMovement()};
 
 	CharacterMovement.Acceleration = Movement->GetCurrentAcceleration();
 	CharacterMovement.MaxAcceleration = Movement->GetMaxAcceleration();
@@ -181,6 +181,14 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	CharacterMovement.VelocityLastFrame = CharacterMovement.Velocity;
 	CharacterMovement.Velocity = Movement->Velocity;
 	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - CharacterMovement.VelocityLastFrame) / FMath::Max(DeltaTime, 0.001f);
+	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		CharacterMovement.ControlRotation = Movement->GetReplicatedControlRotation();
+	}
+	else
+	{
+		CharacterMovement.ControlRotation = Character->GetControlRotation();
+	}
 
 	if (CharacterMovement.Velocity.Size2D() > 5.0f)
 	{

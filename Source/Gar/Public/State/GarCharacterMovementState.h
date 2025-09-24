@@ -30,4 +30,7 @@ struct GAR_API FGarCharacterMovementState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	float WalkableFloorZ{0.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FRotator ControlRotation;
 };

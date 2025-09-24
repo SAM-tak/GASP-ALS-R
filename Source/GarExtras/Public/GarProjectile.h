@@ -13,7 +13,7 @@ UCLASS()
 class GAREXTRAS_API AGarProjectile : public AActor
 {
 	GENERATED_UCLASS_BODY()
-	
+
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = Projectile)
 	TObjectPtr<UCapsuleComponent> CollisionComponent;

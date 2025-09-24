@@ -41,6 +41,8 @@ private:
 	using Super = FCharacterNetworkMoveData;
 
 public:
+	FRotator ControlRotation{ForceInit};
+
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 
 	FGameplayTag Stance{GarStanceTags::Standing};
@@ -68,6 +70,8 @@ private:
 	using Super = FSavedMove_Character;
 
 public:
+	FRotator ControlRotation{ForceInit};
+
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
 
 	FGameplayTag Stance{GarStanceTags::Standing};
@@ -134,6 +138,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	uint8 bInputBlocked : 1 {false};
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
+	FRotator ReplicatedControlRotation{ForceInit};
+
 	// Valid only on locally controlled characters.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMovement|State", Transient)
 	FRotator PreviousControlRotation{ForceInit};
@@ -148,6 +155,9 @@ protected:
 	FGarCharacterNetworkMoveDataContainer MoveDataContainer;
 
 public:
+	FGarPhysicsRotationDelegate OnPhysicsRotation;
+
+public:
 	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
@@ -158,14 +168,22 @@ public:
 
 	virtual bool ShouldPerformAirControlForPathFollowing() const override;
 
+	virtual void UpdateBasedRotation(FRotator& FinalRotation, const FRotator& ReducedRotation) override;
+
 	virtual bool ApplyRequestedMove(float DeltaTime, float CurrentMaxAcceleration, float MaxSpeed, float Friction,
 	                                float BrakingDeceleration, FVector& RequestedAcceleration, float& RequestedSpeed) override;
+
+	virtual void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	virtual float GetMaxAcceleration() const override;
 
 	virtual float GetMaxBrakingDeceleration() const override;
+
+	virtual void PhysicsRotation(float DeltaTime) override;
+
+	const FRotator& GetReplicatedControlRotation() const { return ReplicatedControlRotation; }
 
 protected:
 	virtual void ControlledCharacterMove(const FVector& InputVector, float DeltaTime) override;

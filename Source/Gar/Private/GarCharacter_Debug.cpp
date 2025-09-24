@@ -123,7 +123,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()))
 	{
 		DisplayDebugHeader(Canvas, MantlingHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
-		DisplayDebugMantling(Canvas, Scale, HorizontalLocation, VerticalLocation);
+		DisplayDebugTraversal(Canvas, Scale, HorizontalLocation, VerticalLocation);
 	}
 	else
 	{
@@ -591,8 +591,7 @@ void AGarCharacter::DisplayDebugTraces(const UCanvas* Canvas, const float Scale,
 	VerticalLocation += RowOffset;
 }
 
-void AGarCharacter::DisplayDebugMantling(const UCanvas* Canvas, const float Scale,
-                                         const float HorizontalLocation, float& VerticalLocation) const
+void AGarCharacter::DisplayDebugTraversal(const UCanvas* Canvas, const float Scale, const float HorizontalLocation, float& VerticalLocation) const
 {
 	VerticalLocation += 4.0f * Scale;
 

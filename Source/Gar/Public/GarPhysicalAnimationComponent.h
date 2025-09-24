@@ -7,11 +7,24 @@
 #include "GarGameplayTags.h"
 #include "GarPhysicalAnimationComponent.generated.h"
 
-class AGarCharacter;
+class UChooserTable;
 class USkeletalBodySetup;
+class AGarCharacter;
 class UGarRagdollingSettings;
 class UGarRagdollingAnimInstance;
 class UGarPhysicalAnimationComponent;
+
+USTRUCT(BlueprintType)
+struct GAR_API FGarPAProfileChooserResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	TArray<FName> ProfileNames;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	TArray<FName> MultiplyProfileNames;
+};
 
 USTRUCT(BlueprintType)
 struct GAR_API FGarPACurveBoneMapping
@@ -130,6 +143,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings", Meta = (ClampMin = 0, ForceUnits = "s"))
 	float BlendTimeOfBlendWeightOnDeactivate{0.1f};
 
+	/**
+	 * Chooser for determin physics animation profile and constraint profile
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
+	TObjectPtr<UChooserTable> ProfileChooser;
+
 	// A mask of GameplayTags used to determine the Profile. The order in the list is used as a priority.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
 	TArray<FGameplayTagContainer> GameplayTagMasks{
@@ -154,9 +173,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
 	FName TopBoneName{TEXTVIEW("pelvis")};
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
-	FName DefaultProfileName{TEXTVIEW("Default")};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
 	TMap<FGameplayTag, TObjectPtr<UGarRagdollingSettings>> RagdollingSettingsMap;
@@ -226,6 +242,9 @@ protected:
 
 	UFUNCTION(Server, Unreliable)
 	void ServerSetRagdollingTargetLocation(const FVector_NetQuantize& NewTargetLocation);
+
+	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
+	void ChooseProfile(FGarPAProfileChooserResult& OutResult) const;
 
 public:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

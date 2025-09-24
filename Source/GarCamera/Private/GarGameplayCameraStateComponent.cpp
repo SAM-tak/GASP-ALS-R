@@ -13,7 +13,6 @@
 #include "Net/Core/PushModel/PushModel.h"
 #include "GarGameplayCameraStateSettings.h"
 #include "GarCharacter.h"
-#include "GarCharacterMovementComponent.h"
 #include "GarCameraConstants.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarUtility.h"
@@ -366,36 +365,8 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 		PreviousShoulderMode = ShoulderMode;
 	}
 
-	UpdateViewMode();
+	UpdatePerspective();
 	UpdateFocalLength();
-
-	//if (FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold)
-	//{
-	//	Character->SetLookRotation(Character->GetViewRotation());
-	//}
-	//else
-	//{
-	//	if (Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
-	//	{
-	//		if (bIsSightOffsetValid)
-	//		{
-	//			auto ControlRotation = Character->GetControlRotation();
-	//			auto Location{ControlRotation.RotateVector(SightLocationOffset) + GetEyeCameraLocation()};
-	//			auto Rotation{(ControlRotation.Quaternion() * SightRotationOffset).Rotator()};
-	//			Location = FVector::PointPlaneProject(Location, GetEyeCameraLocation(), Rotation.Vector())
-	//				- Rotation.Vector() * Settings->FirstPerson.RetreatDistance;
-	//			Character->SetLookRotation((GetCurrentFocusLocation() - Location).Rotation());
-	//		}
-	//		else
-	//		{
-	//			Character->SetLookRotation((GetCurrentFocusLocation() - GetEyeCameraLocation()).Rotation());
-	//		}
-	//	}
-	//	else
-	//	{
-	//		Character->SetLookRotation((GetCurrentFocusLocation() - GetFirstPersonCameraLocation()).Rotation());
-	//	}
-	//}
 
 	Character->SetPerspective(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold ? GarPerspectiveTags::FirstPerson : GarPerspectiveTags::ThirdPerson);
 }
@@ -533,7 +504,7 @@ FVector UGarGameplayCameraStateComponent::GetFirstPersonTraceStartLocation() con
 	return GetFirstPersonCameraLocation() - ViewRotation.Vector() * Settings->FirstPerson.RetreatDistance;
 }
 
-void UGarGameplayCameraStateComponent::UpdateViewMode()
+void UGarGameplayCameraStateComponent::UpdatePerspective()
 {
 	if (ConfirmedDesiredPerspective == GarCameraPerspectiveTags::FirstPerson)
 	{

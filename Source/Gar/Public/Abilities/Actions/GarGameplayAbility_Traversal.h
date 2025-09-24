@@ -9,6 +9,7 @@ class UCurveFloat;
 class UPrimitiveComponent;
 class UAnimMontage;
 class UMotionWarpingComponent;
+class UChooserTable;
 
 USTRUCT(BlueprintType)
 struct GAR_API FGarTraversalChooserInputs
@@ -131,6 +132,9 @@ class GAR_API UGarGameplayAbility_Traversal : public UGarGameplayAbility_MotionM
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
+	TObjectPtr<UChooserTable> Chooser;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
 	FName ExcludeTargetTag{TEXTVIEW("Not Traversable")};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm/s"))
@@ -233,7 +237,7 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
 	bool TraceEnvironment(AGarCharacter* Character, FGarTraversalTraceResult& OutResult) const;
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|Ability|Traversal")
+	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
 	void ChooseCandidate(const FGarTraversalChooserInputs& Input, FGarTraversalChooserOutput& Output, TArray<UAnimMontage*>& OutMontages) const;
 
 	bool HasNonTraversalTag(const FHitResult& HitResult) const;

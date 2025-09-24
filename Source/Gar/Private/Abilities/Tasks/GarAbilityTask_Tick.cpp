@@ -2,8 +2,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilityTask_Tick)
 
-UGarAbilityTask_Tick::UGarAbilityTask_Tick(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer)
+UGarAbilityTask_Tick::UGarAbilityTask_Tick()
 {
     bTickingTask = true;
 }

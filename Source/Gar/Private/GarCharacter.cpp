@@ -566,6 +566,10 @@ void AGarCharacter::RefreshRotationMode()
 			{
 				SetRotationMode(GarRotationModeTags::Aiming);
 			}
+			else
+			{
+				SetRotationMode(GarRotationModeTags::ViewDirection);
+			}
 
 			return;
 		}

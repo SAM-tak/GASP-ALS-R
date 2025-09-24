@@ -183,7 +183,7 @@ private:
 	void ServerSetShoulderMode(const FGameplayTag& NewShoulderMode);
 
 private:
-	void UpdateViewMode();
+	void UpdatePerspective();
 
 	void UpdateFocalLength();
 

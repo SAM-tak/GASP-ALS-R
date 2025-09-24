@@ -20,6 +20,7 @@ void FGarCharacterNetworkMoveData::ClientFillNetworkMoveData(const FSavedMove_Ch
 
 	const auto& SavedMove{static_cast<const FGarSavedMove&>(Move)};
 
+	ControlRotation = SavedMove.ControlRotation;
 	RotationMode = SavedMove.RotationMode;
 	Stance = SavedMove.Stance;
 	Gait = SavedMove.Gait;
@@ -48,6 +49,7 @@ void FGarSavedMove::Clear()
 {
 	Super::Clear();
 
+	ControlRotation = FRotator::ZeroRotator;
 	RotationMode = GarRotationModeTags::ViewDirection;
 	Stance = GarStanceTags::Standing;
 	Gait = GarGaitTags::Running;
@@ -61,6 +63,7 @@ void FGarSavedMove::SetMoveFor(ACharacter* Character, const float NewDeltaTime, 
 	const auto* Movement{Cast<UGarCharacterMovementComponent>(Character->GetCharacterMovement())};
 	if (IsValid(Movement))
 	{
+		ControlRotation = Character->GetControlRotation();
 		RotationMode = Movement->RotationMode;
 		Stance = Movement->Stance;
 		Gait = Movement->Gait;
@@ -85,6 +88,7 @@ void FGarSavedMove::PrepMoveFor(ACharacter* Character)
 	auto* Movement{Cast<UGarCharacterMovementComponent>(Character->GetCharacterMovement())};
 	if (IsValid(Movement))
 	{
+		Movement->ReplicatedControlRotation = ControlRotation;
 		Movement->RotationMode = RotationMode;
 		Movement->Stance = Stance;
 		Movement->Gait = Gait;
@@ -108,6 +112,8 @@ UGarCharacterMovementComponent::UGarCharacterMovementComponent(const FObjectInit
 	bTickBeforeOwner = true;
 
 	SetNetworkMoveDataContainer(MoveDataContainer);
+
+	bAllowPhysicsRotationDuringAnimRootMotion = true;       // Required to be able to manually rotate the actor while rolling.
 
 	SetCrouchedHalfHeight(56.0f);
 
@@ -246,12 +252,51 @@ bool UGarCharacterMovementComponent::ShouldPerformAirControlForPathFollowing() c
 	return !bInputBlocked && Super::ShouldPerformAirControlForPathFollowing();
 }
 
+void UGarCharacterMovementComponent::UpdateBasedRotation(FRotator& FinalRotation, const FRotator& ReducedRotation)
+{
+	// Ignore the parent implementation of this function and provide our own, because the parent
+	// implementation has no effect when we ignore rotation changes in AGarCharacter::FaceRotation().
+
+	const auto& BasedMovement{CharacterOwner->GetBasedMovement()};
+
+	FVector MovementBaseLocation;
+	FQuat MovementBaseRotation;
+
+	MovementBaseUtility::GetMovementBaseTransform(BasedMovement.MovementBase, BasedMovement.BoneName,
+												  MovementBaseLocation, MovementBaseRotation);
+
+	if (!OldBaseQuat.Equals(MovementBaseRotation, UE_SMALL_NUMBER))
+	{
+		const auto DeltaRotation{(MovementBaseRotation * OldBaseQuat.Inverse()).Rotator()};
+		auto NewControlRotation{CharacterOwner->Controller->GetControlRotation()};
+
+		NewControlRotation.Pitch += DeltaRotation.Pitch;
+		NewControlRotation.Yaw += DeltaRotation.Yaw;
+		NewControlRotation.Normalize();
+
+		CharacterOwner->Controller->SetControlRotation(NewControlRotation);
+	}
+}
+
 bool UGarCharacterMovementComponent::ApplyRequestedMove(const float DeltaTime, const float CurrentMaxAcceleration,
 														const float MaxSpeed, const float Friction, const float BrakingDeceleration,
 														FVector& RequestedAcceleration, float& RequestedSpeed)
 {
 	return !bInputBlocked && Super::ApplyRequestedMove(DeltaTime, CurrentMaxAcceleration, MaxSpeed, Friction,
 													   BrakingDeceleration, RequestedAcceleration, RequestedSpeed);
+}
+
+void UGarCharacterMovementComponent::CalcVelocity(const float DeltaTime, const float Friction,
+												  const bool bFluid, const float BrakingDeceleration)
+{
+	FRotator BaseRotationSpeed;
+	if (!bIgnoreBaseRotation && UGarUtility::TryGetMovementBaseRotationSpeed(CharacterOwner->GetBasedMovement(), BaseRotationSpeed))
+	{
+		// Offset the velocity to keep it relative to the movement base.
+		Velocity = (BaseRotationSpeed * DeltaTime).RotateVector(Velocity);
+	}
+
+	Super::CalcVelocity(DeltaTime, Friction, bFluid, BrakingDeceleration);
 }
 
 float UGarCharacterMovementComponent::GetMaxAcceleration() const
@@ -280,6 +325,16 @@ void UGarCharacterMovementComponent::ControlledCharacterMove(const FVector& Inpu
 	if (IsValid(Controller))
 	{
 		PreviousControlRotation = Controller->GetControlRotation();
+	}
+}
+
+void UGarCharacterMovementComponent::PhysicsRotation(const float DeltaTime)
+{
+	Super::PhysicsRotation(DeltaTime);
+
+	if (HasValidData() && (bRunPhysicsWithNoController || IsValid(CharacterOwner->Controller)))
+	{
+		OnPhysicsRotation.Broadcast(DeltaTime);
 	}
 }
 
@@ -581,12 +636,21 @@ void UGarCharacterMovementComponent::PhysCustom(const float DeltaTime, int32 Ite
 
 FVector UGarCharacterMovementComponent::ConsumeInputVector()
 {
+	auto InputVector{Super::ConsumeInputVector()};
+
 	if (bInputBlocked)
 	{
 		return FVector::ZeroVector;
 	}
 
-	return Super::ConsumeInputVector();
+	FRotator BaseRotationSpeed;
+	if (!bIgnoreBaseRotation && UGarUtility::TryGetMovementBaseRotationSpeed(CharacterOwner->GetBasedMovement(), BaseRotationSpeed))
+	{
+		// Offset the input vector to keep it relative to the movement base.
+		InputVector = (BaseRotationSpeed * GetWorld()->GetDeltaSeconds()).RotateVector(InputVector);
+	}
+
+	return InputVector;
 }
 
 void UGarCharacterMovementComponent::ComputeFloorDist(const FVector& CapsuleLocation, float LineDistance, float SweepDistance,
