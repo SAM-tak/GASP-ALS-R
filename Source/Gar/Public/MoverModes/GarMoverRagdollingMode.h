@@ -15,6 +15,12 @@ class UGarMoverRagdollingMode : public UBaseMovementMode
 	GENERATED_UCLASS_BODY()
 
 public:
+	/**
+	 * The bone name to trace
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mover)
+	FName TopBoneName{TEXTVIEW("pelvis")};
+
 	virtual void GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const override;
 
 	virtual void SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState) override;
@@ -22,6 +28,8 @@ public:
 protected:
 	virtual void OnRegistered(const FName ModeName) override;
 	virtual void OnUnregistered() override;
+
+	void CaptureFinalState(USceneComponent* UpdatedComponent, FMovementRecord& Record, const FMoverDefaultSyncState& StartSyncState, FMoverDefaultSyncState& OutputSyncState, const float DeltaSeconds) const;
 
 	TObjectPtr<const UGarMovementSettings> Settings;
 };

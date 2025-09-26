@@ -5,6 +5,8 @@
 #include "GarGameplayTags.h"
 #include "GarMovementSettings.generated.h"
 
+class UCurveFloat;
+
 USTRUCT(BlueprintType)
 struct GAR_API FGarMovementSpeedSettings
 {
@@ -32,6 +34,14 @@ public:
 	/** Default max linear rate of deceleration when there is no controlled input */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "General", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s^2"))
 	float Deceleration = 800.f;
+
+	/** Maximum rate of turning rotation (degrees per second). Negative numbers indicate instant rotation and should cause rotation to snap instantly to desired direction. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General", meta = (ClampMin = "-1", UIMin = "0", ForceUnits = "degrees/s"))
+	float TurningRate = 500.f;
+
+	/** Speeds velocity direction changes while turning, to reduce sliding */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "Multiplier"))
+	float TurningBoost = 1.f;
 
 	/**
 	 * Setting that affects movement control. Higher values allow faster changes in direction. This can be used to simulate slippery
@@ -84,29 +94,6 @@ struct GAR_API FGarMovementSpeedSettingsMap
 	TMap<FGameplayTag, FGarMovementSpeedSettings> Settings;
 };
 
-USTRUCT(BlueprintType)
-struct GAR_API FGarMovementTurnSettings
-{
-	GENERATED_BODY()
-
-	/** Maximum rate of turning rotation (degrees per second). Negative numbers indicate instant rotation and should cause rotation to snap instantly to desired direction. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="General", meta = (ClampMin = "-1", UIMin = "0", ForceUnits = "degrees/s"))
-	float TurningRate = 500.f;
-
-	/** Speeds velocity direction changes while turning, to reduce sliding */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="General", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "Multiplier"))
-	float TurningBoost = 8.f;
-};
-
-USTRUCT(BlueprintType)
-struct GAR_API FGarMovementTurnSettingsMap
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere)
-	TMap<FGameplayTag, FGarMovementTurnSettings> Settings;
-};
-
 UCLASS(Blueprintable, BlueprintType)
 class GAR_API UGarMovementSettings : public UObject, public IMovementSettingsInterface
 {
@@ -115,29 +102,6 @@ class GAR_API UGarMovementSettings : public UObject, public IMovementSettingsInt
 	virtual FString GetDisplayName() const override { return GetName(); }
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
-	TMap<FGameplayTag, FGarMovementTurnSettingsMap> RotationModes
-	{
-		{GarRotationModeTags::VelocityDirection, {{
-			{GarLocomotionModeTags::Grounded, {}},
-			{GarLocomotionModeTags::InAir, {}},
-		}}},
-		{GarRotationModeTags::ViewDirection, {{
-			{GarLocomotionModeTags::Grounded, {}},
-			{GarLocomotionModeTags::InAir, {}},
-		}}},
-		{GarRotationModeTags::Aiming, {{
-			{GarLocomotionModeTags::Grounded, {}},
-			{GarLocomotionModeTags::InAir, {}},
-		}}}
-	};
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
-	FGameplayTag RotationModeFallbackKey{GarRotationModeTags::ViewDirection};
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
-	FGameplayTag LocomotionModeFallbackKey{GarLocomotionModeTags::Grounded};
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
 	TMap<FGameplayTag, FGarMovementSpeedSettingsMap> StanceModes
 	{
@@ -160,6 +124,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
 	FGameplayTag GaitFallbackKey{GarGaitTags::Walking};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ForceInlineRow))
+	FGarMovementSpeedSettings InAirSettings
+	{
+	};
 
 	/**
 	 * If true, the actor will remain upright with gravity despite any rotation applied to the actor
@@ -203,24 +172,6 @@ public:
 	float JumpUpwardsSpeed = 500.0f;
 
 public:
-	const FGarMovementTurnSettings* GetTurnSettings(const FGameplayTag& RotationMode, const FGameplayTag& LocomotionMode) const
-	{
-		auto LocomotionMap = RotationModes.Find(RotationMode);
-		if(!LocomotionMap)
-		{
-			LocomotionMap = RotationModes.Find(RotationModeFallbackKey);
-		}
-		if(auto TurnSettings = LocomotionMap->Settings.Find(LocomotionMode))
-		{
-			return TurnSettings;
-		}
-		if(auto TurnSettings = LocomotionMap->Settings.Find(LocomotionModeFallbackKey))
-		{
-			return TurnSettings;
-		}
-		return nullptr;
-	}
-
 	const FGarMovementSpeedSettings* GetSpeedSettings(const FGameplayTag& Stance, const FGameplayTag& Gait) const
 	{
 		auto GaitMap = StanceModes.Find(Stance);

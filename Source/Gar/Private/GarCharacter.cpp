@@ -330,21 +330,22 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 
 	if (AbilitySystem && Settings)
 	{
-		PrevTagContainer = TempTagContainer;
 		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
 
-		//for(auto& KeyValue : Settings->TagToMovementModeMap)
-		//{
-		//	if (TempTagContainer.HasTagExact(KeyValue.Key))
-		//	{
-		//		CharacterInputs.SuggestedMovementMode = KeyValue.Value;
-		//		break;
-		//	}
-		//	else if (CharacterInputs.SuggestedMovementMode == NAME_None && !TempTagContainer.HasTagExact(KeyValue.Key) && PrevTagContainer.HasTagExact(KeyValue.Key))
-		//	{
-		//		CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
-		//	}
-		//}
+		for(auto& KeyValue : Settings->TagToMovementModeMap)
+		{
+			if (TempTagContainer.HasTagExact(KeyValue.Key))
+			{
+				CharacterInputs.SuggestedMovementMode = KeyValue.Value;
+				break;
+			}
+			else if (CharacterInputs.SuggestedMovementMode == NAME_None && PrevTagContainer.HasTagExact(KeyValue.Key))
+			{
+				CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
+			}
+		}
+
+		PrevTagContainer = TempTagContainer;
 
 		if (!TempTagContainer.Filter(Settings->BlockMoveInputTags).IsEmpty())
 		{
@@ -812,14 +813,14 @@ bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 		{
 			auto TeleportEffect = MakeShared<FTeleportEffect>();
 			TeleportEffect->TargetLocation = CharacterMover->GetUpdatedComponentTransform().GetLocation()
-				+ CharacterMover->GetUpDirection() * (HalfHeight - OldHalfHeight + Radius - OldRadius) * Scale;
+				+ CharacterMover->GetUpDirection() * (HalfHeight < Radius ? Radius - OldRadius : HalfHeight - OldHalfHeight) * Scale;
 			CharacterMover->QueueInstantMovementEffect(TeleportEffect);
 
 			if (Mesh)
 			{
 				auto MoverVisualComponentOffset = CharacterMover->GetBaseVisualComponentTransform();
 				auto Location{MoverVisualComponentOffset.GetLocation()};
-				Location.Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight + InitialCapsuleRadius - Radius) * Scale;
+				Location.Z = InitialMeshZ + (HalfHeight < Radius ? InitialCapsuleRadius - Radius : InitialCapsuleHalfHeight - HalfHeight) * Scale;
 				MoverVisualComponentOffset.SetLocation(Location);
 				CharacterMover->SetBaseVisualComponentTransform(MoverVisualComponentOffset);
 			}
@@ -845,7 +846,7 @@ bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, 
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
 		ProneCapsule->GetRelativeLocation_DirectMutable().X
-			= InitialProneCapsuleX + (HalfHeight - InitialProneCapsuleHalfHeight + InitialProneCapsuleRadius - Radius) * Scale;
+			= InitialProneCapsuleX + (HalfHeight < Radius ? InitialProneCapsuleRadius - Radius : HalfHeight - InitialProneCapsuleHalfHeight) * Scale;
 		return true;
 	}
 	return false;

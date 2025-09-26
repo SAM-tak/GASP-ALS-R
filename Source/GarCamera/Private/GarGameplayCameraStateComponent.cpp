@@ -88,11 +88,6 @@ void UGarGameplayCameraStateComponent::Activate(const bool bReset)
 	}
 #endif
 	SetComponentTickEnabled(true);
-
-	if (!bReset && !ShouldActivate())
-	{
-		return;
-	}
 }
 
 void UGarGameplayCameraStateComponent::Deactivate()

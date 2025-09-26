@@ -39,8 +39,6 @@ void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData
 	const FGarCharacterMoverInputs* CharacterInputs = StartState.InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
 	check(StartingSyncState);
-	auto TurnSettings = Settings->GetTurnSettings(CharacterInputs->RotationMode, GameplayTags.First());
-	auto SpeedSettings = Settings->GetSpeedSettings(CharacterInputs->Stance, CharacterInputs->Gait);
 
 	const float DeltaSeconds = TimeStep.StepMs * 0.001f;
 
@@ -86,15 +84,15 @@ void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData
 	Params.PriorVelocity = StartHorizontalVelocity;
 	Params.PriorOrientation = StartingSyncState->GetOrientation_WorldSpace();
 	Params.DeltaSeconds = DeltaSeconds;
-	Params.TurningRate = TurnSettings->TurningRate;
-	Params.TurningBoost = TurnSettings->TurningBoost;
-	Params.MaxSpeed = SpeedSettings->GetMaxSpeed(Params.OrientationIntent, Params.PriorOrientation);
-	Params.Acceleration = SpeedSettings->Acceleration;
+	Params.TurningRate = Settings->InAirSettings.TurningRate;
+	Params.TurningBoost = Settings->InAirSettings.TurningBoost;
+	Params.MaxSpeed = Settings->InAirSettings.GetMaxSpeed(Params.OrientationIntent, Params.PriorOrientation);
+	Params.Acceleration = Settings->InAirSettings.Acceleration;
 	Params.Deceleration = FallingDeceleration;
 	Params.WorldToGravityQuat = MoverComp->GetWorldToGravityTransform();
-	Params.bUseAccelerationForVelocityMove = SpeedSettings->bUseAccelerationForVelocityMove;
+	Params.bUseAccelerationForVelocityMove = Settings->InAirSettings.bUseAccelerationForVelocityMove;
 
-	MoverComp->CurrentMaxSpeed = SpeedSettings->MaxSpeed;
+	MoverComp->CurrentMaxSpeed = Settings->InAirSettings.MaxSpeed;
 	MoverComp->CurrentAcceleration = Params.Acceleration;
 	MoverComp->CurrentDeceleration = Params.Deceleration;
 
@@ -115,7 +113,7 @@ void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData
 			if (FVector::DotProduct(Params.MoveInput, LastFloorResult.HitResult.Normal) < 0.f)
 			{
 				// Allow movement parallel to the wall, but not into it because that may push us up.
-				const FVector FallingHitNormal = FVector::VectorPlaneProject( LastFloorResult.HitResult.Normal, -UpDirection).GetSafeNormal();
+				const FVector FallingHitNormal = FVector::VectorPlaneProject(LastFloorResult.HitResult.Normal, -UpDirection).GetSafeNormal();
 				Params.MoveInput = FVector::VectorPlaneProject(Params.MoveInput, FallingHitNormal);
 			}
 		}

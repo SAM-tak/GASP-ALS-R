@@ -35,10 +35,6 @@ protected:
 	UPROPERTY(EditAnywhere, Instanced, Category = Mover, meta = (ObjectMustImplement = "/Script/Mover.TurnGeneratorInterface"))
 	TObjectPtr<UObject> TurnGenerator;
 
-	/** Use own custom move procedure. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Mover)
-	bool bUseCustomGroundMove{true};
-
 	virtual void OnRegistered(const FName ModeName) override;
 	virtual void OnUnregistered() override;
 
@@ -47,7 +43,4 @@ protected:
 	FRelativeBaseInfo UpdateFloorAndBaseInfo(const FFloorCheckResult& FloorResult) const;
 
 	TObjectPtr<const UGarMovementSettings> Settings;
-
-	static FProposedMove ComputeControlledGroundMove(const struct FGroundMoveParams& InParams);
-	static FVector ComputeVelocity(const struct FComputeVelocityParams& InParams);
 };

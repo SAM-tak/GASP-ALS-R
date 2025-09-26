@@ -665,6 +665,10 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		return;
 	}
 
+#if ENABLE_DRAW_DEBUG
+	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::PADebugDisplayName())};
+#endif
+
 	auto* Mover{Character->GetMover()};
 
 	auto NetMode{Character->GetWorld()->GetNetMode()};
@@ -687,11 +691,19 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	// as the character's location, we don't do that because the camera depends on the
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
 
+	bGrounded = Character->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+
 	if (bCharacterSelf || NetMode == NM_DedicatedServer)
 	{
-		auto TeleportEffect = MakeShared<FTeleportEffect>();
-		TeleportEffect->TargetLocation = TraceGround();
-		Mover->QueueInstantMovementEffect(TeleportEffect);
+//		auto TeleportEffect = MakeShared<FTeleportEffect>();
+//		TeleportEffect->TargetLocation = TraceGround();
+//		Mover->QueueInstantMovementEffect(TeleportEffect);
+//#if ENABLE_DRAW_DEBUG
+//		if (bDisplayDebug)
+//		{
+//			DrawDebugCrosshairs(Character->GetWorld(), TeleportEffect->TargetLocation, FRotator::ZeroRotator, 100.0f, FColor::Green, false, 1.0f);
+//		}
+//#endif
 	}
 	else
 	{

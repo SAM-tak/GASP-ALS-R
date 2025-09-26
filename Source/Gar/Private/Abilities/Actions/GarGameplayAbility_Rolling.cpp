@@ -42,12 +42,11 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 		auto* Character{GetGarCharacterFromActorInfo()};
 		auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
 
-		//Character->SetActorRotation(FRotator(0.0, CalcTargetYawAngle(), 0.0));
-		auto TeleportEffect = MakeShared<FTeleportEffect>();
-		TeleportEffect->TargetLocation = Character->GetMover()->GetUpdatedComponentTransform().GetLocation();
-		TeleportEffect->bUseActorRotation = false;
-		TeleportEffect->TargetRotation = FRotator(0.0, CalcTargetYawAngle(), 0.0);
-		Character->GetMover()->QueueInstantMovementEffect(TeleportEffect);
+		auto LayeredMove_TurnTo = MakeShared<FGarLayeredMove_TurnTo>();
+		LayeredMove_TurnTo->DurationMs = RotationInterpolationSpeed > 0.f ? 1.0f / RotationInterpolationSpeed * 1000 : 0;
+		LayeredMove_TurnTo->StartRotation = Character->GetActorRotation();
+		LayeredMove_TurnTo->TargetRotation = FRotator(0.0, CalcTargetYawAngle(), 0.0);
+		Character->GetMover()->QueueLayeredMove(LayeredMove_TurnTo);
 
 		auto LayeredMove_AnimRootMotion = MakeShared<FLayeredMove_AnimRootMotion>();
 		LayeredMove_AnimRootMotion->Montage = MontageToPlay;
