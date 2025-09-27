@@ -132,7 +132,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	if (Velocity.Size2D() > StaticSpeedThreshold)
 	{
 		auto VelocityYawAngle{UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Velocity))};
-		ForwardTraceAngle = Character->HasInput()
+		ForwardTraceAngle = Character->HasMovementInput()
 			                ? VelocityYawAngle +
 			                    FMath::ClampAngle(UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Character->GetInputDirection())) - VelocityYawAngle,
 			                                    -MaxReachAngle, MaxReachAngle)
@@ -140,7 +140,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	}
 	else
 	{
-		ForwardTraceAngle = Character->HasInput() ? UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Character->GetInputDirection())) : ActorYawAngle;
+		ForwardTraceAngle = Character->HasMovementInput() ? UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(Character->GetInputDirection())) : ActorYawAngle;
 	}
 
 	const auto ForwardTraceDeltaAngle{FMath::UnwindDegrees(ForwardTraceAngle - ActorYawAngle)};

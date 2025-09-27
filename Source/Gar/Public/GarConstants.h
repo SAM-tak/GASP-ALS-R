@@ -101,6 +101,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& PoseLyingCurveName();
 
+	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
+	static const FName& PoseAimingCurveName();
+
 	// Feet Animation Curves
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
@@ -350,6 +353,12 @@ inline const FName& UGarConstants::PoseCrouchingCurveName()
 inline const FName& UGarConstants::PoseLyingCurveName()
 {
 	static const FName Name{TEXTVIEW("pose_lying")};
+	return Name;
+}
+
+inline const FName& UGarConstants::PoseAimingCurveName()
+{
+	static const FName Name{TEXTVIEW("pose_aiming")};
 	return Name;
 }
 

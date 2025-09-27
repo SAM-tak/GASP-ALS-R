@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Abilities/GarGameplayAbility_Action.h"
+#include "MoveLibrary/MovementUtils.h"
 #include "GarGameplayAbility_MontageBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FGarMontageNotifyDelegate, FName, NotifyName, float, TriggerTime, float, Duration);
@@ -24,6 +25,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GarAbility|Montage", Meta = (ForceUnit = "s"))
 	float BlendOutDurationOnCancel{0.15f};
+
+	UPROPERTY(EditDefaultsOnly, Category = "GarAbility|Montage")
+	EMoveMixMode MoveMixMode{EMoveMixMode::OverrideAll};
 
 	UPROPERTY(BlueprintAssignable, Category = "GarAbility|Montage")
 	FGarMontageNotifyDelegate OnNotifyBegin;

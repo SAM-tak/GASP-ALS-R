@@ -465,16 +465,13 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	DrawDebugCone(GetWorld(), GetPawnViewLocation(),
 				  ViewRotation.Vector(), 100.0f, FMath::DegreesToRadians(15.0f), FMath::DegreesToRadians(15.0f),
 	              8, Color.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
-	//DrawDebugCone(GetWorld(), GetPawnViewLocation(),
-	//              ViewState.LookRotation.Vector(), 100.0f, FMath::DegreesToRadians(10.0f), FMath::DegreesToRadians(10.0f),
-	//              8, FLinearColor::Blue.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
 #endif
 
 	VerticalLocation += RowOffset;
 
 	static const auto InputYawAngleText{FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, InputYawAngle), false))};
 
-	Color = HasInput() ? FLinearColor{1.0f, 0.5f, 0.0f} : FLinearColor{0.5f, 0.25f, 0.0f};
+	Color = HasMovementInput() ? FLinearColor{1.0f, 0.5f, 0.0f} : FLinearColor{0.5f, 0.25f, 0.0f};
 	Text.SetColor(Color);
 
 	Text.Text = InputYawAngleText;
@@ -541,6 +538,12 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	DrawDebugCapsule(GetWorld(), GetActorLocation(), Capsule->GetScaledCapsuleHalfHeight(),
 	                 Capsule->GetScaledCapsuleRadius(), GetActorRotation().Quaternion(),
 	                 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
+	if (ProneCapsule->IsWelded())
+	{
+		DrawDebugCapsule(GetWorld(), GetActorLocation(), ProneCapsule->GetScaledCapsuleHalfHeight(),
+						 ProneCapsule->GetScaledCapsuleRadius(), ProneCapsule->GetComponentRotation().Quaternion(),
+						 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
+	}
 #endif
 }
 

@@ -36,4 +36,7 @@ struct GAR_API FGarPoseState
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
 	float GaitSprintingAmount{0.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ClampMax = 1))
+	float AimingAmount{0.0f};
 };

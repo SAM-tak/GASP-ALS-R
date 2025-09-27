@@ -40,7 +40,7 @@ struct GAR_API FGarCharacterMovementState
 	bool bIsGrounded{true};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CharacterMovement")
-	FRotator ControlRotation;
+	FRotator ViewRotation{ForceInit};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CharacterMovement")
 	TWeakObjectPtr<class UMoverTrajectoryPredictor> TrajectoryPredictor;

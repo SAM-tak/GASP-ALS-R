@@ -334,12 +334,13 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 
 		for(auto& KeyValue : Settings->TagToMovementModeMap)
 		{
-			if (TempTagContainer.HasTagExact(KeyValue.Key))
+			if (TempTagContainer.HasTagExact(KeyValue.Key) && !PrevTagContainer.HasTagExact(KeyValue.Key))
 			{
 				CharacterInputs.SuggestedMovementMode = KeyValue.Value;
 				break;
 			}
-			else if (CharacterInputs.SuggestedMovementMode == NAME_None && PrevTagContainer.HasTagExact(KeyValue.Key))
+			else if (CharacterInputs.SuggestedMovementMode == NAME_None
+				&& !TempTagContainer.HasTagExact(KeyValue.Key) && PrevTagContainer.HasTagExact(KeyValue.Key))
 			{
 				CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
 			}
@@ -364,7 +365,7 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	// Figure out intended orientation
 	CharacterInputs.OrientationIntent = FVector::ZeroVector;
 
-	if (bHasAffirmativeMoveInput || InputRotationMode == GarRotationModeTags::Aiming)
+	if (bHasAffirmativeMoveInput || InputRotationMode == GarRotationModeTags::Aiming || Perspective == GarPerspectiveTags::FirstPerson)
 	{
 		if (InputRotationMode == GarRotationModeTags::VelocityDirection)
 		{
@@ -439,6 +440,11 @@ void AGarCharacter::AddMovementInput(FVector WorldDirection, float ScaleValue, b
 FVector AGarCharacter::ConsumeMovementInputVector()
 {
 	return Internal_ConsumeMovementInputVector();
+}
+
+FRotator AGarCharacter::GetViewRotation() const
+{
+	return IsLocallyControlled() ? Super::GetViewRotation() : ReplicatedControlRotation;
 }
 
 void AGarCharacter::SetOverlayMode(const FGameplayTag& NewOverlayMode)
@@ -806,7 +812,8 @@ bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 		{
 			if (Mesh)
 			{
-				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ + (InitialCapsuleHalfHeight - HalfHeight + InitialCapsuleRadius - Radius) * Scale;
+				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ
+					+ (HalfHeight < Radius ? InitialCapsuleRadius - Radius : InitialCapsuleHalfHeight - HalfHeight) * Scale;
 			}
 		}
 		else
@@ -845,8 +852,8 @@ bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, 
 		double Scale{ProneCapsule->GetComponentTransform().GetScale3D().Z};
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
-		ProneCapsule->GetRelativeLocation_DirectMutable().X
-			= InitialProneCapsuleX + (HalfHeight < Radius ? InitialProneCapsuleRadius - Radius : HalfHeight - InitialProneCapsuleHalfHeight) * Scale;
+		//ProneCapsule->GetRelativeLocation_DirectMutable().X
+		//	= InitialProneCapsuleX + (HalfHeight < Radius ? InitialProneCapsuleRadius - Radius : HalfHeight - InitialProneCapsuleHalfHeight) * Scale;
 		return true;
 	}
 	return false;
@@ -866,18 +873,12 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	if (Stance == GarStanceTags::Lying)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		if (UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f))
-		{
-			if (ProneCapsule->IsWelded())
-			{
-				ProneCapsule->UnWeldFromParent();
-			}
-		}
+		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
 		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
 		if (!ProneCapsule->IsWelded())
 		{
 			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			ProneCapsule->WeldTo(Capsule);
+			ProneCapsule->WeldTo(Capsule, NAME_None, true);
 		}
 	}
 	else if (Stance == GarStanceTags::Crouching)
@@ -888,8 +889,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 		{
 			if (ProneCapsule->IsWelded())
 			{
-				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				ProneCapsule->UnWeldFromParent();
+				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			}
 		}
 	}
@@ -901,8 +902,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 		{
 			if (ProneCapsule->IsWelded())
 			{
-				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 				ProneCapsule->UnWeldFromParent();
+				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			}
 		}
 	}
@@ -1012,18 +1013,13 @@ bool AGarCharacter::CanSprint_Implementation() const
 	return false;
 }
 
-void AGarCharacter::SetInputDirection(FVector NewInputDirection)
-{
-	InputDirection = NewInputDirection.GetSafeNormal();
-}
-
 void AGarCharacter::RefreshInput()
 {
 	MovementInputVector = ConsumeMovementInputVector();
 
-	SetInputDirection(MovementInputVector);
-	if (HasInput())
+	if (HasMovementInput())
 	{
+		InputDirection = MovementInputVector.GetUnsafeNormal2D();
 		InputYawAngle = UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(InputDirection));
 	}
 
@@ -1088,7 +1084,7 @@ void AGarCharacter::TryAdjustControllRotation(float DeltaTime)
 bool AGarCharacter::IsMoving() const
 {
 	auto Speed{GetVelocity().Size2D()};
-	return (HasInput() && Speed >= 1.0) || Speed > Settings->MovingSpeedThreshold;
+	return (HasMovementInput() && Speed >= 1.0) || Speed > Settings->MovingSpeedThreshold;
 }
 
 void AGarCharacter::RefreshSprintState()
@@ -1123,7 +1119,7 @@ void AGarCharacter::StopJumping()
 
 float AGarCharacter::GetAimAmount() const
 {
-	return AnimationInstance.IsValid() ? AnimationInstance->GetCurveValueClamped01(UGarConstants::AllowAimingCurveName()) : 0.0f;
+	return AnimationInstance.IsValid() ? AnimationInstance->GetCurveValueClamped01(UGarConstants::PoseAimingCurveName()) : 0.0f;
 }
 
 const FGameplayTag& AGarCharacter::DesiredToActual(const FGameplayTag& SourceTag) const

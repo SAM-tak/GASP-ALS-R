@@ -15,13 +15,15 @@
 void UGarGameplayAbility_Montage::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 	const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	if(!CommitAbility(Handle, ActorInfo, ActivationInfo)) {
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
 		return;
 	}
 
 	PlayMontage(ActivationInfo, MontageToPlay, PlayRate, SectionName, StartTime, Handle, ActorInfo);
 
-	if(CurrentMotangeDuration <= 0.0f) {
+	if (CurrentMotangeDuration <= 0.0f)
+	{
 		return;
 	}
 

@@ -220,6 +220,8 @@ public:
 
 	virtual FVector ConsumeMovementInputVector() override;
 
+	virtual FRotator GetViewRotation() const override;
+
 	// IAbilitySystemInterface
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -411,15 +413,12 @@ public:
 public:
 	FORCEINLINE const FVector& GetInputDirection() const { return InputDirection; }
 
-	FORCEINLINE bool HasInput() const { return InputDirection.SizeSquared() > UE_KINDA_SMALL_NUMBER; }
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	FORCEINLINE bool HasMovementInput() const { return MovementInputVector.SizeSquared() > UE_KINDA_SMALL_NUMBER; }
 
 	FORCEINLINE float GetInputYawAngle() const { return InputYawAngle; }
 
-	FORCEINLINE const FRotator& GetReplicatedControlRotation() const { return ReplicatedControlRotation; }
-
 protected:
-	void SetInputDirection(FVector NewInputDirection);
-
 	virtual void RefreshInput();
 
 	void SetReplicatedControlRotation(const FRotator& NewControlRotation);

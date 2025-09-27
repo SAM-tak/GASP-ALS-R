@@ -1,8 +1,12 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Abilities/Actions/GarGameplayAbility_MontageBase.h"
-#include "GarAbilitySystemComponent.h"
+
 #include "Animation/AnimInstance.h"
+#include "DefaultMovementSet/LayeredMoves/AnimRootMotionLayeredMove.h"
+#include "GarCharacter.h"
+#include "GarCharacterMoverComponent.h"
+#include "GarAbilitySystemComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_MontageBase)
 
@@ -117,6 +121,19 @@ bool UGarGameplayAbility_MontageBase::PlayMontage(const FGameplayAbilityActivati
 		if (CurrentMotangeDuration > 0.0f)
 		{
 			SetUpNotification(AnimInstance, Montage);
+
+			if (Montage->HasRootMotion())
+			{
+				auto Character{Cast<AGarCharacter>(ActorInfo->OwnerActor.Get())};
+				auto LayeredMove_AnimRootMotion = MakeShared<FLayeredMove_AnimRootMotion>();
+				LayeredMove_AnimRootMotion->DurationMs = CurrentMotangeDuration * 1000;
+				LayeredMove_AnimRootMotion->MixMode = MoveMixMode;
+				LayeredMove_AnimRootMotion->Montage = Montage;
+				LayeredMove_AnimRootMotion->StartingMontagePosition = StartTime;
+				LayeredMove_AnimRootMotion->PlayRate = PlayRate;
+				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
+			}
+
 			return true;
 		}
 	}

@@ -146,6 +146,8 @@ void UGarAnimationInstance::RefreshPose()
 	PoseState.GaitWalkingAmount = UGarMath::Clamp01(PoseState.MovingAmount);
 	PoseState.GaitRunningAmount = UGarMath::Clamp01(PoseState.GaitAmount);
 	PoseState.GaitSprintingAmount = UGarMath::Clamp01(PoseState.GaitAmount - 1.0f);
+
+	PoseState.AimingAmount = GetCurveValue(Curves, UGarConstants::PoseAimingCurveName());
 }
 
 void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime)
@@ -159,10 +161,10 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	CharacterMovement.CurrentMaxSpeed = Mover->CurrentMaxSpeed;
 	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
 	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
-	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
 	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
+	CharacterMovement.ViewRotation = Character->GetViewRotation();
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
-	CharacterMovement.ControlRotation = Character->IsLocallyControlled() ? Character->GetControlRotation() : Character->GetReplicatedControlRotation();
 
 	if (CharacterMovement.GravityAcceleration.SquaredLength() > 0.001)
 	{

@@ -37,7 +37,7 @@ void UGarAnimNotifyState_EarlyBlendOut::BranchingPointNotifyTick(FBranchingPoint
 	const auto* Character{IsValid(AnimationInstance) ? Cast<AGarCharacter>(Mesh->GetOwner()) : nullptr};
 
 	if (IsValid(Character) &&
-	    ((bCheckInput && Character->HasInput()) ||
+	    ((bCheckInput && Character->HasMovementInput()) ||
 	     (bCheckLocomotionMode && Character->GetLocomotionMode() == LocomotionModeEquals) ||
 	     (bCheckRotationMode && Character->GetRotationMode() == RotationModeEquals) ||
 	     (bCheckStance && Character->GetStance() == StanceEquals)))
