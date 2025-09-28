@@ -58,3 +58,26 @@ void UGarAnimNotifyState_EarlyBlendOut::BranchingPointNotifyTick(FBranchingPoint
 		MontageInstance->Stop(BlendOutSettings);
 	}
 }
+
+void UGarAnimNotifyState_EarlyBlendOut::BranchingPointNotifyEnd(FBranchingPointNotifyPayload& NotifyPayload)
+{
+	Super::BranchingPointNotifyEnd(NotifyPayload);
+
+	const auto* Mesh{NotifyPayload.SkelMeshComponent};
+	auto* AnimationInstance{IsValid(Mesh) ? Mesh->GetAnimInstance() : nullptr};
+
+	auto* MontageInstance{AnimationInstance->GetMontageInstanceForID(NotifyPayload.MontageInstanceID)};
+	if (!ensure(MontageInstance != nullptr))
+	{
+		return;
+	}
+
+	const auto* Montage{MontageInstance->Montage.Get()};
+
+	FMontageBlendSettings BlendOutSettings{Montage->BlendOut};
+	BlendOutSettings.Blend.BlendTime = BlendOutDuration;
+	BlendOutSettings.BlendMode = Montage->BlendModeOut;
+	BlendOutSettings.BlendProfile = Montage->BlendProfileOut;
+
+	MontageInstance->Stop(BlendOutSettings);
+}

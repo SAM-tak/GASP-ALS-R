@@ -178,15 +178,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "s"))
 	float RisingTime{0.1f};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm"))
+	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
+	bool bOffCollisitonInAction{false};
+
+	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
+	bool bChangeCapsuleInAction{false};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm",
+		EditCondition = "bChangeCapsuleInAction"))
 	float CapsuleHalfHeightWhileInAction{40.0f};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm",
+		EditCondition = "bChangeCapsuleInAction"))
 	float CapsuleRadiusWhileInAction{20.0f};
 
 	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
-	uint8 bStartRagdollingOnTargetPrimitiveDestruction : 1{true};
+	bool bStartRagdollingOnTargetPrimitiveDestruction{true};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (EditCondition = "bStartRagdollingOnTargetPrimitiveDestruction"))
 	FGameplayTag TryActiveOnPrimitiveDestruction{GarLocomotionActionTags::FreeFalling};

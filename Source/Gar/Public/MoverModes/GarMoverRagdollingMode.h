@@ -21,6 +21,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mover)
 	FName TopBoneName{TEXTVIEW("pelvis")};
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mover)
+	float MaxSpeed{300.0f};
+
 	virtual void GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const override;
 
 	virtual void SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState) override;

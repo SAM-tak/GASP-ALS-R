@@ -596,7 +596,7 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	// Disable capsule collision. other physics states will be changed by physical aniamtion process
 
 	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // TODO: Change
-	auto Capsule{ Character->GetCapsule() };
+	auto Capsule{Character->GetCapsule()};
 	// オブジェクトタイプをPawnに設定（必要に応じてWorldDynamicでも可）
 	Capsule->SetCollisionObjectType(ECC_Pawn);
 
@@ -831,11 +831,11 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	{
 		if (bGrounded)
 		{
-			Character->Crouch();
+			Character->SetInputStance(GarStanceTags::Crouching);
 		}
 		else
 		{
-			Character->UnCrouch();
+			Character->SetInputStance(GarStanceTags::Standing);
 		}
 	}
 	bPreviousGrounded = bGrounded;

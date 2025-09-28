@@ -6,8 +6,9 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Controller.h"
 #include "MoveLibrary/FloorQueryUtils.h"
-#include "MoveLibrary/MovementUtils.h"
+#include "DefaultMovementSet/Modes/FlyingMode.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
 #include "MoverPoseSearchTrajectoryPredictor.h"
 #include "MotionWarpingComponent.h"
 #include "MotionWarpingMoverAdapter.h"
@@ -23,88 +24,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarCharacterMoverComponent)
 
-// -------------------------------------------------------------------
-// FGarLayeredMove_TurnTo
-// -------------------------------------------------------------------
-
-FGarLayeredMove_TurnTo::FGarLayeredMove_TurnTo()
-	: StartRotation(ForceInitToZero)
-	, TargetRotation(ForceInitToZero)
-	, TimeMappingCurve(nullptr)
-{
-	DurationMs = 1000.f;
-	MixMode = EMoveMixMode::OverrideVelocity;
-}
-
-float FGarLayeredMove_TurnTo::EvaluateFloatCurveAtFraction(const UCurveFloat& Curve, const float Fraction) const
-{
-	float MinCurveTime(0.f);
-	float MaxCurveTime(1.f);
-
-	Curve.GetTimeRange(MinCurveTime, MaxCurveTime);
-	return Curve.GetFloatValue(FMath::GetRangeValue(FVector2f(MinCurveTime, MaxCurveTime), Fraction));
-}
-
-bool FGarLayeredMove_TurnTo::GenerateMove(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, const UMoverComponent* MoverComp,
-	UMoverBlackboard* SimBlackboard, FProposedMove& OutProposedMove)
-{
-	OutProposedMove.MixMode = MixMode;
-
-	const float DeltaSeconds = TimeStep.StepMs / 1000.f;
-
-	float MoveFraction = (TimeStep.BaseSimTimeMs - StartSimTimeMs) / DurationMs;
-
-	if (TimeMappingCurve)
-	{
-		MoveFraction = EvaluateFloatCurveAtFraction(*TimeMappingCurve, MoveFraction);
-	}
-
-	const AActor* MoverActor = MoverComp->GetOwner();
-
-	FRotator CurrentTargetRotation = FMath::Lerp<FRotator, float>(StartRotation, TargetRotation, MoveFraction);
-
-	const FRotator CurrentRotation = MoverActor->GetActorRotation();
-
-	FRotator AngularVelocity = (CurrentTargetRotation - CurrentRotation).GetNormalized() * (1.0f / DeltaSeconds);
-
-	OutProposedMove.AngularVelocity = AngularVelocity;
-
-	return true;
-}
-
-FLayeredMoveBase* FGarLayeredMove_TurnTo::Clone() const
-{
-	FGarLayeredMove_TurnTo* CopyPtr = new FGarLayeredMove_TurnTo(*this);
-	return CopyPtr;
-}
-
-void FGarLayeredMove_TurnTo::NetSerialize(FArchive& Ar)
-{
-	Super::NetSerialize(Ar);
-
-	Ar << StartRotation;
-	Ar << TargetRotation;
-}
-
-UScriptStruct* FGarLayeredMove_TurnTo::GetScriptStruct() const
-{
-	return FGarLayeredMove_TurnTo::StaticStruct();
-}
-
-FString FGarLayeredMove_TurnTo::ToSimpleString() const
-{
-	return FString::Printf(TEXT("Move To"));
-}
-
-void FGarLayeredMove_TurnTo::AddReferencedObjects(FReferenceCollector& Collector)
-{
-	Super::AddReferencedObjects(Collector);
-}
-
-// -------------------------------------------------------------------
-// UGarCharacterMoverComponent
-// -------------------------------------------------------------------
-
 UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 {
 	SetIsReplicatedByDefault(true);
@@ -113,6 +32,11 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 	MovementModes.Add(DefaultModeNames::Walking, CreateDefaultSubobject<UGarMoverWalkingMode>(TEXT("DefaultWalkingMode")));
 	MovementModes.Add(DefaultModeNames::Falling, CreateDefaultSubobject<UGarMoverFallingMode>(TEXT("DefaultFallingMode")));
 	MovementModes.Add(TEXT("Ragdolling"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultRagdollingMode")));
+	MovementModes.Add(DefaultModeNames::Flying, CreateDefaultSubobject<UFlyingMode>(TEXT("DefaultFlyingMode")));
+
+	auto FlyingMode{MovementModes[DefaultModeNames::Flying]};
+	FlyingMode->GameplayTags.Reset();
+	FlyingMode->GameplayTags.AddTag(GarLocomotionModeTags::InAir);
 
 	StartingMovementMode = DefaultModeNames::Walking;
 }
@@ -153,6 +77,10 @@ void UGarCharacterMoverComponent::BeginPlay()
 
 	if(!ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this))) return;
 
+	CommonSettings = FindSharedSettings<UCommonLegacyMovementSettings>();
+
+	if(!ensureMsgf(CommonSettings, TEXT("Failed to find instance of CommonLegacyMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this))) return;
+
 	OnPreSimulationTick.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPreSimulationTick);
 	OnMovementModeChanged.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverMovementModeChanged);
 }
@@ -183,7 +111,7 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 		if (CharacterInputs->bIsJumpJustPressed && IsValid(Settings))
 		{
 			auto JumpMove = MakeShared<FJumpImpulseEffect>();
-			JumpMove->UpwardsSpeed = Settings->JumpUpwardsSpeed;
+			JumpMove->UpwardsSpeed = CommonSettings->JumpUpwardsSpeed;
  			QueueInstantMovementEffect(JumpMove);
 		}
 	}

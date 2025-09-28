@@ -35,13 +35,17 @@ void UGarRagdollingTask::Refresh(float DeltaTime)
 			bOnGroundedAndAgedFired = true;
 			K2_OnGroundedAndAged();
 		}
-		Character->Lie();
+		Character->SetInputStance(GarStanceTags::Lying);
 
 		// local only. not be replicated.
 		Character->GetGarAbilitySystem()->SetLooseGameplayTagCount(GarStateFlagTags::FacingUpward, RagdollingState.bFacingUpward ? 1 : 0);
 	}
 	else
 	{
+		if (RagdollingState.bGrounded)
+		{
+			Character->SetInputStance(GarStanceTags::Crouching);
+		}
 		bOnGroundedAndAgedFired = false;
 	}
 }
@@ -50,11 +54,11 @@ bool UGarRagdollingTask::IsEpilogRunning_Implementation() const
 {
 	if (OverrideAnimInstance.IsValid())
 	{
-		bool CharacterTaskActive{OverrideAnimInstance->GetCharacterTaskActive()};
+		bool bCharacterTaskActive{OverrideAnimInstance->GetCharacterTaskActive()};
 		float BlendWeight{OverrideAnimInstance->GetObservingFinalBlendWeight()};
 		//UE_LOG(LogTemp, Log, TEXT("bActive:%d ObservingFinalBlendWeight:%0.2f (%d)"), CharacterTaskActive, BlendWeight,
-		//	   CharacterTaskActive || (0.f < BlendWeight && BlendWeight < 1.f));
-		return CharacterTaskActive || (0.f < BlendWeight && BlendWeight < 1.f);
+		//	   bCharacterTaskActive || (0.f < BlendWeight && BlendWeight < 1.f));
+		return bCharacterTaskActive || (0.f < BlendWeight && BlendWeight < 1.f);
 	}
 	return false;
 }

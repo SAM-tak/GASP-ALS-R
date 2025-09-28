@@ -44,7 +44,7 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 
 	const FVector CurrentLocation = Character->GetActorLocation();
 
-	FVector Velocity = (TargetLocation - CurrentLocation) / DeltaSeconds;
+	FVector Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(MaxSpeed);
 
 	OutProposedMove.LinearVelocity = Velocity;
 }

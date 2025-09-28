@@ -310,6 +310,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	FGameplayTag GetStance() const;
 
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void SetInputStance(const FGameplayTag &NewInputStance);
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
 	bool CanCrouch() const;
 

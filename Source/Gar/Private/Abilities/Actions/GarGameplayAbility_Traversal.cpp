@@ -8,7 +8,6 @@
 #include "ChooserFunctionLibrary.h"
 #include "AnimationWarpingLibrary.h"
 #include "MotionWarpingComponent.h"
-#include "MotionWarpingMoverAdapter.h"
 #include "AbilitySystemGlobals.h"
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "GarCharacter.h"
@@ -119,6 +118,20 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	}
 
 	ensure(Cast<UAnimMontage>(Params.Result.SelectedAnim));
+
+#if ENABLE_DRAW_DEBUG
+	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName())};
+	if (bDisplayDebug)
+	{
+		auto SelectedMontage{Cast<UAnimMontage>(Params.Result.SelectedAnim)};
+		UE_LOG(LogGar, Log, TEXT("Traversal Animation: %s"), *SelectedMontage->GetPathName());
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage((uint64)PointerHash(this), 5.0f, FColor::Green,
+				FString::Printf(TEXT("Traversal Animation: %s"), *SelectedMontage->GetPathName()));
+		}
+	}
+#endif
 
 	return true;
 }
@@ -628,29 +641,21 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 
 	AbilitySystem->AddLooseGameplayTags(ActionTags);
 
-	// Reset network smoothing.
-
-	//Character->GetMover()->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
-
-	//Character->GetMesh()->SetRelativeLocationAndRotation(Character->GetBaseTranslationOffset(),
-	//	Character->GetMesh()->IsUsingAbsoluteRotation()
-	//	? Character->GetActorQuat() * Character->GetBaseRotationOffset()
-	//	: Character->GetBaseRotationOffset(), false, nullptr, ETeleportType::TeleportPhysics);
-
-	// Clear the character movement mode and set the locomotion action to traverse.
-
-	//Character->GetMover()->FlushServerMoves();
-	//Character->GetMover()->SetMovementMode(MOVE_Custom);
-	//Character->GetMover()->SetMovementModeLocked(true);
-	//Character->GetMover()->SetBase(CurrentTargetPrimitive.Get());
-	//Character->GetMover()->SetVelocity(FVector::ZeroVector);
 	Character->SetActorRotation((Parameters.FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D().ToOrientationRotator());
 
-	auto CapsuleComponent{Character->GetCapsule()};
-	OriginalUnscaledCapsuleHalfHeight = CapsuleComponent->GetUnscaledCapsuleHalfHeight();
-	OriginalUnscaledCapsuleRadius = CapsuleComponent->GetUnscaledCapsuleRadius();
-	CapsuleComponent->SetCapsuleHalfHeight(CapsuleHalfHeightWhileInAction);
-	CapsuleComponent->SetCapsuleRadius(CapsuleRadiusWhileInAction);
+	if (bOffCollisitonInAction)
+	{
+		auto CapsuleComponent{Character->GetCapsule()};
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (bChangeCapsuleInAction)
+	{
+		auto CapsuleComponent{Character->GetCapsule()};
+		OriginalUnscaledCapsuleHalfHeight = CapsuleComponent->GetUnscaledCapsuleHalfHeight();
+		OriginalUnscaledCapsuleRadius = CapsuleComponent->GetUnscaledCapsuleRadius();
+		CapsuleComponent->SetCapsuleHalfHeight(CapsuleHalfHeightWhileInAction);
+		CapsuleComponent->SetCapsuleRadius(CapsuleRadiusWhileInAction);
+	}
 
 	if (ActorInfo->IsNetAuthority())
 	{
@@ -667,12 +672,6 @@ void UGarGameplayAbility_Traversal::Tick_Implementation(const float DeltaTime)
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
 	auto* CharacterMovement{Character->GetMover()};
-
-	//if (Mover->MovementMode != MOVE_Custom)
-	//{
-	//	EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
-	//	return;
-	//}
 
 #if ENABLE_DRAW_DEBUG
 	if (UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName()))
@@ -698,21 +697,21 @@ void UGarGameplayAbility_Traversal::EndAbility(const FGameplayAbilitySpecHandle 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 
 	auto* Character{GetGarCharacterFromActorInfo()};
-	auto* AnimInstance{Character->GetGarAnimationInstace()};
-	auto Mover{Character->GetMover()};
 	auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
 
 	AbilitySystem->RemoveLooseGameplayTags(ActionTags);
 
-	auto CapsuleComponent{Character->GetCapsule()};
-	CapsuleComponent->SetCapsuleHalfHeight(OriginalUnscaledCapsuleHalfHeight);
-	CapsuleComponent->SetCapsuleRadius(OriginalUnscaledCapsuleRadius);
-
-	//Mover->SetMovementModeLocked(false);
-	//if (Mover->MovementMode == MOVE_Custom)
-	//{
-	//	Mover->SetMovementMode(MOVE_Walking);
-	//}
+	if (bOffCollisitonInAction)
+	{
+		auto CapsuleComponent{Character->GetCapsule()};
+		CapsuleComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	if (bChangeCapsuleInAction)
+	{
+		auto CapsuleComponent{Character->GetCapsule()};
+		CapsuleComponent->SetCapsuleHalfHeight(OriginalUnscaledCapsuleHalfHeight);
+		CapsuleComponent->SetCapsuleRadius(OriginalUnscaledCapsuleRadius);
+	}
 
 	Character->ForceNetUpdate();
 }

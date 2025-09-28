@@ -790,6 +790,11 @@ FGameplayTag AGarCharacter::GetStance() const
 	return CharacterMover->GetStance();
 }
 
+void AGarCharacter::SetInputStance(const FGameplayTag & NewInputStance)
+{
+	InputStance = NewInputStance;
+}
+
 bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
 {
 	TargetRadius = FMath::Max(0.f, TargetRadius);

@@ -2,7 +2,7 @@
 
 #include "Abilities/Actions/GarGameplayAbility_Rolling.h"
 
-#include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "MotionWarpingComponent.h"
 #include "Abilities/Tasks/GarAbilityTask_Tick.h"
 #include "GarCharacter.h"
 #include "GarAnimationInstance.h"
@@ -17,12 +17,10 @@ UGarGameplayAbility_Rolling::UGarGameplayAbility_Rolling(const FObjectInitialize
 	: Super(ObjectInitializer)
 {
 	SetAssetTags(FGameplayTagContainer(GarLocomotionActionTags::Rolling));
-	ActivationOwnedTags.AddTag(GarLocomotionActionTags::Traversal);
+	ActivationOwnedTags.AddTag(GarLocomotionActionTags::Rolling);
 	ActivationOwnedTags.AddTag(GarStateFlagTags::RotationLocked);
 	CancelAbilitiesWithTag.AddTag(GarLocomotionActionTags::Root);
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Rolling);
-
-	MoveMixMode = EMoveMixMode::AdditiveVelocity;
 }
 
 float UGarGameplayAbility_Rolling::CalcTargetYawAngle_Implementation() const
@@ -41,14 +39,10 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 	if (IsActive())
 	{
 		auto* Character{GetGarCharacterFromActorInfo()};
-		auto* AbilitySystem{GetGarAbilitySystemComponentFromActorInfo()};
+		auto MotionWarpingComponent = Character->GetMotionWarping();
 
-		auto LayeredMove_TurnTo = MakeShared<FGarLayeredMove_TurnTo>();
-		LayeredMove_TurnTo->MixMode = EMoveMixMode::AdditiveVelocity;
-		LayeredMove_TurnTo->DurationMs = RotationInterpolationSpeed > 0.f ? 1.0f / RotationInterpolationSpeed * 1000 : 0;
-		LayeredMove_TurnTo->StartRotation = Character->GetActorRotation();
-		LayeredMove_TurnTo->TargetRotation = FRotator(0.0, CalcTargetYawAngle(), 0.0);
-		Character->GetMover()->QueueLayeredMove(LayeredMove_TurnTo);
+		MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("Turn")), FVector::ZeroVector,
+			FRotator(0.0, CalcTargetYawAngle(), 0.0));
 
 		TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Rolling")));
 		if (TickTask.IsValid())
@@ -59,7 +53,7 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 
 		if (bCrouchOnStart)
 		{
-			Character->Crouch();
+			Character->SetInputStance(GarStanceTags::Crouching);
 		}
 	}
 }

@@ -167,10 +167,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "General")
 	bool bIgnoreBaseRotation = false;
 
-	/** Instantaneous speed induced in an actor upon jumping */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Jumping", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
-	float JumpUpwardsSpeed = 500.0f;
-
 public:
 	const FGarMovementSpeedSettings* GetSpeedSettings(const FGameplayTag& Stance, const FGameplayTag& Gait) const
 	{

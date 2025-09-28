@@ -44,4 +44,6 @@ public:
 #endif
 
 	virtual void BranchingPointNotifyTick(FBranchingPointNotifyPayload& NotifyPayload, float DeltaTime) override;
+
+	virtual void BranchingPointNotifyEnd(FBranchingPointNotifyPayload& NotifyPayload) override;
 };
