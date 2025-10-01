@@ -535,12 +535,12 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	VerticalLocation += RowOffset;
 
 #if ENABLE_DRAW_DEBUG
-	DrawDebugCapsule(GetWorld(), GetActorLocation(), Capsule->GetScaledCapsuleHalfHeight(),
-	                 Capsule->GetScaledCapsuleRadius(), GetActorRotation().Quaternion(),
+	DrawDebugCapsule(GetWorld(), Capsule->GetComponentLocation(), Capsule->GetScaledCapsuleHalfHeight(),
+	                 Capsule->GetScaledCapsuleRadius(), Capsule->GetComponentRotation().Quaternion(),
 	                 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 	if (ProneCapsule->IsWelded())
 	{
-		DrawDebugCapsule(GetWorld(), GetActorLocation(), ProneCapsule->GetScaledCapsuleHalfHeight(),
+		DrawDebugCapsule(GetWorld(), ProneCapsule->GetComponentLocation(), ProneCapsule->GetScaledCapsuleHalfHeight(),
 						 ProneCapsule->GetScaledCapsuleRadius(), ProneCapsule->GetComponentRotation().Quaternion(),
 						 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 	}

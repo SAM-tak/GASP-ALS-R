@@ -78,3 +78,6 @@ Package/*
 
 # Blender Backup File
 **.blend[1-9]*
+
+# Blender Exported File
+ContentSource/Blender/ExportedAssets/*

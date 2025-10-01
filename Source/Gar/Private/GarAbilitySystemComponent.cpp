@@ -21,7 +21,6 @@ void UGarAbilitySystemComponent::OnRegister()
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 	if (IsValid(Character))
 	{
-		Character->OnRefresh.AddUObject(this, &ThisClass::OnRefresh);
 		Character->OnPossessed_Client.AddUObject(this, &ThisClass::OnPossessed);
 		Character->OnUnPossessed_Client.AddUObject(this, &ThisClass::OnUnPossessed);
 	}
@@ -36,8 +35,8 @@ void UGarAbilitySystemComponent::Initialize(AGarCharacter* InOwnerCharacter)
 	}
 }
 
-void UGarAbilitySystemComponent::BindAbilityActivationInput(UEnhancedInputComponent* EnhancedInputComponent, const UInputAction* Action, ETriggerEvent TriggerEvent,
-														    const FGameplayTag& InputTag)
+void UGarAbilitySystemComponent::BindAbilityActivationInput(UEnhancedInputComponent* EnhancedInputComponent, const UInputAction* Action,
+															ETriggerEvent TriggerEvent, const FGameplayTag& InputTag)
 {
 	if (!ensure(IsValid(EnhancedInputComponent)) || !ensure(IsValid(Action))) return;
 	auto Handle{EnhancedInputComponent->BindAction(Action, TriggerEvent, this, &ThisClass::ActivateOnInputAction, InputTag).GetHandle()};
@@ -97,15 +96,5 @@ void UGarAbilitySystemComponent::OnUnPossessed_Implementation(AController* Previ
 				GarAbility->OnUnPossessed(PreviousController);
 			}
 		}
-	}
-}
-
-void UGarAbilitySystemComponent::OnRefresh_Implementation(float DeltaTime)
-{
-	auto* Character{Cast<AGarCharacter>(GetOwner())};
-
-	if (Character->GetLocomotionMode() == GarLocomotionModeTags::InAir && Character->IsLocallyControlled())
-	{
-		TryActivateAbilitiesBySingleTag(GarLocomotionActionTags::Traversal);
 	}
 }

@@ -103,18 +103,8 @@ UAbilitySystemComponent* AGarCharacter::GetAbilitySystemComponent() const
 	return AbilitySystem;
 }
 
-// IGameplayTagAssetInterface
-
-void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+void AGarCharacter::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
-	if (IsValid(AbilitySystem))
-	{
-		AbilitySystem->GetOwnedGameplayTags(TagContainer);
-	}
-	else
-	{
-		TagContainer.Reset();
-	}
 	if (DesiredRotationMode.IsValid())
 	{
 		TagContainer.AddLeafTag(DesiredRotationMode);
@@ -135,25 +125,6 @@ void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) co
 	{
 		TagContainer.AddLeafTag(OverlayMode);
 	}
-	CharacterMover->AppendOwnedGameplayTags(TagContainer);
-}
-
-bool AGarCharacter::HasMatchingGameplayTag(FGameplayTag TagToCheck) const
-{
-	GetOwnedGameplayTags(TempTagContainer);
-	return TempTagContainer.HasTag(TagToCheck);
-}
-
-bool AGarCharacter::HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
-{
-	GetOwnedGameplayTags(TempTagContainer);
-	return TempTagContainer.HasAll(TagContainer);
-}
-
-bool AGarCharacter::HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
-{
-	GetOwnedGameplayTags(TempTagContainer);
-	return TempTagContainer.HasAny(TagContainer);
 }
 
 void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -220,7 +191,6 @@ void AGarCharacter::PostInitializeComponents()
 	ProneCapsule->GetUnscaledCapsuleSize(InitialProneCapsuleRadius, InitialProneCapsuleHalfHeight);
 	InitialEyeHeight = BaseEyeHeight;
 	InitialMeshZ = Mesh->GetRelativeLocation().Z;
-	InitialProneCapsuleZ = ProneCapsule->GetRelativeLocation().Z;
 	InitialProneCapsuleX = ProneCapsule->GetRelativeLocation().X;
 }
 
@@ -245,8 +215,6 @@ void AGarCharacter::BeginPlay()
 void AGarCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
-	//RefreshMeshProperties();
 
 	// Enable view network smoothing on the listen server here because the remote role may not be valid yet during begin play.
 
@@ -328,9 +296,10 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	// In that case, we want most input to carry over between simulation frames.
 	bIsJumpJustPressed = false;
 
-	if (AbilitySystem && Settings)
+	if (Settings)
 	{
-		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+		FGameplayTagContainer TempTagContainer;
+		GetOwnedGameplayTags(TempTagContainer);
 
 		for(auto& KeyValue : Settings->TagToMovementModeMap)
 		{
@@ -499,9 +468,11 @@ FGameplayTag AGarCharacter::GetLocomotionAction() const
 {
 	if (IsValid(AbilitySystem))
 	{
-		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+		FGameplayTagContainer TempTagContainer;
+		AbilitySystem->GetOwnedGameplayTags_Super(TempTagContainer);
+		return TempTagContainer.Filter(Settings->ActionTags).First();
 	}
-	return TempTagContainer.Filter(Settings->ActionTags).First();
+	return FGameplayTag::EmptyTag;
 }
 
 void AGarCharacter::SetPerspective(const FGameplayTag& NewPerspective)
@@ -842,23 +813,24 @@ bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 	return false;
 }
 
-bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed)
+bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed,
+	float TargetOffset, float OffsetSpeed)
 {
 	TargetRadius = FMath::Max(0.f, TargetRadius);
 	TargetHalfHeight = FMath::Max3(0.f, TargetRadius, TargetHalfHeight);
 
 	const float OldHalfHeight = ProneCapsule->GetUnscaledCapsuleHalfHeight();
 	const float OldRadius = ProneCapsule->GetUnscaledCapsuleRadius();
+	const float OldOffsetX = ProneCapsule->GetRelativeLocation().X;
 	const float HalfHeight = FMath::FInterpConstantTo(OldHalfHeight, TargetHalfHeight, DeltaTime, HeightSpeed);
 	const float Radius = FMath::FInterpConstantTo(OldRadius, TargetRadius, DeltaTime, RadiusSpeed);
-	
-	if (OldHalfHeight != HalfHeight || OldRadius != Radius)
+	const float OffsetX = FMath::FInterpConstantTo(OldOffsetX, TargetOffset, DeltaTime, OffsetSpeed);
+
+	if (OldHalfHeight != HalfHeight || OldRadius != Radius || OldOffsetX != OffsetX)
 	{
-		double Scale{ProneCapsule->GetComponentTransform().GetScale3D().Z};
 		// Now call SetCapsuleSize() to cause touch/untouch events and actually grow the capsule
 		ProneCapsule->SetCapsuleSize(Radius, HalfHeight, false);
-		//ProneCapsule->GetRelativeLocation_DirectMutable().X
-		//	= InitialProneCapsuleX + (HalfHeight < Radius ? InitialProneCapsuleRadius - Radius : HalfHeight - InitialProneCapsuleHalfHeight) * Scale;
+		ProneCapsule->GetRelativeLocation_DirectMutable().X = OffsetX;
 		return true;
 	}
 	return false;
@@ -875,11 +847,13 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	auto Stance{GetStance()};
 	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
 	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+	auto OffsetSpeed{CapsuleUpdateSpeed > 0 ? LiedProneCapsuleZOffset / CapsuleUpdateSpeed : .0f};
 	if (Stance == GarStanceTags::Lying)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f);
+		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed);
 		if (!ProneCapsule->IsWelded())
 		{
 			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -890,7 +864,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f))
+		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX, OffsetSpeed))
 		{
 			if (ProneCapsule->IsWelded())
 			{
@@ -903,7 +878,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f))
+		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX, OffsetSpeed))
 		{
 			if (ProneCapsule->IsWelded())
 			{

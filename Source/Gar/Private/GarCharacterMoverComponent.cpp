@@ -145,7 +145,7 @@ void UGarCharacterMoverComponent::OnReplicated_LocomotionMode(const FGameplayTag
 	Character->OnLocomotionModeChanged(PreviousMovementMode);
 }
 
-void UGarCharacterMoverComponent::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer)
+void UGarCharacterMoverComponent::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
 {
 	auto SyncState{MoverSyncStateDoubleBuffer.GetReadable()};
 

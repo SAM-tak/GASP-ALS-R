@@ -33,9 +33,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|AbilitySystem")
 	void OnUnPossessed(AController* PreviousController);
 
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|AbilitySystem")
-	void OnRefresh(float DeltaTime);
-
 	UFUNCTION(BlueprintCallable, Category = "GAR|AbilitySystem", DisplayName = "CancelAbilityByTags",
 			  Meta = (ScriptName = "CancelAbilityByTags", AutoCreateRefTerm = "Tags"))
 	void K2_CancelAbilityByTags(const FGameplayTagContainer& Tags)

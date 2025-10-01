@@ -37,6 +37,7 @@ UGarGameplayAbility_Traversal::UGarGameplayAbility_Traversal(const FObjectInitia
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Rolling);
 	ActivationBlockedTags.AddTag(GarLocomotionActionTags::Unconsious);
 	ActivationBlockedTags.AddTag(GarLocomotionActionTags::Dying);
+	ActivationBlockedTags.AddTag(GarStanceTags::Lying);
 
 	TraversalTraceResponses.WorldStatic = ECR_Block;
 	TraversalTraceResponses.WorldDynamic = ECR_Block;
@@ -476,8 +477,6 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: bFollowComponent
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
 	const auto& PrimitiveTransform{CurrentTargetPrimitive->GetComponentTransform()};
-	auto BackLedgeLocation{PrimitiveTransform.TransformPosition(BackLedgeOffset)};
-	auto BackFloorLocation{PrimitiveTransform.GetLocation() + BackFloorOffset};
 
 	// Perform Traversal Action Event - This event is triggered at the end of the TryTraversalAction function, and uses the result to play a traversal montage.
 	// This needs to be an event rather than a function, so that we can use the convenient Play Montage Event node,
@@ -494,8 +493,8 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: bFollowComponent
 	float AnimatedDistanceFromFrontLedgeToBackFloor{0.0f};
 
 	// Update the FrontLedge warp target using the front ledge's location and rotation.
-	MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("FrontLedge")), CurrentTargetPrimitive.Get(),
-		NAME_None, true, EWarpTargetLocationOffsetDirection::TargetsForwardVector,
+	MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("FrontLedge")),
+		CurrentTargetPrimitive.Get(), NAME_None, true, EWarpTargetLocationOffsetDirection::TargetsForwardVector,
 		FrontLedgeOffset + FVector(0.f, 0.f, 0.5f), FrontLedgeRotationOffset);
 
 	// If the action type was a hurdle or a vault, we need to also update the BackLedge target. If it is not a hurdle or vault, remove it.
@@ -512,8 +511,8 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: bFollowComponent
 			UAnimationWarpingLibrary::GetCurveValueFromAnimation(ChosenMontage, FName(TEXTVIEW("Distance_From_Ledge")), Windows[0].StartTime,
 				AnimatedDistanceFromFrontLedgeToBackLedge);
 			// Update the BackLedge warp target.
-			MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackLedge")), CurrentTargetPrimitive.Get(),
-				NAME_None, true, EWarpTargetLocationOffsetDirection::TargetsForwardVector,
+			MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackLedge")),
+				CurrentTargetPrimitive.Get(), NAME_None, true, EWarpTargetLocationOffsetDirection::TargetsForwardVector,
 				BackLedgeOffset, FRotator::ZeroRotator);
 		}
 		else
@@ -541,11 +540,95 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: bFollowComponent
 			// use the total animated distance away from the back ledge as the X and Y values of the BackFloor warp point.
 			// This could technically cause some collision issues if the floor is not flat, or there is an bostacle in the way,
 			// therefore having fixed metrics for all traversal animations would be an improvement.
+			auto BackLedgeLocation{PrimitiveTransform.TransformPosition(BackLedgeOffset)};
+			auto BackFloorLocation{PrimitiveTransform.TransformPosition(BackFloorOffset)};
 			auto HLoc = BackLedgeLocation + ((BackFloorLocation - BackLedgeLocation).GetSafeNormal2D()
 				* FMath::Abs(AnimatedDistanceFromFrontLedgeToBackFloor - AnimatedDistanceFromFrontLedgeToBackLedge));
-			MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackFloor")), CurrentTargetPrimitive.Get(),
-				NAME_None, true, EWarpTargetLocationOffsetDirection::WorldSpace,
-				FVector(HLoc.X, HLoc.Y, BackFloorLocation.Z) - PrimitiveTransform.GetLocation(), FRotator::ZeroRotator);
+			MotionWarpingComponent->AddOrUpdateWarpTargetFromComponent(FName(TEXTVIEW("BackFloor")),
+				CurrentTargetPrimitive.Get(), NAME_None, true, EWarpTargetLocationOffsetDirection::TargetsForwardVector,
+				PrimitiveTransform.InverseTransformPosition(FVector(HLoc.X, HLoc.Y, BackFloorLocation.Z)), FRotator::ZeroRotator);
+		}
+		else
+		{
+			MotionWarpingComponent->RemoveWarpTarget(FName(TEXTVIEW("BackFloor")));
+		}
+	}
+	else
+	{
+		MotionWarpingComponent->RemoveWarpTarget(FName(TEXTVIEW("BackFloor")));
+	}
+}
+
+void UGarGameplayAbility_Traversal::UpdateWarpTarget(const FGarTraversalParameters& Parameters) // TODO: bFollowComponentがうまくいっていることを確認したら廃止
+{
+	auto* Character{GetGarCharacterFromActorInfo()};
+
+	// Perform Traversal Action Event - This event is triggered at the end of the TryTraversalAction function, and uses the result to play a traversal montage.
+	// This needs to be an event rather than a function, so that we can use the convenient Play Montage Event node,
+	// which triggers latent events when the montage is completed, blends out, or is interrupted.
+	// We use the Flying movement mode while doing the traversal action to allow Root Motion to move the character in the Z axis.
+	// We also disable collision with the traversed obstacle during the action to ensure the character aligns properly.
+	// This is a relatively simple event that can be replaced with a more robust traversal system, and is here for demonstration purposes only.
+
+	// In order for the actor to move to the exact points on the obstacle,
+	// we use a Motion Warping component which warps the montage’s root motion using notify states on the montage.
+	// This function updates the warp targets in the component using the ledge locations.
+
+	float AnimatedDistanceFromFrontLedgeToBackLedge{0.0f};
+	float AnimatedDistanceFromFrontLedgeToBackFloor{0.0f};
+
+	// Update the FrontLedge warp target using the front ledge's location and rotation.
+	MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("FrontLedge")),
+		Parameters.FrontLedgeLocation + FVector(0.f, 0.f, 0.5f),
+		FRotationMatrix::MakeFromXZ((Parameters.FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D(), Parameters.UpperLedgeNormal)
+			.Rotator());
+
+	// If the action type was a hurdle or a vault, we need to also update the BackLedge target. If it is not a hurdle or vault, remove it.
+	if (ActionTags.HasTag(GarTraversalActionTags::Hurdle) || ActionTags.HasTag(GarTraversalActionTags::Vault))
+	{
+		// Because the traversal animations move at different distances (no fixed metrics),
+		// we need to know how far the animation moves in order to warp it properly.
+		// Here we cache a curve value at the end of the Back Ledge warp window to determine
+		// how far the animation is from the front ledge once the character reaches the back ledge location in the animation.
+		TArray<FMotionWarpingWindowData> Windows;
+		UMotionWarpingUtilities::GetMotionWarpingWindowsForWarpTargetFromAnimation(ChosenMontage, FName(TEXTVIEW("BackLedge")), Windows);
+		if (!Windows.IsEmpty())
+		{
+			UAnimationWarpingLibrary::GetCurveValueFromAnimation(ChosenMontage, FName(TEXTVIEW("Distance_From_Ledge")), Windows[0].StartTime,
+				AnimatedDistanceFromFrontLedgeToBackLedge);
+			// Update the BackLedge warp target.
+			MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("BackLedge")),
+				Parameters.BackLedgeLocation, FRotator::ZeroRotator);
+		}
+		else
+		{
+			MotionWarpingComponent->RemoveWarpTarget(FName(TEXTVIEW("BackLedge")));
+		}
+	}
+	else
+	{
+		MotionWarpingComponent->RemoveWarpTarget(FName(TEXTVIEW("BackLedge")));
+	}
+
+	// If the action type was a hurdle, we need to also update the BackFloor target. If it is not a hurdle, remove it.
+	if (ActionTags.HasTag(GarTraversalActionTags::Hurdle))
+	{
+		// Caches a curve value at the end of the Back Floor warp window to determine
+		// how far the animation is from the front ledge once the character touches the ground.
+		TArray<FMotionWarpingWindowData> Windows;
+		UMotionWarpingUtilities::GetMotionWarpingWindowsForWarpTargetFromAnimation(ChosenMontage, FName(TEXTVIEW("BackFloor")), Windows);
+		if (!Windows.IsEmpty())
+		{
+			UAnimationWarpingLibrary::GetCurveValueFromAnimation(ChosenMontage, FName(TEXTVIEW("Distance_From_Ledge")), Windows[0].EndTime,
+				AnimatedDistanceFromFrontLedgeToBackFloor);
+			// Since the animations may land on the floor at different distances (a run hurdle may travel further than a walk or stand hurdle),
+			// use the total animated distance away from the back ledge as the X and Y values of the BackFloor warp point.
+			// This could technically cause some collision issues if the floor is not flat, or there is an bostacle in the way,
+			// therefore having fixed metrics for all traversal animations would be an improvement.
+			auto HLoc = Parameters.BackLedgeLocation + ((Parameters.BackFloorLocation - Parameters.BackLedgeLocation).GetSafeNormal2D()
+				* FMath::Abs(AnimatedDistanceFromFrontLedgeToBackFloor - AnimatedDistanceFromFrontLedgeToBackLedge));
+			MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("BackFloor")),
+				FVector(HLoc.X, HLoc.Y, Parameters.BackFloorLocation.Z), FRotator::ZeroRotator);
 		}
 		else
 		{
@@ -623,16 +706,17 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 		ChosenMontage = Montage;
 		CurrentTargetPrimitive = Parameters.TargetPrimitive;
 
-		const auto& PrimitiveTransform{CurrentTargetPrimitive->GetComponentTransform()};
-		FrontLedgeOffset = PrimitiveTransform.InverseTransformPosition(Parameters.FrontLedgeLocation);
-		FrontLedgeRotationOffset = PrimitiveTransform.InverseTransformRotation(FRotationMatrix::MakeFromXZ(
-			(Parameters.FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D(),
-			Parameters.UpperLedgeNormal).ToQuat()).Rotator();
-		UpperLedgeNormalLS = PrimitiveTransform.InverseTransformVectorNoScale(Parameters.UpperLedgeNormal);
-		BackLedgeOffset = PrimitiveTransform.InverseTransformPosition(Parameters.BackLedgeLocation);
-		BackFloorOffset = Parameters.BackFloorLocation - PrimitiveTransform.GetLocation();
+		//const auto& PrimitiveTransform{CurrentTargetPrimitive->GetComponentTransform()};
+		//FrontLedgeOffset = PrimitiveTransform.InverseTransformPosition(Parameters.FrontLedgeLocation);
+		//FrontLedgeRotationOffset = PrimitiveTransform.InverseTransformRotation(FRotationMatrix::MakeFromXZ(
+		//	(Parameters.FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D(),
+		//	Parameters.UpperLedgeNormal).ToQuat()).Rotator();
+		//UpperLedgeNormalLS = PrimitiveTransform.InverseTransformVectorNoScale(Parameters.UpperLedgeNormal);
+		//BackLedgeOffset = PrimitiveTransform.InverseTransformPosition(Parameters.BackLedgeLocation);
+		//BackFloorOffset = PrimitiveTransform.InverseTransformPosition(Parameters.BackFloorLocation);
+		//UpdateWarpTarget();
 
-		UpdateWarpTarget();
+		UpdateWarpTarget(Parameters);
 	}
 	else
 	{

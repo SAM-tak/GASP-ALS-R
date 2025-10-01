@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MoverComponent.h"
+#include "GameplayTagAssetInterface.h"
 #include "GarGameplayTags.h"
 #include "GarCharacterMoverComponent.generated.h"
 
@@ -91,7 +92,7 @@ public:
 
 	UMoverTrajectoryPredictor* GetTrajectoryPredictor() const { return TrajectoryPredictor; }
 
-	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer);
+	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const;
 
 	void SetInitialGameplayTags(const FGameplayTag& InRotationMode, const FGameplayTag& InStance, const FGameplayTag& InGait);
 

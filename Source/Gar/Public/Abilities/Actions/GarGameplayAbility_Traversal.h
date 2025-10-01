@@ -254,6 +254,8 @@ protected:
 
 	void UpdateWarpTarget();
 
+	void UpdateWarpTarget(const FGarTraversalParameters& Parameters);
+
 protected:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 									const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr,

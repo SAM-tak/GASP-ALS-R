@@ -30,8 +30,7 @@ DECLARE_EVENT_FourParams(AGarCharacter, FGarCharacter_OnDebugDisplayDelegate, UC
 #endif
 
 UCLASS(Abstract, AutoExpandCategories = ("GarCharacter|Settings"))
-class GAR_API AGarCharacter : public APawn,
-	public IMoverInputProducerInterface, public IAbilitySystemInterface, public IGameplayCueInterface, public IGameplayTagAssetInterface
+class GAR_API AGarCharacter : public APawn, public IMoverInputProducerInterface, public IAbilitySystemInterface, public IGameplayCueInterface
 {
 	GENERATED_UCLASS_BODY()
 
@@ -76,7 +75,10 @@ protected:
 	float LiedCapsuleHalfHeight{30.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
-	float LiedProneCapsuleHalfHeight{60.0f};
+	float LiedProneCapsuleHalfHeight{30.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
+	float LiedProneCapsuleZOffset{30.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	float LiedEyeHeight{35.0f};
@@ -100,11 +102,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
 	FGameplayTag OverlayMode{GarOverlayModeTags::Default};
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
-	FRotator ReplicatedControlRotation{ForceInit};
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
+	FRotator ReplicatedControlRotation{ForceInit};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	TWeakObjectPtr<UGarAnimationInstance> AnimationInstance;
@@ -138,9 +140,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
 	float InitialProneCapsuleX{0.0f};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	float InitialProneCapsuleZ{0.0f};
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -226,12 +225,7 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	// IGameplayTagAssetInterface
-
-	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
-	virtual bool HasMatchingGameplayTag(FGameplayTag TagToCheck) const override;
-	virtual bool HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
-	virtual bool HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
+	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const;
 
 	virtual FVector GetVelocity() const override;
 
@@ -242,7 +236,6 @@ private:
 	UFUNCTION(Client, Reliable)
 	void ClientUnPossessed();
 
-	mutable FGameplayTagContainer TempTagContainer;
 	mutable FGameplayTagContainer PrevTagContainer; // for ProduceInput
 
 	// Locomotion
@@ -340,7 +333,8 @@ protected:
 
 	bool UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
 
-	bool UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
+	bool UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed,
+		float TargetOffset, float OffsetSpeed);
 
 	void RefreshCapsuleSize(float DeltaTime);
 
