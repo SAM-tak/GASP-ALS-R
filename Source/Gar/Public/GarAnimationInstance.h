@@ -22,6 +22,9 @@ class GAR_API UGarAnimationInstance : public UAnimInstance
 	friend class UGarLinkedAnimationInstance;
 	friend class UGarPhysicalAnimationComponent;
 
+public:
+	UGarAnimationInstance();
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
 	TObjectPtr<UGarBoneNameTable> BoneNameTable;
@@ -64,9 +67,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State", Transient)
 	FGarPoseState PoseState;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag ViewRotationMode{GarRotationModeTags::ViewDirection};
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ViewOffset", Transient, Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
 	float ViewYawAngle{0.0f};
 
@@ -77,7 +77,10 @@ protected:
 	float SpineYawAngle{0.0f};
 
 public:
-	const FGameplayTagContainer& GetCurrentGameplayTags() const;
+	FORCEINLINE const FGameplayTagContainer& GetCurrentGameplayTags() const
+	{
+		return CurrentGameplayTags;
+	}
 
 public:
 	virtual void NativeInitializeAnimation() override;
@@ -147,8 +150,3 @@ public:
 
 	float GetCurveValueClamped01(const FName& CurveName) const;
 };
-
-inline const FGameplayTagContainer& UGarAnimationInstance::GetCurrentGameplayTags() const
-{
-	return CurrentGameplayTags;
-}

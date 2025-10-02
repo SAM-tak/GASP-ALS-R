@@ -60,12 +60,9 @@ void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHand
 
 void UGarGameplayAbility_Rolling::Tick_Implementation(const float DeltaTime)
 {
-	auto* Character{GetGarCharacterFromActorInfo()};
-	auto* AnimInstance{Character->GetMesh()->GetAnimInstance()};
-
 	if (bCancelRollingWhenInAir)
 	{
-		if(Character->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
+		if(GetGarAbilitySystemComponentFromActorInfo()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 		{
 			if (InAirTime >= TimeToCancel)
 			{

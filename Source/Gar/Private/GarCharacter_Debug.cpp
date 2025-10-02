@@ -37,7 +37,6 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
 	if (!DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::StateDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
@@ -73,22 +72,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto StateHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.State (Shift + 2)")})};
-
-	if (DisplayInfo.IsDisplayOn(UGarConstants::StateDebugDisplayName()))
-	{
-		DisplayDebugHeader(Canvas, StateHeaderText, FLinearColor::Green, Scale, HorizontalLocation, VerticalLocation);
-		DisplayDebugState(Canvas, Scale, HorizontalLocation, VerticalLocation);
-	}
-	else
-	{
-		DisplayDebugHeader(Canvas, StateHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
-	}
-
-	VerticalLocation += RowOffset;
-	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
-
-	static const auto ShapesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Shapes (Shift + 3)")})};
+	static const auto ShapesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Shapes (Shift + 2)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()))
 	{
@@ -103,7 +87,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traces (Shift + 4)")})};
+	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traces (Shift + 3)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()))
 	{
@@ -118,7 +102,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traversal (Shift + 5)")})};
+	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traversal (Shift + 4)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()))
 	{
@@ -130,7 +114,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 		DisplayDebugHeader(Canvas, MantlingHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
 	}
 
-	static const auto PAHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.PhysicalAnimation (Shift + 6)")})};
+	static const auto PAHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.PhysicalAnimation (Shift + 5)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
 	{
@@ -290,134 +274,6 @@ void AGarCharacter::DisplayDebugCurves(const UCanvas* Canvas, const float Scale,
 
 		VerticalLocation += RowOffset;
 	}
-}
-
-void AGarCharacter::DisplayDebugState(const UCanvas* Canvas, const float Scale,
-                                      const float HorizontalLocation, float& VerticalLocation) const
-{
-	VerticalLocation += 4.0f * Scale;
-
-	FCanvasTextItem Text{
-		FVector2D::ZeroVector,
-		FText::GetEmpty(),
-		GEngine->GetMediumFont(),
-		FLinearColor::White
-	};
-
-	Text.Scale = {Scale * 0.75f, Scale * 0.75f};
-	Text.EnableShadow(FLinearColor::Black);
-
-	const auto RowOffset{12.0f * Scale};
-	const auto ColumnOffset{120.0f * Scale};
-
-	static const auto ViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
-	};
-
-	Text.Text = ViewModeText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto LocomotionModeText{FText::AsCultureInvariant(TEXT("LocomotionMode"))};
-
-	Text.Text = LocomotionModeText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetLocomotionMode()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto DesiredRotationModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredRotationMode), false))
-	};
-
-	Text.Text = DesiredRotationModeText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(
-		FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredRotationMode).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto RotationModeText{FText::AsCultureInvariant(TEXT("RotationMode"))};
-
-	Text.Text = RotationModeText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetRotationMode()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto DesiredStanceText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredStance), false))
-	};
-
-	Text.Text = DesiredStanceText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredStance).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto StanceText{FText::AsCultureInvariant(TEXT("Stance"))};
-
-	Text.Text = StanceText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetStance()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto DesiredGaitText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredGait), false))
-	};
-
-	Text.Text = DesiredGaitText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredGait).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto GaitText{FText::AsCultureInvariant(TEXT("Gait"))};
-
-	Text.Text = GaitText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetGait()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto OverlayModeText{FText::AsCultureInvariant(TEXT("OverlayMode"))};
-
-	Text.Text = OverlayModeText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetOverlayMode()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
-	static const auto LocomotionActionText{FText::AsCultureInvariant(TEXT("LocomotionAction"))};
-
-	Text.Text = LocomotionActionText;
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(GetLocomotionAction()).ToString(), false));
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
 }
 
 void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,

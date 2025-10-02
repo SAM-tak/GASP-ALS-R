@@ -122,15 +122,17 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 	if (FloorUnderActor.IsWalkableFloor())
 	{
 		UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComp, FloorUnderActor, Settings->MaxWalkSlopeCosine, MoveRecord);
-		GameplayTags.Reset();
-		GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
-		MoverComp->SetLocomotionMode(GarLocomotionModeTags::Grounded);
+		if (HasGameplayTag(GarLocomotionModeTags::InAir, true))
+		{
+			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling");
+		}
 	}
 	else
 	{
-		GameplayTags.Reset();
-		GameplayTags.AddTag(GarLocomotionModeTags::InAir);
-		MoverComp->SetLocomotionMode(GarLocomotionModeTags::InAir);
+		if (HasGameplayTag(GarLocomotionModeTags::Grounded, true))
+		{
+			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling In Air");
+		}
 	}
 
 	CaptureFinalState(UpdatedComponent, MoveRecord, *StartingSyncState, OutputSyncState, DeltaSeconds);

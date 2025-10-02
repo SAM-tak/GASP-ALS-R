@@ -16,6 +16,7 @@
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
 #include "ChooserFunctionLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
@@ -279,7 +280,7 @@ void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
 	CurrentRagdolling = FGameplayTag::EmptyTag;
 	for(auto& KeyValue : RagdollingSettingsMap)
 	{
-		if (Character->HasMatchingGameplayTag(KeyValue.Key))
+		if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(KeyValue.Key))
 		{
 			CurrentRagdolling = KeyValue.Key;
 			break;
@@ -339,7 +340,7 @@ void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
 	}
 
 	FGameplayTagContainer TempContainer;
-	Character->GetOwnedGameplayTags(TempContainer);
+	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(TempContainer);
 	FGameplayTagContainer TempMaskContainer;
 	for (auto& Container : GameplayTagMasks)
 	{
@@ -483,7 +484,7 @@ void UGarPhysicalAnimationComponent::SetRagdollingTargetLocation(const FVector& 
 		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, RagdollingTargetLocation, this)
 
 		auto* Character{Cast<AGarCharacter>(GetOwner())};
-		if (Character->IsCharacterSelf())
+		if (Character->IsLocallyControlled())
 		{
 			ServerSetRagdollingTargetLocation(RagdollingTargetLocation);
 		}
@@ -672,9 +673,8 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	auto* Mover{Character->GetMover()};
 
 	auto NetMode{Character->GetWorld()->GetNetMode()};
-	bool bCharacterSelf{Character->IsCharacterSelf()};
 
-	if (bCharacterSelf)
+	if (Character->IsLocallyControlled())
 	{
 		TargetLocation = Character->GetMesh()->GetBoneLocation(PhysicalAnimation->GetTopBoneName());
 	}
@@ -691,9 +691,9 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	// as the character's location, we don't do that because the camera depends on the
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
 
-	bGrounded = Character->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+	bGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 
-	if (bCharacterSelf || NetMode == NM_DedicatedServer)
+	if (Character->IsLocallyControlled() || NetMode == NM_DedicatedServer)
 	{
 //		auto TeleportEffect = MakeShared<FTeleportEffect>();
 //		TeleportEffect->TargetLocation = TraceGround();
@@ -712,7 +712,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	// Zero target location means that it hasn't been replicated yet, so we can't apply the logic below.
 
-	if (!bCharacterSelf && !TargetLocation.IsZero())
+	if (!Character->IsLocallyControlled() && !TargetLocation.IsZero())
 	{
 		// Apply ragdoll location corrections.
 

@@ -1,5 +1,6 @@
 #include "Components/GarOverlayModeComponent.h"
 
+#include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
 #include "CharacterTasks/GarOverlayTask.h"
@@ -12,9 +13,13 @@ void UGarOverlayModeComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	if (Character.IsValid())
+	if (Character.IsValid() && Character->GetAbilitySystemComponent())
 	{
-		Character->OnOverlayModeChanged.AddUObject(this, &ThisClass::OnChangeOverlayMode);
+		for(const auto& KeyValue : OverlayClassMap)
+		{
+			Character->GetAbilitySystemComponent()->RegisterGameplayTagEvent(KeyValue.Key, EGameplayTagEventType::NewOrRemoved)
+				.AddUObject(this, &ThisClass::OnChangeOverlayModeTag);
+		}
 	}
 }
 
@@ -23,10 +28,13 @@ void UGarOverlayModeComponent::BeginPlay()
 	Super::BeginPlay();
 
 	InstancedOverlayTasks.Reset();
+}
 
-	if (Character.IsValid())
+void UGarOverlayModeComponent::OnChangeOverlayModeTag(FGameplayTag Tag, int32 NewCount)
+{
+	if(NewCount == 1)
 	{
-		ChangeOverlayTask(Character->GetOverlayMode());
+		ChangeOverlayTask(Tag);
 	}
 }
 
@@ -55,6 +63,7 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& OverlayMode
 			CurrentOverlayTask = NewTask;
 			NewTask->OnRegister();
 		}
+		CurrentOverlayTag = OverlayMode;
 		CurrentOverlayTask->Begin();
 	}
 }
@@ -83,13 +92,5 @@ void UGarOverlayModeComponent::OnUnPossessed_Implementation(AController* Previou
 	if (CurrentOverlayTask.IsValid())
 	{
 		CurrentOverlayTask->OnUnPossessed(PreviousController);
-	}
-}
-
-void UGarOverlayModeComponent::OnChangeOverlayMode_Implementation(const FGameplayTag& PreviousOverlayMode)
-{
-	if (Character.IsValid())
-	{
-		ChangeOverlayTask(Character->GetOverlayMode());
 	}
 }

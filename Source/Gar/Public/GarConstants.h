@@ -135,9 +135,6 @@ public:
 	static const FName& CurvesDebugDisplayName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
-	static const FName& StateDebugDisplayName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
 	static const FName& ShapesDebugDisplayName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
@@ -148,32 +145,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Debug", Meta = (ReturnDisplayName = "Display Name"))
 	static const FName& PADebugDisplayName();
-
-	// GameplayTag
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& ViewModeRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& AimingModeRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& LocomotionModeRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& RotationModeRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& StanceRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& GaitRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& OverlayModeRoot();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants", Meta = (ReturnDisplayName = "Display Name"))
-	static const FGameplayTagContainer& LocomotionActionRoot();
 };
 
 inline const FName& UGarConstants::LayerHeadCurveName()
@@ -404,12 +375,6 @@ inline const FName& UGarConstants::CurvesDebugDisplayName()
 	return Name;
 }
 
-inline const FName& UGarConstants::StateDebugDisplayName()
-{
-	static const FName Name{TEXTVIEW("GAR.State")};
-	return Name;
-}
-
 inline const FName& UGarConstants::ShapesDebugDisplayName()
 {
 	static const FName Name{TEXTVIEW("GAR.Shapes")};
@@ -432,52 +397,4 @@ inline const FName& UGarConstants::PADebugDisplayName()
 {
 	static const FName Name{TEXTVIEW("GAR.PhysicalAnimation")};
 	return Name;
-}
-
-inline const FGameplayTagContainer& UGarConstants::ViewModeRoot()
-{
-	static const FGameplayTagContainer Container{GarPerspectiveTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::AimingModeRoot()
-{
-	static const FGameplayTagContainer Container{GarAimingModeTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::LocomotionModeRoot()
-{
-	static const FGameplayTagContainer Container{GarLocomotionModeTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::RotationModeRoot()
-{
-	static const FGameplayTagContainer Container{GarRotationModeTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::StanceRoot()
-{
-	static const FGameplayTagContainer Container{GarStanceTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::GaitRoot()
-{
-	static const FGameplayTagContainer Container{GarGaitTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::OverlayModeRoot()
-{
-	static const FGameplayTagContainer Container{GarOverlayModeTags::Root};
-	return Container;
-}
-
-inline const FGameplayTagContainer& UGarConstants::LocomotionActionRoot()
-{
-	static const FGameplayTagContainer Container{GarLocomotionActionTags::Root};
-	return Container;
 }

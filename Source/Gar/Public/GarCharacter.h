@@ -90,20 +90,20 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NavMovement|MovementCapabilities", meta = (DisplayName = "Can Lie"))
 	uint8 NavAgentProps_bCanLie : 1{true};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
-	FGameplayTag DesiredRotationMode{GarDesiredRotationModeTags::ViewDirection};
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialDesiredRotationMode{GarDesiredRotationModeTags::ViewDirection};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
-	FGameplayTag DesiredStance{GarDesiredStanceTags::Standing};
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialDesiredStance{GarDesiredStanceTags::Standing};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", Replicated)
-	FGameplayTag DesiredGait{GarDesiredGaitTags::Running};
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialDesiredGait{GarDesiredGaitTags::Running};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State", ReplicatedUsing = OnReplicated_OverlayMode)
-	FGameplayTag OverlayMode{GarOverlayModeTags::Default};
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialPerspective{GarPerspectiveTags::ThirdPerson};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacter|State", Transient)
-	FGameplayTag Perspective{GarPerspectiveTags::ThirdPerson};
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialOverlayMode{GarOverlayModeTags::Default};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
 	FRotator ReplicatedControlRotation{ForceInit};
@@ -143,8 +143,6 @@ protected:
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	virtual void PreRegisterAllComponents() override;
 
 	virtual void PostInitializeComponents() override;
 
@@ -225,8 +223,6 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const;
-
 	virtual FVector GetVelocity() const override;
 
 private:
@@ -239,44 +235,33 @@ private:
 	mutable FGameplayTagContainer PrevTagContainer; // for ProduceInput
 
 	// Locomotion
-
 public:
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	FGameplayTag GetLocomotionMode() const;
-
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
 	void OnLocomotionModeChanged(const FGameplayTag& PreviousLocomotionMode);
 
 	// Perspective
 
-public:
-	FORCEINLINE const FGameplayTag& GetPerspective() const { return Perspective; }
+private:
+	FGameplayTag GetPerspective() const;
 
+public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	void SetPerspective(const FGameplayTag& NewPerspective);
 
 protected:
-
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Character")
 	void OnPerspectiveChanged(const FGameplayTag& PreviousPerspective);
 
 	// Desired Rotation Mode
 
-public:
-	FORCEINLINE const FGameplayTag& GetDesiredRotationMode() const { return DesiredRotationMode; }
+private:
+	FGameplayTag GetDesiredRotationMode() const;
 
+public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredRotationMode"))
 	void SetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode);
 
-private:
-	UFUNCTION(Server, Reliable)
-	void ServerSetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode);
-
 	// Rotation Mode
-
-public:
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	FGameplayTag GetRotationMode() const;
 
 protected:
 
@@ -285,24 +270,15 @@ protected:
 	// Desired Stance
 
 public:
-	FORCEINLINE const FGameplayTag& GetDesiredStance() const { return DesiredStance; }
-
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredStance"))
 	void SetDesiredStance(const FGameplayTag& NewDesiredStance);
 
 protected:
 	virtual void ApplyDesiredStance();
 
-private:
-	UFUNCTION(Server, Reliable)
-	void ServerSetDesiredStance(const FGameplayTag& NewDesiredStance);
-
 	// Stance
 
 public:
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	FGameplayTag GetStance() const;
-
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	void SetInputStance(const FGameplayTag &NewInputStance);
 
@@ -349,22 +325,16 @@ private:
 
 	// Desired Gait
 
-public:
-	FORCEINLINE const FGameplayTag& GetDesiredGait() const { return DesiredGait; }
+private:
+	FGameplayTag GetDesiredGait() const;
 
+public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredGait"))
 	void SetDesiredGait(const FGameplayTag& NewDesiredGait);
-
-private:
-	UFUNCTION(Server, Reliable)
-	void ServerSetDesiredGait(const FGameplayTag& NewDesiredGait);
 
 	// Gait
 
 public:
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	FGameplayTag GetGait() const;
-
 	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
 	bool CanSprint() const;
 
@@ -374,30 +344,6 @@ protected:
 
 private:
 	void RefreshGait();
-
-	// Overlay Mode
-
-public:
-	FORCEINLINE const FGameplayTag& GetOverlayMode() const { return OverlayMode; }
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewOverlayMode"))
-	void SetOverlayMode(const FGameplayTag& NewOverlayMode);
-
-	FGarCharacter_OnChangeGameplayTag OnOverlayModeChanged;
-
-private:
-	void SetOverlayMode(const FGameplayTag& NewOverlayMode, bool bSendRpc);
-
-	UFUNCTION(Client, Reliable)
-	void ClientSetOverlayMode(const FGameplayTag& NewOverlayMode);
-
-	UFUNCTION(Server, Reliable)
-	void ServerSetOverlayMode(const FGameplayTag& NewOverlayMode);
-
-	UFUNCTION()
-	void OnReplicated_OverlayMode(const FGameplayTag& PreviousOverlayMode) const;
-
-protected:
 
 	// Locomotion Action
 
@@ -485,15 +431,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	const FGameplayTag& DesiredToActual(const FGameplayTag& SourceTag) const;
 
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	bool IsCharacterSelf() const;
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Character")
-	bool HasServerRole() const;
-
 #if !UE_BUILD_SHIPPING
 	// Debug
-
 public:
 	virtual void DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& Unused, float& VerticalLocation) override;
 
@@ -508,8 +447,6 @@ private:
 	void InitializeCurveNames();
 
 	void DisplayDebugCurves(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
-
-	void DisplayDebugState(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 
 	void DisplayDebugShapes(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 

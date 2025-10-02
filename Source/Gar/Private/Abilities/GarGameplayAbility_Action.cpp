@@ -13,20 +13,19 @@ void UGarGameplayAbility_Action::EndAbility(const FGameplayAbilitySpecHandle Han
 	auto* Character{GetGarCharacterFromActorInfo()};
 	if (Character)
 	{
-		auto LocomotionMode{Character->GetLocomotionMode()};
-		if (LocomotionMode == GarLocomotionModeTags::Grounded)
+		auto* AbilitySystem{ActorInfo->AbilitySystemComponent.Get()};
+		if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded))
 		{
-			auto& DesiredStance{Character->GetDesiredStance()};
-			if (DesiredStance == GarDesiredStanceTags::Standing)
+			if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Standing))
 			{
 				Character->UnCrouch();
 			}
-			else if (DesiredStance == GarDesiredStanceTags::Crouching)
+			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Crouching))
 			{
 				Character->Crouch();
 			}
 		}
-		else if (LocomotionMode == GarLocomotionModeTags::InAir)
+		else if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 		{
 			Character->UnCrouch();
 		}

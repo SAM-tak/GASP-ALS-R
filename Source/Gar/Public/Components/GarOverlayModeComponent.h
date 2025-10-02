@@ -18,6 +18,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	TWeakObjectPtr<UGarOverlayTask> CurrentOverlayTask;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
+	FGameplayTag CurrentOverlayTag;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverrideModeComponent|State", Transient)
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
@@ -34,6 +37,7 @@ protected:
 
 	void ChangeOverlayTask(const FGameplayTag& OverlayMode);
 
-	UFUNCTION(BlueprintNativeEvent, Category = "GAR|OverlayModeComponent")
-	void OnChangeOverlayMode(const FGameplayTag& PreviousOverlayMode);
+private:
+	UFUNCTION()
+	void OnChangeOverlayModeTag(FGameplayTag Tag, int32 NewCount);
 };

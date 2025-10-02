@@ -4,6 +4,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAnimNotify_CameraShake)
@@ -36,8 +37,8 @@ void UGarAnimNotify_CameraShake::Notify(USkeletalMeshComponent* Mesh, UAnimSeque
 	{
 		const auto* Character{Cast<AGarCharacter>(Mesh->GetOwner())};
 		if (!IsValid(Character)
-			|| (!AnyMatchTags.IsEmpty() && !Character->HasAnyMatchingGameplayTags(AnyMatchTags))
-			|| (!AllMatchTags.IsEmpty() && !Character->HasAllMatchingGameplayTags(AllMatchTags)))
+			|| (!AnyMatchTags.IsEmpty() && !Character->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(AnyMatchTags))
+			|| (!AllMatchTags.IsEmpty() && !Character->GetAbilitySystemComponent()->HasAllMatchingGameplayTags(AllMatchTags)))
 		{
 			return;
 		}

@@ -1,5 +1,6 @@
 #include "Components/GarOverrideModeComponent.h"
 
+#include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "GarLinkedAnimationInstance.h"
 #include "CharacterTasks/GarOverrideTask.h"
@@ -77,7 +78,7 @@ void UGarOverrideModeComponent::OnRefresh_Implementation(float DeltaTime)
 	Super::OnRefresh_Implementation(DeltaTime);
 
 	FGameplayTagContainer Container;
-	Character->GetOwnedGameplayTags(Container);
+	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(Container);
 	auto CurrentOverrideTags{Container.Filter(OverrideTagsMask)};
 
 	ChangeOverrideTaskIfNeeded(CurrentOverrideTags.First());

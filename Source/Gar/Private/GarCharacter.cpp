@@ -103,30 +103,6 @@ UAbilitySystemComponent* AGarCharacter::GetAbilitySystemComponent() const
 	return AbilitySystem;
 }
 
-void AGarCharacter::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
-{
-	if (DesiredRotationMode.IsValid())
-	{
-		TagContainer.AddLeafTag(DesiredRotationMode);
-	}
-	if (DesiredStance.IsValid())
-	{
-		TagContainer.AddLeafTag(DesiredStance);
-	}
-	if (DesiredGait.IsValid())
-	{
-		TagContainer.AddLeafTag(DesiredGait);
-	}
-	if (Perspective.IsValid())
-	{
-		TagContainer.AddLeafTag(Perspective);
-	}
-	if (OverlayMode.IsValid())
-	{
-		TagContainer.AddLeafTag(OverlayMode);
-	}
-}
-
 void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -135,26 +111,7 @@ void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Parameters.bIsPushBased = true;
 
 	Parameters.Condition = COND_SkipOwner;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredStance, Parameters)
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredGait, Parameters)
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredRotationMode, Parameters)
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, OverlayMode, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ReplicatedControlRotation, Parameters)
-}
-
-void AGarCharacter::PreRegisterAllComponents()
-{
-	// Set some default values here so that the animation instance and the
-	// camera component can read the most up-to-date values during initialization.
-
-	if (IsValid(Settings))
-	{
-		InputRotationMode = DesiredToActual(DesiredRotationMode);
-		InputStance = DesiredToActual(DesiredStance);
-		InputGait = DesiredToActual(DesiredGait);
-	}
-
-	Super::PreRegisterAllComponents();
 }
 
 void AGarCharacter::PostInitializeComponents()
@@ -168,7 +125,6 @@ void AGarCharacter::PostInitializeComponents()
 
 	if (CharacterMover)
 	{
-		CharacterMover->SetInitialGameplayTags(InputRotationMode, InputStance, InputGait);
 		if (USceneComponent* UpdatedComponent = CharacterMover->GetUpdatedComponent())
 		{
 			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
@@ -183,6 +139,7 @@ void AGarCharacter::PostInitializeComponents()
 	if (IsValid(AbilitySystem))
 	{
 		AbilitySystem->Initialize(this);
+		AbilitySystem->TryActivateAbilitiesBySingleTag(InitialOverlayMode);
 	}
 
 	Super::PostInitializeComponents();
@@ -192,6 +149,11 @@ void AGarCharacter::PostInitializeComponents()
 	InitialEyeHeight = BaseEyeHeight;
 	InitialMeshZ = Mesh->GetRelativeLocation().Z;
 	InitialProneCapsuleX = ProneCapsule->GetRelativeLocation().X;
+
+	SetDesiredRotationMode(InitialDesiredRotationMode);
+	SetDesiredStance(InitialDesiredStance);
+	SetDesiredGait(InitialDesiredGait);
+	SetPerspective(InitialPerspective);
 }
 
 void AGarCharacter::BeginPlay()
@@ -299,7 +261,7 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	if (Settings)
 	{
 		FGameplayTagContainer TempTagContainer;
-		GetOwnedGameplayTags(TempTagContainer);
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
 
 		for(auto& KeyValue : Settings->TagToMovementModeMap)
 		{
@@ -334,7 +296,8 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	// Figure out intended orientation
 	CharacterInputs.OrientationIntent = FVector::ZeroVector;
 
-	if (bHasAffirmativeMoveInput || InputRotationMode == GarRotationModeTags::Aiming || Perspective == GarPerspectiveTags::FirstPerson)
+	if (bHasAffirmativeMoveInput || InputRotationMode == GarRotationModeTags::Aiming
+		|| AbilitySystem->HasMatchingGameplayTag(GarPerspectiveTags::FirstPerson))
 	{
 		if (InputRotationMode == GarRotationModeTags::VelocityDirection)
 		{
@@ -396,6 +359,39 @@ void AGarCharacter::Tick(const float DeltaTime)
 	RefreshSprintState();
 	RefreshGait();
 
+	auto LocomotionMode{CharacterMover->GetLocomotionMode()};
+	if (LocomotionMode.IsValid())
+	{
+		for(const auto& Tag : CharacterMover->GetLocomotionModeTags())
+		{
+			AbilitySystem->SetLooseGameplayTagCount(Tag, LocomotionMode == Tag ? 1 : 0);
+		}
+	}
+
+	auto RotationMode{CharacterMover->GetRotationMode()};
+	if (RotationMode.IsValid())
+	{
+		AbilitySystem->SetLooseGameplayTagCount(GarRotationModeTags::ViewDirection, RotationMode == GarRotationModeTags::ViewDirection ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarRotationModeTags::VelocityDirection, RotationMode == GarRotationModeTags::VelocityDirection ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarRotationModeTags::Aiming, RotationMode == GarRotationModeTags::Aiming ? 1 : 0);
+	}
+
+	auto Stance{CharacterMover->GetStance()};
+	if (Stance.IsValid())
+	{
+		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Standing, Stance == GarStanceTags::Standing ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Crouching, Stance == GarStanceTags::Crouching ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Lying, Stance == GarStanceTags::Lying ? 1 : 0);
+	}
+
+	auto Gait{CharacterMover->GetGait()};
+	if (Gait.IsValid())
+	{
+		AbilitySystem->SetLooseGameplayTagCount(GarGaitTags::Walking, Gait == GarGaitTags::Walking ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarGaitTags::Running, Gait == GarGaitTags::Running ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarGaitTags::Sprinting, Gait == GarGaitTags::Sprinting ? 1 : 0);
+	}
+
 	OnRefresh.Broadcast(DeltaTime);
 
 	Super::Tick(DeltaTime);
@@ -416,123 +412,84 @@ FRotator AGarCharacter::GetViewRotation() const
 	return IsLocallyControlled() ? Super::GetViewRotation() : ReplicatedControlRotation;
 }
 
-void AGarCharacter::SetOverlayMode(const FGameplayTag& NewOverlayMode)
-{
-	SetOverlayMode(NewOverlayMode, true);
-}
-
-void AGarCharacter::SetOverlayMode(const FGameplayTag& NewOverlayMode, const bool bSendRpc)
-{
-	if (OverlayMode == NewOverlayMode || GetLocalRole() <= ROLE_SimulatedProxy)
-	{
-		return;
-	}
-
-	const auto PreviousOverlayMode{OverlayMode};
-
-	OverlayMode = NewOverlayMode;
-
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, OverlayMode, this)
-
-	OnOverlayModeChanged.Broadcast(PreviousOverlayMode);
-
-	if (bSendRpc)
-	{
-		if (GetLocalRole() >= ROLE_Authority)
-		{
-			ClientSetOverlayMode(OverlayMode);
-		}
-		else
-		{
-			ServerSetOverlayMode(OverlayMode);
-		}
-	}
-}
-
-void AGarCharacter::ClientSetOverlayMode_Implementation(const FGameplayTag& NewOverlayMode)
-{
-	SetOverlayMode(NewOverlayMode, false);
-}
-
-void AGarCharacter::ServerSetOverlayMode_Implementation(const FGameplayTag& NewOverlayMode)
-{
-	SetOverlayMode(NewOverlayMode, false);
-}
-
-void AGarCharacter::OnReplicated_OverlayMode(const FGameplayTag& PreviousOverlayMode) const
-{
-	OnOverlayModeChanged.Broadcast(PreviousOverlayMode);
-}
-
 FGameplayTag AGarCharacter::GetLocomotionAction() const
 {
 	if (IsValid(AbilitySystem))
 	{
 		FGameplayTagContainer TempTagContainer;
-		AbilitySystem->GetOwnedGameplayTags_Super(TempTagContainer);
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
 		return TempTagContainer.Filter(Settings->ActionTags).First();
+	}
+	return FGameplayTag::EmptyTag;
+}
+
+FGameplayTag AGarCharacter::GetPerspective() const
+{
+	if (IsValid(AbilitySystem))
+	{
+		FGameplayTagContainer TempTagContainer;
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+		return TempTagContainer.Filter(FGameplayTagContainer{GarPerspectiveTags::Root}).First();
 	}
 	return FGameplayTag::EmptyTag;
 }
 
 void AGarCharacter::SetPerspective(const FGameplayTag& NewPerspective)
 {
-	if (Perspective == NewPerspective)
+	if (AbilitySystem->HasMatchingGameplayTag(NewPerspective) || GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	const auto PreviousPerspective{Perspective};
+	const auto PreviousPerspective{GetPerspective()};
 
-	Perspective = NewPerspective;
+	AbilitySystem->SetLooseGameplayTagCount(GarPerspectiveTags::ThirdPerson, NewPerspective == GarPerspectiveTags::ThirdPerson ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarPerspectiveTags::FirstPerson, NewPerspective == GarPerspectiveTags::FirstPerson ? 1 : 0);
 
 	OnPerspectiveChanged(PreviousPerspective);
 }
 
 void AGarCharacter::OnPerspectiveChanged_Implementation(const FGameplayTag& PreviousPerspective) {}
 
-FGameplayTag AGarCharacter::GetLocomotionMode() const
-{
-	return CharacterMover->GetLocomotionMode();
-}
-
 void AGarCharacter::OnLocomotionModeChanged_Implementation(const FGameplayTag& PreviousLocomotionMode) {}
+
+FGameplayTag AGarCharacter::GetDesiredRotationMode() const
+{
+	if (IsValid(AbilitySystem))
+	{
+		FGameplayTagContainer TempTagContainer;
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+		return TempTagContainer.Filter(FGameplayTagContainer{GarDesiredRotationModeTags::Root}).First();
+	}
+	return FGameplayTag::EmptyTag;
+}
 
 void AGarCharacter::SetDesiredRotationMode(const FGameplayTag& NewDesiredRotationMode)
 {
-	if (DesiredRotationMode == NewDesiredRotationMode || GetLocalRole() < ROLE_AutonomousProxy)
+	if (AbilitySystem->HasMatchingGameplayTag(NewDesiredRotationMode) || GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	DesiredRotationMode = NewDesiredRotationMode;
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredRotationModeTags::ViewDirection,
+		NewDesiredRotationMode == GarDesiredRotationModeTags::ViewDirection ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredRotationModeTags::VelocityDirection,
+		NewDesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection ? 1 : 0);
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredRotationMode, this)
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		ServerSetDesiredRotationMode(DesiredRotationMode);
-	}
-}
-
-void AGarCharacter::ServerSetDesiredRotationMode_Implementation(const FGameplayTag& NewDesiredRotationMode)
-{
-	SetDesiredRotationMode(NewDesiredRotationMode);
-}
-
-FGameplayTag AGarCharacter::GetRotationMode() const
-{
-	return CharacterMover->GetRotationMode();
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredRotationModeTags::ViewDirection,
+		NewDesiredRotationMode == GarDesiredRotationModeTags::ViewDirection ? 1 : 0);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredRotationModeTags::VelocityDirection,
+		NewDesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection ? 1 : 0);
 }
 
 void AGarCharacter::RefreshRotationMode()
 {
-	bool bSprinting{GetGait() == GarGaitTags::Sprinting};
-	bool bAiming{HasMatchingGameplayTag(GarAimingModeTags::Root)};
+	bool bSprinting{AbilitySystem->HasMatchingGameplayTag(GarGaitTags::Sprinting)};
+	bool bAiming{AbilitySystem->HasMatchingGameplayTag(GarAimingModeTags::Root)};
 
-	if (Perspective == GarPerspectiveTags::FirstPerson)
+	if (AbilitySystem->HasMatchingGameplayTag(GarPerspectiveTags::FirstPerson))
 	{
-		if (GetLocomotionMode() == GarLocomotionModeTags::InAir)
+		if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 		{
 			if (bAiming && Settings->bAllowAimingWhenInAir)
 			{
@@ -558,7 +515,7 @@ void AGarCharacter::RefreshRotationMode()
 
 	// Third person and other view modes.
 
-	if (GetLocomotionMode() == GarLocomotionModeTags::InAir)
+	if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 	{
 		if (bAiming && Settings->bAllowAimingWhenInAir)
 		{
@@ -590,7 +547,7 @@ void AGarCharacter::RefreshRotationMode()
 		}
 		else
 		{
-			InputRotationMode = DesiredToActual(DesiredRotationMode);
+			InputRotationMode = DesiredToActual(GetDesiredRotationMode());
 		}
 	}
 	else // Not sprinting.
@@ -601,55 +558,48 @@ void AGarCharacter::RefreshRotationMode()
 		}
 		else
 		{
-			InputRotationMode = DesiredToActual(DesiredRotationMode);
+			InputRotationMode = DesiredToActual(GetDesiredRotationMode());
 		}
 	}
 }
 
 void AGarCharacter::SetDesiredStance(const FGameplayTag& NewDesiredStance)
 {
-	if (DesiredStance == NewDesiredStance || GetLocalRole() < ROLE_AutonomousProxy)
+	if (AbilitySystem->HasMatchingGameplayTag(NewDesiredStance) || GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	DesiredStance = NewDesiredStance;
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Standing, NewDesiredStance == GarDesiredStanceTags::Standing ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0);
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredStance, this)
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		ServerSetDesiredStance(DesiredStance);
-	}
-}
-
-void AGarCharacter::ServerSetDesiredStance_Implementation(const FGameplayTag& NewDesiredStance)
-{
-	SetDesiredStance(NewDesiredStance);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Standing, NewDesiredStance == GarDesiredStanceTags::Standing ? 1 : 0);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0);
 }
 
 void AGarCharacter::ApplyDesiredStance()
 {
 	if (!GetLocomotionAction().IsValid())
 	{
-		auto LocomotionMode{GetLocomotionMode()};
-		if (LocomotionMode == GarLocomotionModeTags::Grounded)
+		if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded))
 		{
-			if (DesiredStance == GarDesiredStanceTags::Standing)
+			if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Standing))
 			{
 				if(CanUnCrouch())
 				{
 					InputStance = GarStanceTags::Standing;
 				}
 			}
-			else if (DesiredStance == GarDesiredStanceTags::Crouching)
+			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Crouching))
 			{
 				if(CanCrouch())
 				{
 					InputStance = GarStanceTags::Crouching;
 				}
 			}
-			else if (DesiredStance == GarDesiredStanceTags::Lying)
+			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Lying))
 			{
 				if(CanLie())
 				{
@@ -657,7 +607,7 @@ void AGarCharacter::ApplyDesiredStance()
 				}
 			}
 		}
-		else if (LocomotionMode == GarLocomotionModeTags::InAir)
+		else if (AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 		{
 			if(CanUnCrouch())
 			{
@@ -669,7 +619,7 @@ void AGarCharacter::ApplyDesiredStance()
 
 void AGarCharacter::CheckCanUnCrouchIfNeeded()
 {
-	if (DesiredStance != GarDesiredStanceTags::Standing || GetStance() == GarStanceTags::Standing)
+	if (!AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Standing) || AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
 	{
 		bUnCrouchBlocked = false;
 		return;
@@ -694,7 +644,7 @@ void AGarCharacter::CheckCanUnCrouchIfNeeded()
 
 void AGarCharacter::CheckCanCrouchIfNeeded()
 {
-	if (DesiredStance != GarDesiredStanceTags::Crouching || GetStance() == GarStanceTags::Crouching)
+	if (!AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Crouching) || AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
 	{
 		bCrouchBlocked = false;
 		return;
@@ -719,7 +669,7 @@ void AGarCharacter::CheckCanCrouchIfNeeded()
 
 void AGarCharacter::CheckCanLieIfNeeded()
 {
-	if (DesiredStance != GarDesiredStanceTags::Lying || GetStance() == GarStanceTags::Lying)
+	if (!AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Lying) || AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
 		bLieBlocked = false;
 		return;
@@ -754,11 +704,6 @@ void AGarCharacter::UnCrouch()
 void AGarCharacter::Lie()
 {
 	SetDesiredStance(GarDesiredStanceTags::Lying);
-}
-
-FGameplayTag AGarCharacter::GetStance() const
-{
-	return CharacterMover->GetStance();
 }
 
 void AGarCharacter::SetInputStance(const FGameplayTag & NewInputStance)
@@ -838,17 +783,16 @@ bool AGarCharacter::UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, 
 
 void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 {
-	if (HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
+	if (AbilitySystem->HasMatchingGameplayTag(GarStateFlagTags::BlockUpdateCapsuleSize))
 	{
 		return;
 	}
 
 	// Update capsule height and radius
-	auto Stance{GetStance()};
 	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
 	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 	auto OffsetSpeed{CapsuleUpdateSpeed > 0 ? LiedProneCapsuleZOffset / CapsuleUpdateSpeed : .0f};
-	if (Stance == GarStanceTags::Lying)
+	if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
@@ -860,7 +804,7 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 			ProneCapsule->WeldTo(Capsule, NAME_None, true);
 		}
 	}
-	else if (Stance == GarStanceTags::Crouching)
+	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
@@ -874,7 +818,7 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 			}
 		}
 	}
-	else
+	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
 		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
@@ -894,50 +838,49 @@ void AGarCharacter::RefreshEyeHeight(float DeltaTime)
 {
 	// Update eye height
 
-	auto Stance{GetStance()};
 	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
-	if (Stance == GarStanceTags::Lying)
+	if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
 		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedEyeHeight - LiedEyeHeight) / CapsuleUpdateSpeed : .0f};
 		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, LiedEyeHeight, DeltaTime, EyeHeightSpeed);
 	}
-	else if (Stance == GarStanceTags::Crouching)
+	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
 	{
 		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
 		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, CrouchedEyeHeight, DeltaTime, EyeHeightSpeed);
 	}
-	else
+	else if(AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
 	{
 		auto EyeHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialEyeHeight - CrouchedEyeHeight) / CapsuleUpdateSpeed : .0f};
 		BaseEyeHeight = FMath::FInterpConstantTo(BaseEyeHeight, InitialEyeHeight, DeltaTime, EyeHeightSpeed);
 	}
 }
 
+FGameplayTag AGarCharacter::GetDesiredGait() const
+{
+	if (IsValid(AbilitySystem))
+	{
+		FGameplayTagContainer TempTagContainer;
+		AbilitySystem->GetOwnedGameplayTags(TempTagContainer);
+		return TempTagContainer.Filter(FGameplayTagContainer{GarDesiredGaitTags::Root}).First();
+	}
+	return FGameplayTag::EmptyTag;
+}
+
 void AGarCharacter::SetDesiredGait(const FGameplayTag& NewDesiredGait)
 {
-	if (DesiredGait == NewDesiredGait || GetLocalRole() < ROLE_AutonomousProxy)
+	if (AbilitySystem->HasMatchingGameplayTag(NewDesiredGait) || GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	DesiredGait = NewDesiredGait;
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Walking, NewDesiredGait == GarDesiredGaitTags::Walking ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Running, NewDesiredGait == GarDesiredGaitTags::Running ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Sprinting, NewDesiredGait == GarDesiredGaitTags::Sprinting ? 1 : 0);
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredGait, this)
-
-	if (GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		ServerSetDesiredGait(DesiredGait);
-	}
-}
-
-void AGarCharacter::ServerSetDesiredGait_Implementation(const FGameplayTag& NewDesiredGait)
-{
-	SetDesiredGait(NewDesiredGait);
-}
-
-FGameplayTag AGarCharacter::GetGait() const
-{
-	return CharacterMover->GetGait();
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Walking, NewDesiredGait == GarDesiredGaitTags::Walking ? 1 : 0);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Running, NewDesiredGait == GarDesiredGaitTags::Running ? 1 : 0);
+	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Sprinting, NewDesiredGait == GarDesiredGaitTags::Sprinting ? 1 : 0);
 }
 
 FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag& NewGait) const
@@ -956,17 +899,18 @@ FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag&
 		return GarGaitTags::Walking;
 	}
 
-	return MovementInputVector.Size2D() < (GetGait() == GarGaitTags::Running ? 0.5 : 0.75) ? GarGaitTags::Walking : GarGaitTags::Running;
+	return MovementInputVector.Size2D() < (AbilitySystem->HasMatchingGameplayTag(GarGaitTags::Running) ? 0.5 : 0.75)
+		? GarGaitTags::Walking : GarGaitTags::Running;
 }
 
 void AGarCharacter::RefreshGait()
 {
-	if (GetLocomotionMode() != GarLocomotionModeTags::Grounded)
+	if (!AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded))
 	{
 		return;
 	}
 
-	InputGait = LimitGaitIfNeeded(DesiredToActual(DesiredGait));
+	InputGait = LimitGaitIfNeeded(DesiredToActual(GetDesiredGait()));
 }
 
 bool AGarCharacter::CanSprint_Implementation() const
@@ -975,12 +919,14 @@ bool AGarCharacter::CanSprint_Implementation() const
 	// If the character is in view direction rotation mode, only allow sprinting if there is
 	// input and if the input direction is aligned with the view direction within 50 degrees.
 
-	if (!HasSpeed() || GetStance() != GarStanceTags::Standing || (GetRotationMode() == GarRotationModeTags::Aiming && !Settings->bSprintHasPriorityOverAiming))
+	if (!HasSpeed() || !AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing)
+		|| (AbilitySystem->HasMatchingGameplayTag(GarRotationModeTags::Aiming) && !Settings->bSprintHasPriorityOverAiming))
 	{
 		return false;
 	}
 
-	if (Perspective != GarPerspectiveTags::FirstPerson && (DesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection || Settings->bRotateToVelocityWhenSprinting))
+	if (!AbilitySystem->HasMatchingGameplayTag(GarPerspectiveTags::FirstPerson)
+		&& (AbilitySystem->HasMatchingGameplayTag(GarDesiredRotationModeTags::VelocityDirection) || Settings->bRotateToVelocityWhenSprinting))
 	{
 		return true;
 	}
@@ -1071,7 +1017,7 @@ bool AGarCharacter::IsMoving() const
 void AGarCharacter::RefreshSprintState()
 {
 	if (Settings->bAutoTurnOffSprint
-		&& (GetLocomotionAction().IsValid() || GetLocomotionMode() == GarLocomotionModeTags::Grounded)
+		&& (GetLocomotionAction().IsValid() || AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded))
 		&& (GetVelocity().Size2D() < Settings->SprintOffSpeed || MovementInputVector.Size2D() < 0.75f)
 		&& GetDesiredGait() == GarDesiredGaitTags::Sprinting)
 	{
@@ -1081,7 +1027,8 @@ void AGarCharacter::RefreshSprintState()
 
 bool AGarCharacter::CanJump_Implementation() const
 {
-	return GetStance() == GarStanceTags::Standing && !GetLocomotionAction().IsValid() && GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+	return AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing)
+		&& !GetLocomotionAction().IsValid() && AbilitySystem->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 }
 
 void AGarCharacter::Jump()
@@ -1114,18 +1061,4 @@ const FGameplayTag& AGarCharacter::DesiredToActual(const FGameplayTag& SourceTag
 		}
 	}
 	return SourceTag;
-}
-
-bool AGarCharacter::IsCharacterSelf() const
-{
-	auto NetMode{GetWorld()->GetNetMode()};
-	return NetMode == NM_Standalone
-		|| (NetMode == NM_ListenServer && GetLocalRole() == ROLE_Authority)
-		|| (NetMode == NM_Client && GetLocalRole() == ROLE_AutonomousProxy);
-}
-
-bool AGarCharacter::HasServerRole() const
-{
-	auto NetMode{GetWorld()->GetNetMode()};
-	return (NetMode == NM_DedicatedServer || NetMode == NM_ListenServer) && GetLocalRole() == ROLE_Authority;
 }

@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "Sound/SoundBase.h"
+#include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "GarConstants.h"
 #include "Settings/GarBoneNameTable.h"
@@ -65,7 +66,7 @@ void UGarAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 
 	const auto* Character{Cast<AGarCharacter>(Mesh->GetOwner())};
 
-	if (bSkipEffectsWhenInAir && IsValid(Character) && Character->GetLocomotionMode() == GarLocomotionModeTags::InAir)
+	if (bSkipEffectsWhenInAir && IsValid(Character) && Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 	{
 		return;
 	}

@@ -5,6 +5,7 @@
 #include "Curves/CurveFloat.h"
 #include "MotionWarpingComponent.h"
 #include "MoverPoseSearchTrajectoryPredictor.h"
+#include "AbilitySystemComponent.h"
 #include "GarAnimationInstanceProxy.h"
 #include "GarCharacter.h"
 #include "GarCharacterMoverComponent.h"
@@ -18,20 +19,19 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAnimationInstance)
 
+UGarAnimationInstance::UGarAnimationInstance()
+{
+	CurrentGameplayTags.AddTag(GarRotationModeTags::ViewDirection);
+	CurrentGameplayTags.AddTag(GarStanceTags::Standing);
+	CurrentGameplayTags.AddTag(GarGaitTags::Running);
+	CurrentGameplayTags.AddTag(GarLocomotionModeTags::Grounded);
+}
+
 void UGarAnimationInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 
 	Character = Cast<AGarCharacter>(GetOwningActor());
-
-#if WITH_EDITOR
-	if (!GetWorld()->IsGameWorld() && !Character.IsValid())
-	{
-		// Use default objects for editor preview.
-
-		Character = GetMutableDefault<AGarCharacter>();
-	}
-#endif
 }
 
 void UGarAnimationInstance::NativeBeginPlay()
@@ -45,6 +45,8 @@ void UGarAnimationInstance::NativeBeginPlay()
 	if (!ensure(RagdollingAnimInstance.IsValid())) return;
 
 	Super::NativeBeginPlay();
+
+	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(CurrentGameplayTags);
 }
 
 void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
@@ -60,8 +62,15 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	}
 
 	PreviousGameplayTags = CurrentGameplayTags;
-	Character->GetOwnedGameplayTags(CurrentGameplayTags);
-
+	if (GetWorld() && GetWorld()->IsGameWorld())
+	{
+		FGameplayTagContainer GameplayTags;
+		Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(GameplayTags);
+		if (!GameplayTags.IsEmpty())
+		{
+			CurrentGameplayTags = GameplayTags;
+		}
+	}
 	auto* Mesh{GetSkelMeshComponent()};
 	CharacterTransform = Mesh->GetComponentTransform();
 
@@ -71,11 +80,6 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 		InteractionTransform = WarpTarget->GetTargetTrasform();
 	}
 
-	ViewRotationMode = Character->GetRotationMode();
-	if (ViewRotationMode != GarRotationModeTags::Aiming)
-	{
-		ViewRotationMode = Character->GetDesiredRotationMode();
-	}
 	bIsActionRunning = Character->GetLocomotionAction().IsValid();
 
 	RefreshCharacterMovementOnGameThread(DeltaTime);
@@ -161,7 +165,7 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	CharacterMovement.CurrentMaxSpeed = Mover->CurrentMaxSpeed;
 	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
 	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
-	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+	CharacterMovement.bIsGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
 	CharacterMovement.ViewRotation = Character->GetViewRotation();
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
@@ -170,7 +174,7 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	{
 		CharacterMovement.UpVector = -CharacterMovement.GravityAcceleration.GetUnsafeNormal();
 	}
-	if (Mover->GetLocomotionMode() == GarLocomotionModeTags::InAir)
+	if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 	{
 		CharacterMovement.LatestVelocityInAir = CharacterMovement.Velocity;
 	}

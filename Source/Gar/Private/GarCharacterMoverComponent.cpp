@@ -16,6 +16,11 @@
 #include "MoverModes/GarMoverFallingMode.h"
 #include "MoverModes/GarMoverWalkingMode.h"
 #include "MoverModes/GarMoverRagdollingMode.h"
+#if GAR_USE_GE_FOR_MOVEMENTSTATE
+#include "MoverModifiers/GarMoverRotationModifier.h"
+#include "MoverModifiers/GarMoverStanceModifier.h"
+#include "MoverModifiers/GarMoverGaitModifier.h"
+#endif
 #include "GarPhysicalAnimationComponent.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
@@ -26,13 +31,22 @@
 
 UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 {
+#if !GAR_USE_GE_FOR_MOVEMENTSTATE
 	SetIsReplicatedByDefault(true);
+#endif
+	LocomotionModeTags.AddTag(GarLocomotionModeTags::Grounded);
+	LocomotionModeTags.AddTag(GarLocomotionModeTags::InAir);
 
 	// Default movement modes
 	MovementModes.Add(DefaultModeNames::Walking, CreateDefaultSubobject<UGarMoverWalkingMode>(TEXT("DefaultWalkingMode")));
 	MovementModes.Add(DefaultModeNames::Falling, CreateDefaultSubobject<UGarMoverFallingMode>(TEXT("DefaultFallingMode")));
 	MovementModes.Add(TEXT("Ragdolling"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultRagdollingMode")));
+	MovementModes.Add(TEXT("Ragdolling In Air"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultAirborneRagdollingMode")));
 	MovementModes.Add(DefaultModeNames::Flying, CreateDefaultSubobject<UFlyingMode>(TEXT("DefaultFlyingMode")));
+
+	auto AirborneRagdolling{MovementModes[TEXT("Ragdolling In Air")]};
+	AirborneRagdolling->GameplayTags.Reset();
+	AirborneRagdolling->GameplayTags.AddTag(GarLocomotionModeTags::InAir);
 
 	auto FlyingMode{MovementModes[DefaultModeNames::Flying]};
 	FlyingMode->GameplayTags.Reset();
@@ -53,6 +67,7 @@ void UGarCharacterMoverComponent::InitializeComponent()
 	MotionWarpingMoverAdapter->SetMoverComp(this);
 }
 
+#if !GAR_USE_MOVEMENTMODIFIER
 void UGarCharacterMoverComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -61,28 +76,37 @@ void UGarCharacterMoverComponent::GetLifetimeReplicatedProps(TArray<FLifetimePro
 	Parameters.bIsPushBased = true;
 
 	Parameters.Condition = COND_SkipOwner;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, LocomotionMode, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, RotationMode, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, Stance, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, Gait, Parameters)
 }
+#endif
 
 void UGarCharacterMoverComponent::BeginPlay()
 {
-	Super::BeginPlay();
-
-	if (!ensure(Character.IsValid())) return;
+	if (!ensure(Character.IsValid()))
+	{
+		return;
+	}
 
 	Settings = FindSharedSettings<UGarMovementSettings>();
 
-	if(!ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this))) return;
+	if(!ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this)))
+	{
+		return;
+	}
 
 	CommonSettings = FindSharedSettings<UCommonLegacyMovementSettings>();
 
-	if(!ensureMsgf(CommonSettings, TEXT("Failed to find instance of CommonLegacyMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this))) return;
+	if(!ensureMsgf(CommonSettings, TEXT("Failed to find instance of CommonLegacyMovementSettings on %s. Movement may not function properly."),
+		*GetPathNameSafe(this)))
+	{
+		return;
+	}
+
+	Super::BeginPlay();
 
 	OnPreSimulationTick.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPreSimulationTick);
-	OnMovementModeChanged.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverMovementModeChanged);
 }
 
 void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd)
@@ -90,6 +114,70 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 	auto CharacterInputs = InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
 	if (CharacterInputs)
 	{
+#if GAR_USE_MOVEMENTMODIFIER
+		if (CharacterInputs->RotationMode.IsValid() && GetRotationMode() != CharacterInputs->RotationMode)
+		{
+			if (RotationModifierHandle.IsValid())
+			{
+				CancelModifierFromHandle(RotationModifierHandle);
+				RotationModifierHandle.Invalidate();
+			}
+			if (CharacterInputs->RotationMode == GarRotationModeTags::ViewDirection)
+			{
+				RotationModifierHandle = QueueMovementModifier(MakeShared<FGarMoverViewDirectionModifier>());
+			}
+			else if (CharacterInputs->RotationMode == GarRotationModeTags::VelocityDirection)
+			{
+				RotationModifierHandle = QueueMovementModifier(MakeShared<FGarMoverVelocityDirectionModifier>());
+			}
+			else if (CharacterInputs->RotationMode == GarRotationModeTags::Aiming)
+			{
+				RotationModifierHandle = QueueMovementModifier(MakeShared<FGarMoverAimingModifier>());
+			}
+		}
+
+		if (CharacterInputs->Stance.IsValid() && GetStance() != CharacterInputs->Stance)
+		{
+			if (StanceModifierHandle.IsValid())
+			{
+				CancelModifierFromHandle(StanceModifierHandle);
+				StanceModifierHandle.Invalidate();
+			}
+			if (CharacterInputs->Stance == GarStanceTags::Standing)
+			{
+				StanceModifierHandle = QueueMovementModifier(MakeShared<FGarMoverStandingModifier>());
+			}
+			else if (CharacterInputs->Stance == GarStanceTags::Crouching)
+			{
+				StanceModifierHandle = QueueMovementModifier(MakeShared<FGarMoverCrouchingModifier>());
+			}
+			else if (CharacterInputs->Stance == GarStanceTags::Lying)
+			{
+				StanceModifierHandle = QueueMovementModifier(MakeShared<FGarMoverLyingModifier>());
+			}
+		}
+
+		if (CharacterInputs->Gait.IsValid() && GetGait() != CharacterInputs->Gait)
+		{
+			if (GaitModifierHandle.IsValid())
+			{
+				CancelModifierFromHandle(GaitModifierHandle);
+				GaitModifierHandle.Invalidate();
+			}
+			if (CharacterInputs->Gait == GarGaitTags::Walking)
+			{
+				GaitModifierHandle = QueueMovementModifier(MakeShared<FGarMoverWalkingModifier>());
+			}
+			else if (CharacterInputs->Gait == GarGaitTags::Running)
+			{
+				GaitModifierHandle = QueueMovementModifier(MakeShared<FGarMoverRunningModifier>());
+			}
+			else if (CharacterInputs->Gait == GarGaitTags::Sprinting)
+			{
+				GaitModifierHandle = QueueMovementModifier(MakeShared<FGarMoverSprintingModifier>());
+			}
+		}
+#else
 		if (CharacterInputs->RotationMode.IsValid() && RotationMode != CharacterInputs->RotationMode)
 		{
 			RotationMode = CharacterInputs->RotationMode;
@@ -107,7 +195,7 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 			Gait = CharacterInputs->Gait;
 			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, Gait, this)
 		}
-
+#endif
 		if (CharacterInputs->bIsJumpJustPressed && IsValid(Settings))
 		{
 			auto JumpMove = MakeShared<FJumpImpulseEffect>();
@@ -117,63 +205,106 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 	}
 }
 
-void UGarCharacterMoverComponent::SetLocomotionMode(const FGameplayTag& NewLocomotionMode)
+FGameplayTag UGarCharacterMoverComponent::GetLocomotionMode() const
 {
-	if (LocomotionMode != NewLocomotionMode)
+	for(auto& Tag : LocomotionModeTags)
 	{
-		auto OldLocomotionMode{LocomotionMode};
-		LocomotionMode = NewLocomotionMode;
-		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, LocomotionMode, this)
-
-		if (OldLocomotionMode != LocomotionMode)
+		if (HasGameplayTag(Tag, true))
 		{
-			Character->OnLocomotionModeChanged(OldLocomotionMode);
+			return Tag;
 		}
 	}
+	return FGameplayTag::EmptyTag;
 }
 
-void UGarCharacterMoverComponent::OnMoverMovementModeChanged(const FName& PreviousMovementModeName, const FName& NewMovementModeName)
+#if GAR_USE_MOVEMENTMODIFIER
+FGameplayTag UGarCharacterMoverComponent::GetRotationMode() const
 {
-	if (auto& MovementMode = MovementModes[NewMovementModeName])
+	if (RotationModifierHandle.IsValid())
 	{
-		SetLocomotionMode(MovementMode->GameplayTags.Filter(LocomotionModeTags).First());
+		const auto* Modifier{static_cast<const FGarMoverModifier*>(FindMovementModifier(RotationModifierHandle))};
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		// This is a fail safe in case our handle was bad - try finding the modifier by type if we can
+		Modifier = FindMovementModifierByType<FGarMoverViewDirectionModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverVelocityDirectionModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverAimingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
 	}
+	return FGameplayTag::EmptyTag;
 }
 
-void UGarCharacterMoverComponent::OnReplicated_LocomotionMode(const FGameplayTag& PreviousMovementMode) const
+FGameplayTag UGarCharacterMoverComponent::GetStance() const
 {
-	Character->OnLocomotionModeChanged(PreviousMovementMode);
-}
-
-void UGarCharacterMoverComponent::AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
-{
-	auto SyncState{MoverSyncStateDoubleBuffer.GetReadable()};
-
-	// Append loose / external tags
-	TagContainer.AppendTags(ExternalGameplayTags);
-
-	// Append active Movement Mode
-	if (auto ActiveMovementMode = FindMovementModeByName(SyncState.MovementMode))
+	if (StanceModifierHandle.IsValid())
 	{
-		TagContainer.AppendTags(ActiveMovementMode->GameplayTags);
+		const auto* Modifier{static_cast<const FGarMoverModifier*>(FindMovementModifier(StanceModifierHandle))};
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		// This is a fail safe in case our handle was bad - try finding the modifier by type if we can
+		Modifier = FindMovementModifierByType<FGarMoverStandingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverCrouchingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverLyingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
 	}
-
-	TagContainer.AddTag(LocomotionMode);
-	TagContainer.AddTag(RotationMode);
-	TagContainer.AddTag(Stance);
-	TagContainer.AddTag(Gait);
+	return FGameplayTag::EmptyTag;
 }
 
-void UGarCharacterMoverComponent::SetInitialGameplayTags(const FGameplayTag& InRotationMode, const FGameplayTag& InStance, const FGameplayTag& InGait)
+FGameplayTag UGarCharacterMoverComponent::GetGait() const
 {
-	if (auto MovementMode{FindMovementModeByName(StartingMovementMode)})
+	if (GaitModifierHandle.IsValid())
 	{
-		LocomotionMode = MovementMode->GameplayTags.Filter(LocomotionModeTags).First();
+		const auto* Modifier{static_cast<const FGarMoverModifier*>(FindMovementModifier(GaitModifierHandle))};
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		// This is a fail safe in case our handle was bad - try finding the modifier by type if we can
+		Modifier = FindMovementModifierByType<FGarMoverWalkingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverRunningModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
+		Modifier = FindMovementModifierByType<FGarMoverSprintingModifier>();
+		if (Modifier)
+		{
+			return Modifier->ActiveTag;
+		}
 	}
-	RotationMode = InRotationMode;
-	Stance = InStance;
-	Gait = InGait;
+	return FGameplayTag::EmptyTag;
 }
+#endif
 
 bool UGarCharacterMoverComponent::IsWalkable(const FHitResult& Hit) const
 {

@@ -37,7 +37,6 @@ UGarGameplayAbility_Traversal::UGarGameplayAbility_Traversal(const FObjectInitia
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Rolling);
 	ActivationBlockedTags.AddTag(GarLocomotionActionTags::Unconsious);
 	ActivationBlockedTags.AddTag(GarLocomotionActionTags::Dying);
-	ActivationBlockedTags.AddTag(GarStanceTags::Lying);
 
 	TraversalTraceResponses.WorldStatic = ECR_Block;
 	TraversalTraceResponses.WorldDynamic = ECR_Block;
@@ -98,7 +97,7 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	ChooserInputs.BackFloorFall = Params.BackLedgeLocation.Z - Params.BackFloorLocation.Z;
 	ChooserInputs.Speed = Character->GetVelocity().Size2D();
 	ChooserInputs.CurrentGameplayTags.Reset();
-	Character->GetOwnedGameplayTags(ChooserInputs.CurrentGameplayTags);
+	ActorInfo.AbilitySystemComponent->GetOwnedGameplayTags(ChooserInputs.CurrentGameplayTags);
 
 	// Determine the mantling type by checking the movement mode and mantling height.
 
@@ -179,7 +178,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	const auto TraceCapsuleRadius{CapsuleRadius - 1.0f};
 
-	bool bInAir{Character->HasMatchingGameplayTag(GarLocomotionModeTags::InAir)};
+	bool bInAir{Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir)};
 
 	const FGarTraversalTraceSettings& TraceSettings{bInAir ? InAirTrace : GroundedTrace};
 

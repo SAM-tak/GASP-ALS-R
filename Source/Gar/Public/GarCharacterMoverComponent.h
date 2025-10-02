@@ -5,6 +5,9 @@
 #include "GarGameplayTags.h"
 #include "GarCharacterMoverComponent.generated.h"
 
+// MovementModifier didn't work. maybe bug.
+#define GAR_USE_MOVEMENTMODIFIER 0
+
 class UMoverTrajectoryPredictor;
 class UMotionWarpingMoverAdapter;
 class UCommonLegacyMovementSettings;
@@ -18,13 +21,10 @@ class GAR_API UGarCharacterMoverComponent : public UMoverComponent
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
-	FGameplayTagContainer LocomotionModeTags{GarLocomotionModeTags::Root};
+	FGameplayTagContainer LocomotionModeTags;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated, ReplicatedUsing = OnReplicated_LocomotionMode)
-	FGameplayTag LocomotionMode{GarLocomotionModeTags::Grounded};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
 	FGameplayTag RotationMode{GarRotationModeTags::ViewDirection};
@@ -60,47 +60,47 @@ public:
 public:
 	UGarCharacterMoverComponent();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+#if !GAR_USE_MOVEMENTMODIFIER
+	//virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+#endif
 	virtual void InitializeComponent() override;
 
 	virtual void BeginPlay() override;
-
-	void SetLocomotionMode(const FGameplayTag& NewLocomotionMode);
 
 protected:
 	UFUNCTION()
 	virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);
 
-	UFUNCTION()
-	virtual void OnMoverMovementModeChanged(const FName& PreviousMovementModeName, const FName& NewMovementModeName);
-
-	UFUNCTION()
-	void OnReplicated_LocomotionMode(const FGameplayTag& PreviousOverlayMode) const;
-
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|CharacterMover")
 	const UGarMovementSettings* GetSettings() const { return Settings; }
 
-	const FGameplayTag& GetLocomotionMode() const { return LocomotionMode; }
-
-	const FGameplayTag& GetRotationMode() const { return RotationMode; }
-
-	const FGameplayTag& GetStance() const { return Stance; }
-
-	const FGameplayTag& GetGait() const { return Gait; }
-
 	UMoverTrajectoryPredictor* GetTrajectoryPredictor() const { return TrajectoryPredictor; }
-
-	void AppendOwnedGameplayTags(FGameplayTagContainer& TagContainer) const;
-
-	void SetInitialGameplayTags(const FGameplayTag& InRotationMode, const FGameplayTag& InStance, const FGameplayTag& InGait);
 
 	/** Return true if the hit result should be considered a walkable surface for the character. */
 	UFUNCTION(BlueprintCallable, Category = "GAR|CharacterMover")
 	virtual bool IsWalkable(const FHitResult& Hit) const;
 
+	const FGameplayTagContainer& GetLocomotionModeTags() const { return LocomotionModeTags; }
+
+	FGameplayTag GetLocomotionMode() const;
+#if GAR_USE_MOVEMENTMODIFIER
+	FGameplayTag GetRotationMode() const;
+	FGameplayTag GetStance() const;
+	FGameplayTag GetGait() const;
+#else
+	const FGameplayTag& GetRotationMode() const { return RotationMode; }
+	const FGameplayTag& GetStance() const { return Stance; }
+	const FGameplayTag& GetGait() const { return Gait; }
+#endif
+
 private:
+#if GAR_USE_MOVEMENTMODIFIER
+	FMovementModifierHandle RotationModifierHandle;
+	FMovementModifierHandle StanceModifierHandle;
+	FMovementModifierHandle GaitModifierHandle;
+#endif
+
 	TObjectPtr<const UGarMovementSettings> Settings;
 	TObjectPtr<const UCommonLegacyMovementSettings> CommonSettings;
 };

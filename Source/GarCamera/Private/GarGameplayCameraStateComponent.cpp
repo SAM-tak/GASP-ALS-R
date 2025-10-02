@@ -3,6 +3,7 @@
 #include "DrawDebugHelpers.h"
 #include "GameFramework/WorldSettings.h"
 #include "GameFramework/GameplayCameraComponentBase.h"
+#include "AbilitySystemComponent.h"
 #include "Core/CameraSystemEvaluator.h"
 #include "Core/CameraVariableAssets.h"
 #include "Core/RootCameraNode.h"
@@ -273,7 +274,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 
 	// Refresh desired view mode information.
 
-	if (Character->IsCharacterSelf())
+	if (Character->IsLocallyControlled())
 	{
 		if (PerspectiveChangeBlockTime > 0.f)
 		{
@@ -342,7 +343,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 
 	if (PreviousShoulderMode != ShoulderMode)
 	{
-		if (Character->GetPerspective() == GarPerspectiveTags::ThirdPerson && bIsFocusPawn)
+		if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarPerspectiveTags::ThirdPerson) && bIsFocusPawn)
 		{
 			// Set aim point correction during change shoulder
 			auto FocusLocation{GetCurrentFocusLocation()};
@@ -405,8 +406,8 @@ void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
 	FVector Location;
 	FRotator Rotation;
 	if(Character->HasSight() && Character->GetAimAmount() >= Settings->FirstPerson.ADSThreshold
-		&& Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight)
-		&& !Character->HasAnyMatchingGameplayTags(Settings->FirstPerson.BlockSightViewTags))
+		&& Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight)
+		&& !Character->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(Settings->FirstPerson.BlockSightViewTags))
 	{
 		Character->GetSightLocAndRot(Location, Rotation);
 		Rotation.Roll = Character->GetControlRotation().Roll;
@@ -483,7 +484,7 @@ FVector UGarGameplayCameraStateComponent::GetThirdPersonTraceStartLocation() con
 FVector UGarGameplayCameraStateComponent::GetFirstPersonTraceStartLocation() const
 {
 	auto ViewRotation = Character->GetViewRotation();
-	if (Character->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
+	if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarAimingModeTags::AimDownSight))
 	{
 		if (bIsSightOffsetValid)
 		{
@@ -558,7 +559,7 @@ void UGarGameplayCameraStateComponent::UpdateFocalLength()
 
 	auto EyeVec = CameraRotation.Vector();
 	FVector TraceStart = CameraLocation + EyeVec * Settings->MinFocalLength;
-	if (Character->GetPerspective() != GarPerspectiveTags::FirstPerson)
+	if (!Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarPerspectiveTags::FirstPerson))
 	{
 		auto ProjectedLocation = FVector::PointPlaneProject(CameraLocation, Character->GetActorLocation(), -EyeVec);
 		auto ProjectedLocationDistance = FVector::Distance(TraceStart, ProjectedLocation);

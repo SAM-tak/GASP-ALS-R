@@ -24,7 +24,7 @@ UGarLocalMontageTask* UGarLocalMontageComponent::Play(const FGameplayTag& LocalM
 {
 	ensure(Character->GetLocalRole() > ROLE_SimulatedProxy);
 	
-	if (Character->HasServerRole())
+	if (Character->GetLocalRole() > ROLE_SimulatedProxy)
 	{
 		MulticastPlay(LocalMontageTag);
 	}
@@ -122,7 +122,7 @@ void UGarLocalMontageComponent::AddOrUpdateReplicatedWarpTargetFromLocationAndRo
 
 	Character->GetMotionWarping()->AddOrUpdateWarpTargetFromLocationAndRotation(WarpTargetName, TargetLocation, TargetRotation);
 
-	if (Character->HasServerRole())
+	if (Character->GetLocalRole() > ROLE_SimulatedProxy)
 	{
 		MulticastAddOrUpdateWarpTargetFromLocationAndRotation(WarpTargetName, TargetLocation, TargetRotation);
 	}

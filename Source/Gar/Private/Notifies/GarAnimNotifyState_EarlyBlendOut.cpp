@@ -4,6 +4,7 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "AbilitySystemComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAnimNotifyState_EarlyBlendOut)
 
@@ -36,11 +37,18 @@ void UGarAnimNotifyState_EarlyBlendOut::BranchingPointNotifyTick(FBranchingPoint
 	auto* AnimationInstance{IsValid(Mesh) ? Mesh->GetAnimInstance() : nullptr};
 	const auto* Character{IsValid(AnimationInstance) ? Cast<AGarCharacter>(Mesh->GetOwner()) : nullptr};
 
+	if (!IsValid(Character))
+	{
+		return;
+	}
+
+	const auto* AbilitySystem{Character->GetAbilitySystemComponent()};
+
 	if (IsValid(Character) &&
 	    ((bCheckInput && Character->HasMovementInput()) ||
-	     (bCheckLocomotionMode && Character->GetLocomotionMode() == LocomotionModeEquals) ||
-	     (bCheckRotationMode && Character->GetRotationMode() == RotationModeEquals) ||
-	     (bCheckStance && Character->GetStance() == StanceEquals)))
+	     (bCheckLocomotionMode && AbilitySystem->HasMatchingGameplayTag(LocomotionModeEquals)) ||
+	     (bCheckRotationMode && AbilitySystem->HasMatchingGameplayTag(RotationModeEquals)) ||
+	     (bCheckStance && AbilitySystem->HasMatchingGameplayTag(StanceEquals))))
 	{
 		auto* MontageInstance{AnimationInstance->GetMontageInstanceForID(NotifyPayload.MontageInstanceID)};
 		if (!ensure(MontageInstance != nullptr))
