@@ -32,7 +32,7 @@ void UGarOverlayModeComponent::BeginPlay()
 
 void UGarOverlayModeComponent::OnChangeOverlayModeTag(FGameplayTag Tag, int32 NewCount)
 {
-	if(NewCount == 1)
+	if (NewCount == 1)
 	{
 		ChangeOverlayTask(Tag);
 	}

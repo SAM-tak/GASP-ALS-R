@@ -105,9 +105,6 @@ struct GAR_API FGarRagdollingState
 	UGarRagdollingAnimInstance* RagdollingAnimInstance{nullptr};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector_NetQuantize TargetLocation{NAN, NAN, NAN};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AGarCharacter* Character{nullptr};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -130,7 +127,7 @@ struct GAR_API FGarRagdollingState
 UCLASS()
 class GAR_API UGarPhysicalAnimationComponent : public UPhysicalAnimationComponent
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 	
 protected:
 	// The blend time Of physics blend Weight on activate physics body.
@@ -149,26 +146,16 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
 	TObjectPtr<UChooserTable> ProfileChooser;
 
-	// A mask of GameplayTags used to determine the Profile. The order in the list is used as a priority.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
-	TArray<FGameplayTagContainer> GameplayTagMasks{
-		FGameplayTagContainer{GarLocomotionActionTags::Root},
-		FGameplayTagContainer{GarLocomotionModeTags::Root},
-		FGameplayTagContainer{GarStanceTags::Root},
-		FGameplayTagContainer{GarGaitTags::Root},
-		FGameplayTagContainer{GarOverlayModeTags::Root},
-	};
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
 	TArray<FGarPACurveBoneMapping> CurveBoneMappings{
-		{FName{TEXTVIEW("PALockArmLeft")},   {{FName{TEXTVIEW("clavicle_l")}, FName{TEXTVIEW("upperarm_l")}, FName{TEXTVIEW("lowerarm_l")}}}},
-		{FName{TEXTVIEW("PALockArmRight")},  {{FName{TEXTVIEW("clavicle_r")}, FName{TEXTVIEW("upperarm_r")}, FName{TEXTVIEW("lowerarm_r")}}}},
-		{FName{TEXTVIEW("PALockHandLeft")},  {{FName{TEXTVIEW("hand_l")}}}},
-		{FName{TEXTVIEW("PALockHandRight")}, {{FName{TEXTVIEW("hand_r")}}}},
-		{FName{TEXTVIEW("PALockLegLeft")},   {{FName{TEXTVIEW("thigh_l")}, FName{TEXTVIEW("calf_l")}}}},
-		{FName{TEXTVIEW("PALockLegRight")},  {{FName{TEXTVIEW("thigh_r")}, FName{TEXTVIEW("calf_r")}}}},
-		{FName{TEXTVIEW("PALockFootLeft")},  {{FName{TEXTVIEW("foot_l")}, FName{TEXTVIEW("ball_l")}}}},
-		{FName{TEXTVIEW("PALockFootRight")}, {{FName{TEXTVIEW("foot_r")}, FName{TEXTVIEW("ball_r")}}}},
+		{FName{TEXTVIEW("palock_arm_l")},  {{FName{TEXTVIEW("clavicle_l")}, FName{TEXTVIEW("upperarm_l")}, FName{TEXTVIEW("lowerarm_l")}}}},
+		{FName{TEXTVIEW("palock_arm_r")},  {{FName{TEXTVIEW("clavicle_r")}, FName{TEXTVIEW("upperarm_r")}, FName{TEXTVIEW("lowerarm_r")}}}},
+		{FName{TEXTVIEW("palock_hand_l")}, {{FName{TEXTVIEW("hand_l")}}}},
+		{FName{TEXTVIEW("palock_hand_r")}, {{FName{TEXTVIEW("hand_r")}}}},
+		{FName{TEXTVIEW("palock_leg_l")},  {{FName{TEXTVIEW("thigh_l")}, FName{TEXTVIEW("calf_l")}}}},
+		{FName{TEXTVIEW("palock_leg_r")},  {{FName{TEXTVIEW("thigh_r")}, FName{TEXTVIEW("calf_r")}}}},
+		{FName{TEXTVIEW("palock_foot_l")}, {{FName{TEXTVIEW("foot_l")}, FName{TEXTVIEW("ball_l")}}}},
+		{FName{TEXTVIEW("palock_foot_r")}, {{FName{TEXTVIEW("foot_r")}, FName{TEXTVIEW("ball_r")}}}},
 	};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
@@ -228,20 +215,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
 	FGarRagdollingState RagdollingState;
 
-	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient, Replicated)
-	FVector_NetQuantize RagdollingTargetLocation;
-
 protected:
 	virtual void OnRegister() override;
 
 	virtual void BeginPlay() override;
 
 	virtual void OnRefresh(float DeltaTime);
-
-	void SetRagdollingTargetLocation(const FVector& NewTargetLocation);
-
-	UFUNCTION(Server, Unreliable)
-	void ServerSetRagdollingTargetLocation(const FVector_NetQuantize& NewTargetLocation);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
 	void ChooseProfile(FGarPAProfileChooserResult& OutResult) const;
@@ -251,8 +230,15 @@ public:
 
 	virtual void DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& Unused, float& VerticalLocation);
 
-	const TArray<FGarPACurveBoneMapping>& GetCurveBoneMappings() const;
-	const FName& GetTopBoneName() const;
+	FORCEINLINE const TArray<FGarPACurveBoneMapping>& GetCurveBoneMappings() const
+	{
+		return CurveBoneMappings;
+	}
+
+	FORCEINLINE const FName& GetTopBoneName() const
+	{
+		return TopBoneName;
+	}
 
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool HasRagdollingSettings(const FGameplayTag& Tag) const;
@@ -288,13 +274,3 @@ private:
 
 	void SelectProfile();
 };
-
-inline const TArray<FGarPACurveBoneMapping>& UGarPhysicalAnimationComponent::GetCurveBoneMappings() const
-{
-	return CurveBoneMappings;
-}
-
-inline const FName& UGarPhysicalAnimationComponent::GetTopBoneName() const
-{
-	return TopBoneName;
-}

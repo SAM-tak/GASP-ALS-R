@@ -203,6 +203,7 @@ void AGarCharacter::InitializeCurveNames()
 	CurveNames.AddUnique(UGarConstants::PoseCrouchingCurveName());
 	CurveNames.AddUnique(UGarConstants::PoseGroundedCurveName());
 	CurveNames.AddUnique(UGarConstants::PoseInAirCurveName());
+	CurveNames.AddUnique(UGarConstants::PoseAimingCurveName());
 
 	// Feet Animation Curves
 	CurveNames.AddUnique(UGarConstants::FootLeftIkCurveName());
@@ -212,7 +213,6 @@ void AGarCharacter::InitializeCurveNames()
 	CurveNames.AddUnique(UGarConstants::AllowTransitionsCurveName());
 	CurveNames.AddUnique(UGarConstants::BlockViewCurveName());
 	CurveNames.AddUnique(UGarConstants::BlockSprintCurveName());
-	CurveNames.AddUnique(UGarConstants::AllowAimingCurveName());
 	CurveNames.AddUnique(UGarConstants::FootstepSoundBlockCurveName());
 
 	// Physical Animation Curves

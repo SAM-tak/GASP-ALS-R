@@ -45,7 +45,6 @@ protected:
 
 		UGarConstants::BlockViewCurveName(),
 		UGarConstants::BlockSprintCurveName(),
-		UGarConstants::AllowAimingCurveName(),
 	};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")

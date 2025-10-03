@@ -33,23 +33,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarPhysicalAnimationComponent)
 
-UGarPhysicalAnimationComponent::UGarPhysicalAnimationComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-	SetNetAddressable(); // Make DSO components net addressable
-	SetIsReplicatedByDefault(true); // Enable replication by default
-}
-
-void UGarPhysicalAnimationComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	FDoRepLifetimeParams Parameters;
-	Parameters.bIsPushBased = true;
-
-	Parameters.Condition = COND_SkipOwner;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, RagdollingTargetLocation, Parameters)
-}
-
 bool UGarPhysicalAnimationComponent::IsProfileExist(const FName& ProfileName) const
 {
 	for (auto Body : GetSkeletalMesh()->Bodies)
@@ -294,16 +277,9 @@ void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
 			bRagdolling = true;
 
 			RagdollingState.Start(RagdollingSettingsMap[CurrentRagdolling], this);
-			SetRagdollingTargetLocation(RagdollingState.TargetLocation);
-
-			GetSkeletalMesh()->SetAllBodiesBelowSimulatePhysics(TopBoneName, true);
-			GetSkeletalMesh()->SetAllBodiesPhysicsBlendWeight(1.0f);
-			ApplyPhysicalAnimationProfileBelow(NAME_None, NAME_None, true, true);
 		}
 
-		RagdollingState.TargetLocation = RagdollingTargetLocation;
 		RagdollingState.Tick(DeltaTime, this);
-		SetRagdollingTargetLocation(RagdollingState.TargetLocation);
 
 		if (RagdollingState.bGrounded)
 		{
@@ -321,33 +297,24 @@ void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
 			bRagdolling = false;
 
 			RagdollingState.End(this);
-			SetRagdollingTargetLocation(FVector::ZeroVector);
 
 			CurrentProfileNames.Reset();
 			CurrentMultiplyProfileNames.Reset();
 			ClearGameplayTags();
-			GetSkeletalMesh()->SetAllBodiesSimulatePhysics(false);
-			GetSkeletalMesh()->SetAllBodiesPhysicsBlendWeight(0.0f);
-			GetSkeletalMesh()->SetConstraintProfileForAll(NAME_None, true);
+			//GetSkeletalMesh()->SetAllBodiesSimulatePhysics(false);
+			//GetSkeletalMesh()->SetAllBodiesPhysicsBlendWeight(0.0f);
+			//GetSkeletalMesh()->SetConstraintProfileForAll(NAME_None, true);
 
 			if (bActive)
 			{
-				GetSkeletalMesh()->SetCollisionObjectType(PrevCollisionObjectType);
-				GetSkeletalMesh()->SetCollisionEnabled(PrevCollisionEnabled);
+				//GetSkeletalMesh()->SetCollisionObjectType(PrevCollisionObjectType);
+				//GetSkeletalMesh()->SetCollisionEnabled(PrevCollisionEnabled);
 				bActive = false;
 			}
 		}
 	}
 
-	FGameplayTagContainer TempContainer;
-	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(TempContainer);
-	FGameplayTagContainer TempMaskContainer;
-	for (auto& Container : GameplayTagMasks)
-	{
-		TempMaskContainer.AppendTags(Container);
-	}
-	CurrentGameplayTags.Reset();
-	CurrentGameplayTags.AppendMatchingTags(TempContainer, TempMaskContainer);
+	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(CurrentGameplayTags);
 
 	CurveValues.Refresh(Character, CurveBoneMappings);
 }
@@ -475,33 +442,12 @@ bool UGarPhysicalAnimationComponent::IsBoneUnderSimulation(const FName& BoneName
 	return Body && Body->IsInstanceSimulatingPhysics();
 }
 
-void UGarPhysicalAnimationComponent::SetRagdollingTargetLocation(const FVector& NewTargetLocation)
-{
-	if (RagdollingTargetLocation != NewTargetLocation)
-	{
-		RagdollingTargetLocation = NewTargetLocation;
-
-		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, RagdollingTargetLocation, this)
-
-		auto* Character{Cast<AGarCharacter>(GetOwner())};
-		if (Character->IsLocallyControlled())
-		{
-			ServerSetRagdollingTargetLocation(RagdollingTargetLocation);
-		}
-	}
-}
-
-void UGarPhysicalAnimationComponent::ServerSetRagdollingTargetLocation_Implementation(const FVector_NetQuantize& NewTargetLocation)
-{
-	SetRagdollingTargetLocation(NewTargetLocation);
-}
-
 // FGarPhysicalAnimationCurveValues
 
 void FGarPhysicalAnimationCurveValues::Refresh(AGarCharacter *Character, const TArray<FGarPACurveBoneMapping>& Mappings)
 {
 	auto AnimInstance{Character->GetGarAnimationInstace()};
-	if (!AnimInstance)
+	if (AnimInstance)
 	{
 		if(Mappings.Num() != Values.Num())
 		{
@@ -615,11 +561,6 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
-	if (Character->IsLocallyControlled() || (Character->GetLocalRole() >= ROLE_Authority && !IsValid(Character->GetController())))
-	{
-		TargetLocation = Character->GetMesh()->GetBoneLocation(PhysicalAnimation->GetTopBoneName());
-	}
-
 	// Clear the character movement mode and set the locomotion action to ragdolling.
 
 	Mover->SetPrimaryVisualComponent(nullptr);
@@ -637,7 +578,7 @@ FVector FGarRagdollingState::TraceGround()
 	const auto Capsule{Character->GetCapsule()};
 	const auto CapsuleHalfHeight{Capsule->GetScaledCapsuleHalfHeight()};
 
-	const auto TraceStart{!TargetLocation.IsZero() ? FVector{TargetLocation}: Character->GetActorLocation()};
+	const auto TraceStart{Character->GetActorLocation()};
 	const FVector TraceEnd{TraceStart.X, TraceStart.Y, TraceStart.Z - CapsuleHalfHeight};
 
 	FHitResult Hit;
@@ -674,11 +615,6 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	auto NetMode{Character->GetWorld()->GetNetMode()};
 
-	if (Character->IsLocallyControlled())
-	{
-		TargetLocation = Character->GetMesh()->GetBoneLocation(PhysicalAnimation->GetTopBoneName());
-	}
-
 	// just for info.
 	Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
 											DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
@@ -692,43 +628,6 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
 
 	bGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
-
-	if (Character->IsLocallyControlled() || NetMode == NM_DedicatedServer)
-	{
-//		auto TeleportEffect = MakeShared<FTeleportEffect>();
-//		TeleportEffect->TargetLocation = TraceGround();
-//		Mover->QueueInstantMovementEffect(TeleportEffect);
-//#if ENABLE_DRAW_DEBUG
-//		if (bDisplayDebug)
-//		{
-//			DrawDebugCrosshairs(Character->GetWorld(), TeleportEffect->TargetLocation, FRotator::ZeroRotator, 100.0f, FColor::Green, false, 1.0f);
-//		}
-//#endif
-	}
-	else
-	{
-		//Character->SetActorLocation(FMath::VInterpTo(Character->GetActorLocation(), TraceGround(), DeltaTime, Settings->SimulatedProxyInterpolationSpeed), true);
-	}
-
-	// Zero target location means that it hasn't been replicated yet, so we can't apply the logic below.
-
-	if (!Character->IsLocallyControlled() && !TargetLocation.IsZero())
-	{
-		// Apply ragdoll location corrections.
-
-		auto TopLocation{Character->GetMesh()->GetBoneLocation(PhysicalAnimation->GetTopBoneName())};
-
-		auto NewTopLocation{FMath::VInterpTo(TopLocation, TargetLocation, DeltaTime, Settings->SimulatedProxyMeshInterpolationSpeed)};
-
-		auto Diff{NewTopLocation - TopLocation};
-
-		for(auto& Body : Character->GetMesh()->Bodies)
-		{
-			auto Transform{Body->GetUnrealWorldTransform()};
-			Transform.SetLocation(Transform.GetLocation() + Diff);
-			Body->SetBodyTransform(Transform, ETeleportType::TeleportPhysics);
-		}
-	}
 
 	// Clip velocity each body
 
@@ -902,8 +801,6 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 		Mover->SetPrimaryVisualComponent(Character->GetMesh());
 	}
-
-	TargetLocation = FVector::ZeroVector;
 
 	// If the ragdoll is on the ground, set the movement mode to walking and play a get up montage. If not, set
 	// the movement mode to falling and update the character movement velocity to match the last ragdoll velocity.

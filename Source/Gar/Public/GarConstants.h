@@ -124,9 +124,6 @@ public:
 	static const FName& BlockSprintCurveName();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
-	static const FName& AllowAimingCurveName();
-
-	UFUNCTION(BlueprintPure, Category = "GAR|Constants|Animation Curves", Meta = (ReturnDisplayName = "Curve Name"))
 	static const FName& FootstepSoundBlockCurveName();
 
 	// Debug
@@ -276,12 +273,6 @@ inline const FName& UGarConstants::HandLeftIkCurveName()
 inline const FName& UGarConstants::HandRightIkCurveName()
 {
 	static const FName Name{TEXTVIEW("enable_handik_r")};
-	return Name;
-}
-
-inline const FName& UGarConstants::AllowAimingCurveName()
-{
-	static const FName Name{TEXTVIEW("allow_aiming")};
 	return Name;
 }
 
