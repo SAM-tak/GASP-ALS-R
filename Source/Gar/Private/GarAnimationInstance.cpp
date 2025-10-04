@@ -12,7 +12,6 @@
 #include "GarConstants.h"
 #include "LinkedAnimLayers/GarLayeringAnimInstance.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
-#include "Settings/GarBoneNameTable.h"
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarUtility.h"
@@ -39,7 +38,6 @@ void UGarAnimationInstance::NativeBeginPlay()
 	LayeringAnimInstance = Cast<UGarLayeringAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXTVIEW("Layering")}));
 	RagdollingAnimInstance = Cast<UGarRagdollingAnimInstance>(GetLinkedAnimGraphInstanceByTag(FName{TEXTVIEW("Ragdolling")}));
 
-	if (!ensure(IsValid(BoneNameTable))) return;
 	if (!ensure(Character.IsValid())) return;
 	if (!ensure(LayeringAnimInstance.IsValid())) return;
 	if (!ensure(RagdollingAnimInstance.IsValid())) return;
@@ -56,7 +54,7 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	Super::NativeUpdateAnimation(DeltaTime);
 
-	if (!IsValid(BoneNameTable) || !Character.IsValid() || !Character->GetMotionWarping())
+	if (!Character.IsValid() || !Character->GetMotionWarping())
 	{
 		return;
 	}
@@ -92,7 +90,7 @@ void UGarAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTim
 
 	Super::NativeThreadSafeUpdateAnimation(DeltaTime);
 
-	if (!IsValid(BoneNameTable) || !Character.IsValid())
+	if (!Character.IsValid())
 	{
 		return;
 	}
@@ -113,7 +111,7 @@ void UGarAnimationInstance::NativePostUpdateAnimation()
 	DECLARE_SCOPE_CYCLE_COUNTER(TEXT("UGarAnimationInstance::NativePostUpdateAnimation()"),
 								STAT_UGarAnimationInstance_NativePostUpdateAnimation, STATGROUP_Gar)
 
-	if (!IsValid(BoneNameTable) || !Character.IsValid())
+	if (!Character.IsValid())
 	{
 		return;
 	}

@@ -992,19 +992,31 @@ void AGarCharacter::SetFocalRotation(const FRotator& NewFocalRotation)
 
 void AGarCharacter::TryAdjustControllRotation(float DeltaTime)
 {
-	if (IsLocallyControlled() && IsValid(GetController()) && !PendingFocalRotationRelativeAdjustment.IsNearlyZero(0.01))
+	if (!IsLocallyControlled() || !IsValid(GetController()))
+	{
+		return;
+	}
+	if (!PendingFocalRotationRelativeAdjustment.IsNearlyZero(0.01))
 	{
 		const auto ControlRotation{Controller->GetControlRotation()};
-		const auto PreviousPendingFocalRotationRelativeAdjustment{PendingFocalRotationRelativeAdjustment};
-		Controller->SetControlRotation(FMath::RInterpTo(ControlRotation,
-														ControlRotation + PendingFocalRotationRelativeAdjustment,
-														DeltaTime,
-														Settings->AdjustControllRotationSpeed));
+		const auto PreviousPendingFocalRotationRelativeAdjustment{ PendingFocalRotationRelativeAdjustment };
+		auto NewControlRotation{FMath::RInterpTo(ControlRotation,
+			ControlRotation + PendingFocalRotationRelativeAdjustment,
+			DeltaTime,
+			Settings->AdjustControllRotationSpeed)};
+		NewControlRotation.Pitch = FMath::ClampAngle(NewControlRotation.Pitch, -89.0f, 89.0f);
+		Controller->SetControlRotation(NewControlRotation);
 		PendingFocalRotationRelativeAdjustment -= Controller->GetControlRotation() - ControlRotation;
 		PendingFocalRotationRelativeAdjustment.Normalize();
 		UE_LOG(LogGar, Verbose, TEXT("Applay PendingFocalRotationRelativeAdjustment %s %s"),
-			   *(PendingFocalRotationRelativeAdjustment - PreviousPendingFocalRotationRelativeAdjustment).ToString(),
-			   *PendingFocalRotationRelativeAdjustment.ToString());
+			*(PendingFocalRotationRelativeAdjustment - PreviousPendingFocalRotationRelativeAdjustment).ToString(),
+			*PendingFocalRotationRelativeAdjustment.ToString());
+	}
+	else
+	{
+		auto ControlRotation{Controller->GetControlRotation()};
+		ControlRotation.Pitch = FMath::ClampAngle(ControlRotation.Pitch, -89.0f, 89.0f);
+		Controller->SetControlRotation(ControlRotation);
 	}
 }
 

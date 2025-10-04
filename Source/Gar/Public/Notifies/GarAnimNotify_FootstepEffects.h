@@ -10,7 +10,6 @@ struct FHitResult;
 class USoundBase;
 class UMaterialInterface;
 class UNiagaraSystem;
-class UGarBoneNameTable;
 
 UENUM(BlueprintType)
 enum class EGarFootBone : uint8
@@ -152,7 +151,10 @@ public:
 	TMap<TEnumAsByte<EPhysicalSurface>, FGarFootstepEffectSettings> Effects;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	TObjectPtr<UGarBoneNameTable> BoneNameTable;
+	FName LeftFootBoneName{TEXTVIEW("foot_l")};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
+	FName RightFootBoneName{TEXTVIEW("foot_r")};
 
 public:
 #if WITH_EDITOR

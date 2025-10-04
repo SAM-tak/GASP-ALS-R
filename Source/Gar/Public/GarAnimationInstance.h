@@ -11,7 +11,6 @@ class UGarAnimationInstanceSettings;
 class UGarLayeringAnimInstance;
 class UGarCharacterMovementState;
 class UGarRagdollingAnimInstance;
-class UGarBoneNameTable;
 class AGarCharacter;
 
 UCLASS()
@@ -26,9 +25,6 @@ public:
 	UGarAnimationInstance();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings")
-	TObjectPtr<UGarBoneNameTable> BoneNameTable;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
 

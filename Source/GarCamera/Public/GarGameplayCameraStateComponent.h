@@ -142,20 +142,35 @@ public:
 	FVector GetFirstPersonTraceStartLocation() const;
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Gameplay Camera State", Meta = (ReturnDisplayName = "Focus Location"))
-	FVector GetCurrentFocusLocation() const;
+	FORCEINLINE FVector GetCurrentFocusLocation() const
+	{
+		return CameraLocation + CameraRotation.Vector() * FocalLength;
+	}
 
-	float GetTanHalfVfov() const;
+	FORCEINLINE float GetTanHalfVfov() const
+	{
+		return TanHalfVfov;
+	}
 
-	float GetFirstPersonFactor() const;
+	FORCEINLINE float GetFirstPersonFactor() const
+	{
+		return FirstPersonFactor;
+	}
 
 	// Desired View Mode
 
 public:
-	const FGameplayTag& GetDesiredViewMode() const;
+	FORCEINLINE const FGameplayTag& GetDesiredViewMode() const
+	{
+		return DesiredPerspective;
+	}
 
 	void SetDesiredViewMode(const FGameplayTag& NewDesiredViewMode);
 
-	const FGameplayTag& GetConfirmedDesiredViewMode() const;
+	FORCEINLINE const FGameplayTag& GetConfirmedDesiredViewMode() const
+	{
+		return ConfirmedDesiredPerspective;
+	}
 
 protected:
 	void SetConfirmedDesiredViewMode(const FGameplayTag& NewDesiredViewMode);
@@ -167,7 +182,10 @@ private:
 	// ShoulderMode
 
 public:
-	const FGameplayTag& GetShoulderMode() const;
+	FORCEINLINE const FGameplayTag& GetShoulderMode() const
+	{
+		return ShoulderMode;
+	}
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Gameplay Camera State")
 	void SetShoulderMode(const FGameplayTag& NewShoulderMode);
@@ -202,33 +220,3 @@ private:
 	void DisplayDebugTraces(const UCanvas* Canvas, float Scale, float HorizontalLocation, float& VerticalLocation) const;
 #endif // !UE_BUILD_SHIPPING
 };
-
-inline FVector UGarGameplayCameraStateComponent::GetCurrentFocusLocation() const
-{
-	return CameraLocation + CameraRotation.Vector() * FocalLength;
-}
-
-inline const FGameplayTag& UGarGameplayCameraStateComponent::GetDesiredViewMode() const
-{
-	return DesiredPerspective;
-}
-
-inline const FGameplayTag& UGarGameplayCameraStateComponent::GetConfirmedDesiredViewMode() const
-{
-	return ConfirmedDesiredPerspective;
-}
-
-inline const FGameplayTag& UGarGameplayCameraStateComponent::GetShoulderMode() const
-{
-	return ShoulderMode;
-}
-
-inline float UGarGameplayCameraStateComponent::GetTanHalfVfov() const
-{
-	return TanHalfVfov;
-}
-
-inline float UGarGameplayCameraStateComponent::GetFirstPersonFactor() const
-{
-	return FirstPersonFactor;
-}

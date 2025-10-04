@@ -13,7 +13,6 @@
 #include "AbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "GarConstants.h"
-#include "Settings/GarBoneNameTable.h"
 #include "Utility/GarEnumUtility.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarUtility.h"
@@ -78,9 +77,7 @@ void UGarAnimNotify_FootstepEffects::Notify(USkeletalMeshComponent* Mesh, UAnimS
 	const auto* World{Mesh->GetWorld()};
 	const auto MeshScale{Mesh->GetComponentScale().Z};
 
-	const auto& FootBoneName{FootBone == EGarFootBone::Left
-		? FootstepEffectsSettings->BoneNameTable->FootLeftBoneName
-		: FootstepEffectsSettings->BoneNameTable->FootRightBoneName};
+	const auto& FootBoneName{FootBone == EGarFootBone::Left ? FootstepEffectsSettings->LeftFootBoneName : FootstepEffectsSettings->RightFootBoneName};
 	const auto FootTransform{Mesh->GetSocketTransform(FootBoneName)};
 
 	const auto FootZAxis{
@@ -211,11 +208,7 @@ void UGarAnimNotify_FootstepEffects::SpawnSound(USkeletalMeshComponent* Mesh, co
 	}
 	else if (EffectSettings.SoundSpawnMode == EGarFootstepSoundSpawnMode::SpawnAttachedToFootBone)
 	{
-		const auto& FootBoneName{
-			FootBone == EGarFootBone::Left
-				? FootstepEffectsSettings->BoneNameTable->FootLeftBoneName
-				: FootstepEffectsSettings->BoneNameTable->FootRightBoneName
-		};
+		const auto& FootBoneName{FootBone == EGarFootBone::Left ? FootstepEffectsSettings->LeftFootBoneName : FootstepEffectsSettings->RightFootBoneName};
 
 		Audio = UGameplayStatics::SpawnSoundAttached(EffectSettings.Sound.Get(), Mesh, FootBoneName, FVector::ZeroVector,
 		                                             FRotator::ZeroRotator, EAttachLocation::SnapToTarget,
@@ -309,9 +302,7 @@ void UGarAnimNotify_FootstepEffects::SpawnParticleSystem(USkeletalMeshComponent*
 	}
 	else if (EffectSettings.ParticleSystemSpawnMode == EGarFootstepParticleEffectSpawnMode::SpawnAttachedToFootBone)
 	{
-		const auto& FootBoneName{FootBone == EGarFootBone::Left
-			? FootstepEffectsSettings->BoneNameTable->FootLeftBoneName
-			: FootstepEffectsSettings->BoneNameTable->FootRightBoneName};
+		const auto& FootBoneName{FootBone == EGarFootBone::Left ? FootstepEffectsSettings->LeftFootBoneName : FootstepEffectsSettings->RightFootBoneName};
 
 		UNiagaraFunctionLibrary::SpawnSystemAttached(EffectSettings.ParticleSystem.Get(), Mesh, FootBoneName,
 		                                             FVector{EffectSettings.ParticleSystemLocationOffset} * MeshScale,
