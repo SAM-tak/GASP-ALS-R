@@ -150,6 +150,7 @@ void UGarAnimationInstance::RefreshPose()
 	PoseState.GaitSprintingAmount = UGarMath::Clamp01(PoseState.GaitAmount - 1.0f);
 
 	PoseState.AimingAmount = GetCurveValue(Curves, UGarConstants::PoseAimingCurveName());
+
 }
 
 void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime)

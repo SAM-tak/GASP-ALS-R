@@ -60,6 +60,7 @@ namespace GarAimingModeTags
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.AimingMode")
 	UE_DEFINE_GAMEPLAY_TAG(AimDownSight, "Gar.AimingMode.AimDownSight")
 	UE_DEFINE_GAMEPLAY_TAG(HipFire, "Gar.AimingMode.HipFire")
+	UE_DEFINE_GAMEPLAY_TAG(Firing, "Gar.AimingMode.Firing")
 }
 
 namespace GarStanceTags

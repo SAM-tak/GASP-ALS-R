@@ -2,7 +2,6 @@
 
 #include "DisplayDebugHelpers.h"
 #include "DrawDebugHelpers.h"
-#include "Animation/AnimInstance.h"
 #include "Animation/Skeleton.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -11,6 +10,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "GarAnimationInstance.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "GarConstants.h"
 #include "Utility/GarMath.h"
@@ -382,6 +382,29 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityDirection.Y);
 	DebugStringBuilder << TEXTVIEW(" Z:");
 	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityDirection.Z);
+
+	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
+
+	DebugStringBuilder.Reset();
+
+	VerticalLocation += RowOffset;
+
+	static const auto VelocityAccelerationText{FText::AsCultureInvariant(FString{TEXTVIEW("Velocity Acceleration")})};
+
+	const auto VelocityAcceleration{AnimationInstance->GetCharacterMovement().VelocityAcceleration};
+
+	Text.Text = VelocityAccelerationText;
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+	DebugStringBuilder << TEXTVIEW("X:");
+	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityAcceleration.X);
+	DebugStringBuilder << TEXTVIEW(" Y:");
+	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityAcceleration.Y);
+	DebugStringBuilder << TEXTVIEW(" Z:");
+	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityAcceleration.Z);
+	DebugStringBuilder << TEXTVIEW(" XZ Length:");
+	DebugStringBuilder.Appendf(TEXT("%.2f"), VelocityAcceleration.Size2D());
 
 	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});

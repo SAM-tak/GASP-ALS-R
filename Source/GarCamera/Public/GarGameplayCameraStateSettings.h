@@ -47,15 +47,24 @@ struct GARCAMERA_API FGarThirdPersonCameraStateSettings
 
 	// Initial Value
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	FGameplayTag ShoulderMode{GarCameraShoulderModeTags::Right};
+	FGameplayTag DesiredShoulderMode{GarCameraShoulderModeTags::Right};
 
 	// If greater than zero, camera location same as FPP when distance from third person camera pivot by blocking by geometry less than this value.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float AutoFPPStartDistance{80.0f};
 
 	// Ends Auto FPP when distance from third person camera pivot by blocking by geometry greater than this value.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.f", ClampMin = 0, ForceUnits = "cm"))
 	float AutoFPPEndDistance{100.0f};
+
+	// Switch shoulder mode to counter side instead of Auto FPP if possible.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.f", ClampMin = 0, ForceUnits = "cm"))
+	bool bAllowAutoShoulderSwitching{true};
+
+	// Shoulder switch automatically and permanently instead of temporary.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR",
+		Meta = (EditCondition = "AutoFPPStartDistance > 0.f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
+	bool bAllowPermanentSwitching{false};
 
 	// The horizontal field of view (in degrees) in panoramic rendering.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))

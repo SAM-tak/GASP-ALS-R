@@ -119,51 +119,59 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 	const auto RowOffset{12.0f * Scale};
 	const auto ColumnOffset{145.0f * Scale};
 
-	static const auto ViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
-	};
-
-	Text.Text = ViewModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
-
-	VerticalLocation += RowOffset;
-
-	static const auto DesiredViewModeText{
+	static const auto DesiredPerspectiveText{
 		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredPerspective), false))
 	};
 
-	Text.Text = DesiredViewModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+	Text.Text = DesiredPerspectiveText;
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredPerspective).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
 
-	static const auto ConfirmedDesiredViewModeText{
+	static const auto ConfirmedDesiredPerspectiveText{
 		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ConfirmedDesiredPerspective), false))
 	};
 
-	Text.Text = ConfirmedDesiredViewModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+	Text.Text = ConfirmedDesiredPerspectiveText;
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ConfirmedDesiredPerspective).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+	Text.SetColor(ConfirmedDesiredPerspective == DesiredPerspective ? FLinearColor::White : FLinearColor::Red);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
 
-	static const auto PreviousConfirmedDesiredViewModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousConfirmedDesiredPerspective), false))
+	static const auto PerspectiveText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
 	};
 
-	Text.Text = PreviousConfirmedDesiredViewModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+	Text.Text = PerspectiveText;
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousConfirmedDesiredPerspective).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
+	Text.SetColor(Perspective == ConfirmedDesiredPerspective ? FLinearColor::White : FLinearColor::Red);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
+
+	VerticalLocation += RowOffset;
+
+	static const auto DesiredShoulderModeText{
+		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, DesiredShoulderMode), false))
+	};
+
+	Text.Text = DesiredShoulderModeText;
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(DesiredShoulderMode).ToString(), false));
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
 
@@ -172,22 +180,12 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 	};
 
 	Text.Text = ShoulderModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ShoulderMode).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
-
-	VerticalLocation += RowOffset;
-
-	static const auto PreviousShoulderModeText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, PreviousShoulderMode), false))
-	};
-
-	Text.Text = PreviousShoulderModeText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(PreviousShoulderMode).ToString(), false));
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+	Text.SetColor(ShoulderMode == DesiredShoulderMode ? FLinearColor::White : FLinearColor::Red);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;
 
@@ -196,12 +194,14 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 	};
 
 	Text.Text = FirstPersonFactorText;
-	Text.Draw(Canvas->Canvas, { HorizontalLocation, VerticalLocation });
+	Text.SetColor(FLinearColor::White);
+	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	DebugStringBuilder.Appendf(TEXT("%.2f"), FirstPersonFactor);
 
-	Text.Text = FText::AsCultureInvariant(FString{ DebugStringBuilder });
-	Text.Draw(Canvas->Canvas, { HorizontalLocation + ColumnOffset, VerticalLocation });
+	Text.Text = FText::AsCultureInvariant(FString{DebugStringBuilder});
+	Text.SetColor(FMath::Lerp(FLinearColor::Gray, FLinearColor::White, UGarMath::Clamp01(FirstPersonFactor)));
+	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	DebugStringBuilder.Reset();
 

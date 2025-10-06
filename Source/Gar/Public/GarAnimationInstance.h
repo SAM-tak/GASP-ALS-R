@@ -134,6 +134,11 @@ private:
 	void RefreshPose();
 
 	// Character Movement
+public:
+	FORCEINLINE const FGarCharacterMovementState& GetCharacterMovement()
+	{
+		return CharacterMovement;
+	}
 
 private:
 	void RefreshCharacterMovementOnGameThread(float DeltaTime);

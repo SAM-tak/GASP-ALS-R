@@ -19,3 +19,9 @@ namespace GarCameraShoulderModeTags
 	UE_DEFINE_GAMEPLAY_TAG(Left, "Gar.Camera.ShoulderMode.Left")
 	UE_DEFINE_GAMEPLAY_TAG(Right, "Gar.Camera.ShoulderMode.Right")
 }
+
+namespace GarCameraStatusTags
+{
+	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.Camera.Status")
+	UE_DEFINE_GAMEPLAY_TAG(ForceTPP, "Gar.Camera.Status.ForceTPP")
+}

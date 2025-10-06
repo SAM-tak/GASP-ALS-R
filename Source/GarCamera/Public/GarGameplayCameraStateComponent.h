@@ -39,9 +39,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	uint8 bIsFocusPawn : 1{false};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag Perspective{GarCameraPerspectiveTags::ThirdPerson};
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "State", Transient)
 	FGameplayTag DesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
@@ -49,12 +46,18 @@ protected:
 	FGameplayTag ConfirmedDesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	FGameplayTag PreviousConfirmedDesiredPerspective{GarCameraPerspectiveTags::ThirdPerson};
+	FGameplayTag Perspective{GarCameraPerspectiveTags::ThirdPerson};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
+	FGameplayTag PreviousPerspective{GarCameraPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Meta = (ClampMin = 0, ForceUnits = "s"))
 	float PerspectiveChangeBlockTime{0.f};
 		
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient, Replicated)
+	FGameplayTag DesiredShoulderMode{GarCameraShoulderModeTags::Right};
+		
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	FGameplayTag ShoulderMode{GarCameraShoulderModeTags::Right};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
@@ -138,6 +141,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Gameplay Camera State", Meta = (ReturnDisplayName = "Trace Start"))
 	FVector GetThirdPersonTraceStartLocation() const;
 
+	FVector GetThirdPersonTraceStartLocation(const FGameplayTag& ShoulderMode) const;
+
 	UFUNCTION(BlueprintPure, Category = "GAR|Gameplay Camera State", Meta = (ReturnDisplayName = "Trace Start"))
 	FVector GetFirstPersonTraceStartLocation() const;
 
@@ -160,24 +165,24 @@ public:
 	// Desired View Mode
 
 public:
-	FORCEINLINE const FGameplayTag& GetDesiredViewMode() const
+	FORCEINLINE const FGameplayTag& GetDesiredPerspective() const
 	{
 		return DesiredPerspective;
 	}
 
-	void SetDesiredViewMode(const FGameplayTag& NewDesiredViewMode);
+	void SetDesiredPerspective(const FGameplayTag& NewDesiredPerspective);
 
-	FORCEINLINE const FGameplayTag& GetConfirmedDesiredViewMode() const
+	FORCEINLINE const FGameplayTag& GetConfirmedDesiredPerspective() const
 	{
 		return ConfirmedDesiredPerspective;
 	}
 
 protected:
-	void SetConfirmedDesiredViewMode(const FGameplayTag& NewDesiredViewMode);
+	void SetConfirmedDesiredPerspective(const FGameplayTag& NewDesiredPerspective);
 
 private:
-	UFUNCTION(Server, Unreliable)
-	void ServerSetConfirmedDesiredViewMode(const FGameplayTag& NewDesiredViewMode);
+	UFUNCTION(Server, Reliable)
+	void ServerSetConfirmedDesiredPerspective(const FGameplayTag& NewDesiredPerspective);
 
 	// ShoulderMode
 
@@ -187,8 +192,13 @@ public:
 		return ShoulderMode;
 	}
 
+	FORCEINLINE const FGameplayTag& GetDesiredShoulderMode() const
+	{
+		return DesiredShoulderMode;
+	}
+
 	UFUNCTION(BlueprintCallable, Category = "GAR|Gameplay Camera State")
-	void SetShoulderMode(const FGameplayTag& NewShoulderMode);
+	void SetDesiredShoulderMode(const FGameplayTag& NewShoulderMode);
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Gameplay Camera State")
 	void ToggleShoulder();
@@ -197,11 +207,11 @@ public:
 	void UpdateState(float DeltaTime);
 
 private:
-	UFUNCTION(Server, Unreliable)
-	void ServerSetShoulderMode(const FGameplayTag& NewShoulderMode);
+	UFUNCTION(Server, Reliable)
+	void ServerSetDesiredShoulderMode(const FGameplayTag& NewDesiredShoulderMode);
 
 private:
-	void UpdatePerspective();
+	void UpdatePerspectiveAndShoulderMode();
 
 	void UpdateFocalLength();
 
