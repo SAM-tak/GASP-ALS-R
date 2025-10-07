@@ -133,20 +133,6 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 
 	VerticalLocation += RowOffset;
 
-	static const auto ConfirmedDesiredPerspectiveText{
-		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, ConfirmedDesiredPerspective), false))
-	};
-
-	Text.Text = ConfirmedDesiredPerspectiveText;
-	Text.SetColor(FLinearColor::White);
-	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(ConfirmedDesiredPerspective).ToString(), false));
-	Text.SetColor(ConfirmedDesiredPerspective == DesiredPerspective ? FLinearColor::White : FLinearColor::Red);
-	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
-
-	VerticalLocation += RowOffset;
-
 	static const auto PerspectiveText{
 		FText::AsCultureInvariant(FName::NameToDisplayString(GET_MEMBER_NAME_STRING_CHECKED(ThisClass, Perspective), false))
 	};
@@ -156,7 +142,7 @@ void UGarGameplayCameraStateComponent::DisplayDebugState(const UCanvas* Canvas, 
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	Text.Text = FText::AsCultureInvariant(FName::NameToDisplayString(UGarUtility::GetSimpleTagName(Perspective).ToString(), false));
-	Text.SetColor(Perspective == ConfirmedDesiredPerspective ? FLinearColor::White : FLinearColor::Red);
+	Text.SetColor(Perspective == DesiredPerspective ? FLinearColor::White : FLinearColor::Red);
 	Text.Draw(Canvas->Canvas, {HorizontalLocation + ColumnOffset, VerticalLocation});
 
 	VerticalLocation += RowOffset;

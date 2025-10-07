@@ -90,7 +90,10 @@ public:
 	FGarThirdPersonCameraStateSettings ThirdPerson;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "s"))
-	float PerspectiveChangeBlockTime{0.08f};
+	float PerspectiveChangeBlockTime{0.15f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "s"))
+	float ShoulderChangeBlockTime{0.15f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	TEnumAsByte<ECollisionChannel> FocusTraceChannel{ECC_Visibility};

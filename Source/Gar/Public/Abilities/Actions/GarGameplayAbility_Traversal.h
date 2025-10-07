@@ -59,6 +59,9 @@ struct GAR_API FGarTraversalTraceResult
 	TWeakObjectPtr<UPrimitiveComponent> TargetPrimitive;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector FrontWallNormal{FVector::ZeroVector};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	FVector FrontLedgeLocation{FVector::ZeroVector};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
@@ -89,6 +92,9 @@ struct GAR_API FGarTraversalParameters
 	TWeakObjectPtr<UPrimitiveComponent> TargetPrimitive;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FVector FrontWallNormal{FVector::ZeroVector};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	FVector FrontLedgeLocation{FVector::ZeroVector};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
@@ -107,7 +113,7 @@ struct GAR_API FGarTraversalTraceSettings
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0))
-	FVector2f LedgeHeight{50.0f, 225.0f};
+	FVector2f LedgeHeight{50.0f, 250.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float ReachDistance{75.0f};
@@ -176,7 +182,7 @@ public:
 	float MinimumDepth{25.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "s"))
-	float RisingTime{0.1f};
+	float RisingTime{0.15f};
 
 	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
@@ -220,6 +226,9 @@ public:
 	TWeakObjectPtr<UPrimitiveComponent> CurrentTargetPrimitive;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
+	FVector FrontWallNormalLS{FVector::ZeroVector};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
 	FVector FrontLedgeOffset{FVector::ZeroVector};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarAbility|Traversal|State", Transient)
@@ -255,6 +264,8 @@ protected:
 	void UpdateWarpTarget();
 
 	void UpdateWarpTarget(const FGarTraversalParameters& Parameters);
+
+	void UpdateWarpTargetFromComponent(const FGarTraversalParameters& Parameters);
 
 protected:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

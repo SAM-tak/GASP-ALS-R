@@ -217,6 +217,7 @@ public:
 
 	virtual FVector ConsumeMovementInputVector() override;
 
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	virtual FRotator GetViewRotation() const override;
 
 	// IAbilitySystemInterface

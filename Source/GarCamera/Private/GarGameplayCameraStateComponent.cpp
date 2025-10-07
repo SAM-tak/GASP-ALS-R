@@ -75,7 +75,7 @@ void UGarGameplayCameraStateComponent::GetLifetimeReplicatedProps(TArray<FLifeti
 	Parameters.bIsPushBased = true;
 
 	Parameters.Condition = COND_SkipOwner;
-	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, ConfirmedDesiredPerspective, Parameters)
+	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredPerspective, Parameters)
 	DOREPLIFETIME_WITH_PARAMS_FAST(ThisClass, DesiredShoulderMode, Parameters)
 }
 
@@ -209,9 +209,8 @@ void UGarGameplayCameraStateComponent::BeginPlay()
 	if(!ensure(IsValid(Settings))) return;
 	Super::BeginPlay();
 
-	PreviousShoulderMode = ShoulderMode = DesiredShoulderMode = Settings->ThirdPerson.DesiredShoulderMode;
 	PreviousPerspective = Perspective = DesiredPerspective = Settings->DesiredPerspective;
-	SetConfirmedDesiredPerspective(DesiredPerspective);
+	PreviousShoulderMode = ShoulderMode = DesiredShoulderMode = Settings->ThirdPerson.DesiredShoulderMode;
 	Character->SetPerspective(Perspective == GarCameraPerspectiveTags::ThirdPerson ? GarPerspectiveTags::ThirdPerson : GarPerspectiveTags::FirstPerson);
 }
 
@@ -272,22 +271,14 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 	};
 #endif
 
-	// Refresh desired view mode information.
-
-	if (Character->IsLocallyControlled())
+	if (PerspectiveChangeBlockTime > 0.f)
 	{
-		if (PerspectiveChangeBlockTime > 0.f)
-		{
-			PerspectiveChangeBlockTime -= DeltaTime;
-		}
-		else
-		{
-			if (DesiredPerspective != ConfirmedDesiredPerspective)
-			{
-				PerspectiveChangeBlockTime = Settings->PerspectiveChangeBlockTime;
-			}
-			SetConfirmedDesiredPerspective(DesiredPerspective);
-		}
+		PerspectiveChangeBlockTime -= DeltaTime;
+	}
+
+	if (ShoulderChangeBlockTime > 0.f)
+	{
+		ShoulderChangeBlockTime -= DeltaTime;
 	}
 
 	UpdatePerspectiveAndShoulderMode();
@@ -296,13 +287,15 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 	if (PreviousPerspective != Perspective)
 	{
 		// Set aim point correction during change FPP/TPP
-		auto FocusLocation{GetCurrentFocusLocation()};
 		if (PreviousPerspective == GarCameraPerspectiveTags::FirstPerson)
 		{
 			// FPP -> TPP
+			auto FocusLocation{Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarAimingModeTags::Firing)
+				? GetEyeCameraLocation() + Character->GetViewRotation().Vector() * FocalLength // cos' position was zittered during fire
+				: GetCurrentFocusLocation()};
 			auto TraceStart{GetThirdPersonTraceStartLocation()};
-			auto FocalRotation{(FocusLocation - TraceStart).Rotation()};
-			FocalRotation.Roll = Character->GetViewRotation().Roll;
+			auto RotMax{FRotationMatrix::MakeFromXZ(FocusLocation - TraceStart, Character->GetViewRotation().RotateVector(FVector::UpVector))};
+			auto FocalRotation{RotMax.Rotator()};
 			if (Settings->HeuristicPitchMapping && IsValid(Settings->HeuristicPitchMapping))
 			{
 				FocalRotation.Normalize();
@@ -322,9 +315,10 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 		else if(PreviousPerspective == GarCameraPerspectiveTags::ThirdPerson)
 		{
 			// TPP -> FPP
+			auto FocusLocation{GetCurrentFocusLocation()};
 			auto TraceStart{GetFirstPersonTraceStartLocation()};
-			auto FocalRotation{(FocusLocation - TraceStart).Rotation()};
-			FocalRotation.Roll = Character->GetViewRotation().Roll;
+			auto RotMax{FRotationMatrix::MakeFromXZ(FocusLocation - TraceStart, Character->GetViewRotation().RotateVector(FVector::UpVector))};
+			auto FocalRotation{RotMax.Rotator()};
 			if (Settings->HeuristicPitchMapping && IsValid(Settings->HeuristicPitchMapping))
 			{
 				FocalRotation.Normalize();
@@ -341,6 +335,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			}
 #endif
 		}
+		PerspectiveChangeBlockTime = Settings->PerspectiveChangeBlockTime;
 		PreviousPerspective = Perspective;
 	}
 
@@ -351,8 +346,8 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			// Set aim point correction during change shoulder
 			auto FocusLocation{GetCurrentFocusLocation()};
 			auto NextCameraLocation{GetThirdPersonTraceStartLocation()};
-			auto FocalRotation{(FocusLocation - NextCameraLocation).Rotation()};
-			FocalRotation.Roll = Character->GetViewRotation().Roll;
+			auto RotMax{FRotationMatrix::MakeFromXZ(FocusLocation - NextCameraLocation, Character->GetViewRotation().RotateVector(FVector::UpVector))};
+			auto FocalRotation{RotMax.Rotator()};
 			Character->SetFocalRotation(FocalRotation);
 #if ENABLE_DRAW_DEBUG
 			if (bDisplayDebugCameraTraces)
@@ -362,10 +357,12 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			}
 #endif
 		}
+		ShoulderChangeBlockTime = Settings->ShoulderChangeBlockTime;
 		PreviousShoulderMode = ShoulderMode;
 	}
 
-	Character->SetPerspective(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold ? GarPerspectiveTags::FirstPerson : GarPerspectiveTags::ThirdPerson);
+	Character->SetPerspective(FirstPersonFactor > Settings->FirstPerson.FirstPersonFactorThreshold
+		? GarPerspectiveTags::FirstPerson : GarPerspectiveTags::ThirdPerson);
 }
 
 void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
@@ -410,7 +407,8 @@ void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
 		&& !Character->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(Settings->FirstPerson.BlockSightViewTags))
 	{
 		Character->GetSightLocAndRot(Location, Rotation);
-		Rotation.Roll = Character->GetControlRotation().Roll;
+		auto RotMax{FRotationMatrix::MakeFromXZ(Rotation.Vector(), Character->GetViewRotation().RotateVector(FVector::UpVector))};
+		Rotation = RotMax.Rotator();
 		auto ControlRotationInverse{ControlRotation.Quaternion().Inverse()};
 		SightLocationOffset = ControlRotationInverse.RotateVector(Location - GetEyeCameraLocation());
 		SightRotationOffset = Rotation.Quaternion() * ControlRotationInverse;
@@ -422,7 +420,8 @@ void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
 	{
 		Location = ControlRotation.RotateVector(SightLocationOffset) + GetEyeCameraLocation();
 		Rotation = (ControlRotation.Quaternion() * SightRotationOffset).Rotator();
-		Rotation.Roll = Character->GetControlRotation().Roll;
+		auto RotMax{FRotationMatrix::MakeFromXZ(Rotation.Vector(), Character->GetViewRotation().RotateVector(FVector::UpVector))};
+		Rotation = RotMax.Rotator();
 		Location = FVector::PointPlaneProject(Location, GetEyeCameraLocation(), Rotation.Vector())
 			- Rotation.Vector() * Settings->FirstPerson.RetreatDistance;
 	}
@@ -508,25 +507,38 @@ FVector UGarGameplayCameraStateComponent::GetFirstPersonTraceStartLocation() con
 void UGarGameplayCameraStateComponent::UpdatePerspectiveAndShoulderMode()
 {
 	bool bForceTPP{Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarCameraStatusTags::ForceTPP)};
-	if (ConfirmedDesiredPerspective == GarCameraPerspectiveTags::FirstPerson && !bForceTPP)
+	if (DesiredPerspective == GarCameraPerspectiveTags::FirstPerson && !bForceTPP)
 	{
-		Perspective = GarCameraPerspectiveTags::FirstPerson;
-		ShoulderMode = DesiredShoulderMode;
+		if (PerspectiveChangeBlockTime <= 0.0f)
+		{
+			Perspective = GarCameraPerspectiveTags::FirstPerson;
+		}
+		if (ShoulderChangeBlockTime <= 0.0f)
+		{
+			ShoulderMode = DesiredShoulderMode;
+		}
 		return;
 	}
 
 	if (!Settings->ThirdPerson.bAllowAutoShoulderSwitching && (Settings->ThirdPerson.AutoFPPStartDistance <= 0.0f || bForceTPP))
 	{
-		Perspective = GarCameraPerspectiveTags::ThirdPerson;
-		ShoulderMode = DesiredShoulderMode;
+		if (PerspectiveChangeBlockTime <= 0.0f)
+		{
+			Perspective = GarCameraPerspectiveTags::ThirdPerson;
+		}
+		if (ShoulderChangeBlockTime <= 0.0f)
+		{
+			ShoulderMode = DesiredShoulderMode;
+		}
 		return;
 	}
 
 	// Auto FPP processing
 
 	static const FName MainTraceTag{FString::Printf(TEXT("%hs (Main Trace)"), __FUNCTION__)};
-	double Distance{Settings->ThirdPerson.AutoFPPEndDistance};
+	if (PerspectiveChangeBlockTime <= 0.0f)
 	{
+		double Distance{BIG_NUMBER};
 		auto TraceStart{GetThirdPersonTraceStartLocation(DesiredShoulderMode)};
 		auto TraceEnd{TraceStart - CameraRotation.Vector() * Settings->ThirdPerson.AutoFPPEndDistance};
 		const auto CollisionShape{FCollisionShape::MakeSphere(TraceSphreRadius)};
@@ -543,6 +555,7 @@ void UGarGameplayCameraStateComponent::UpdatePerspectiveAndShoulderMode()
 			{
 				TraceResult = TraceStart;
 			}
+			Distance = FVector::Dist(TraceStart, TraceResult);
 		}
 #if ENABLE_DRAW_DEBUG
 		if (UGarUtility::ShouldDisplayDebugForActor(Character.Get(), UGarCameraConstants::CameraTracesDebugDisplayName()))
@@ -551,23 +564,24 @@ void UGarGameplayCameraStateComponent::UpdatePerspectiveAndShoulderMode()
 				Hit.IsValidBlockingHit() ? FLinearColor::Red : FLinearColor::Green);
 		}
 #endif
-		Distance = FVector::Dist(TraceStart, TraceResult);
+		if(PreviousPerspective == GarCameraPerspectiveTags::ThirdPerson
+			&& Settings->ThirdPerson.AutoFPPStartDistance > 0.f && Distance < Settings->ThirdPerson.AutoFPPStartDistance)
+		{
+			Perspective = GarCameraPerspectiveTags::FirstPerson;
+		}
+		if (PreviousPerspective == GarCameraPerspectiveTags::FirstPerson
+			&& Settings->ThirdPerson.AutoFPPStartDistance > 0.f && Distance > Settings->ThirdPerson.AutoFPPEndDistance)
+		{
+			Perspective = GarCameraPerspectiveTags::ThirdPerson;
+		}
 	}
 
-	if(PreviousPerspective == GarCameraPerspectiveTags::ThirdPerson
-		&& Settings->ThirdPerson.AutoFPPStartDistance > 0.f && Distance < Settings->ThirdPerson.AutoFPPStartDistance)
-	{
-		Perspective = GarCameraPerspectiveTags::FirstPerson;
-	}
-	if (PreviousPerspective == GarCameraPerspectiveTags::FirstPerson
-		&& Settings->ThirdPerson.AutoFPPStartDistance > 0.f && Distance > Settings->ThirdPerson.AutoFPPEndDistance)
-	{
-		Perspective = GarCameraPerspectiveTags::ThirdPerson;
-	}
+	// Auto shoulder switch processing
 
-	if(Perspective == GarCameraPerspectiveTags::FirstPerson && DesiredShoulderMode != GarCameraShoulderModeTags::Center
+	if (Perspective == GarCameraPerspectiveTags::FirstPerson && DesiredShoulderMode != GarCameraShoulderModeTags::Center
 		&& Settings->ThirdPerson.bAllowAutoShoulderSwitching)
 	{
+		auto Distance{BIG_NUMBER};
 		auto TraceStart{GetThirdPersonTraceStartLocation(DesiredShoulderMode == GarCameraShoulderModeTags::Right
 			? GarCameraShoulderModeTags::Left : GarCameraShoulderModeTags::Right)};
 		auto TraceEnd{TraceStart - CameraRotation.Vector() * Settings->ThirdPerson.AutoFPPEndDistance};
@@ -585,6 +599,7 @@ void UGarGameplayCameraStateComponent::UpdatePerspectiveAndShoulderMode()
 			{
 				TraceResult = TraceStart;
 			}
+			Distance = FVector::Dist(TraceStart, TraceResult);
 		}
 #if ENABLE_DRAW_DEBUG
 		if (UGarUtility::ShouldDisplayDebugForActor(Character.Get(), UGarCameraConstants::CameraTracesDebugDisplayName()))
@@ -593,23 +608,25 @@ void UGarGameplayCameraStateComponent::UpdatePerspectiveAndShoulderMode()
 				Hit.IsValidBlockingHit() ? FLinearColor::Red : FLinearColor::Green);
 		}
 #endif
-		Distance = FVector::Dist(TraceStart, TraceResult);
 		if(PreviousPerspective == GarCameraPerspectiveTags::ThirdPerson
 			&& Settings->ThirdPerson.AutoFPPStartDistance > 0.f && Distance >= Settings->ThirdPerson.AutoFPPStartDistance)
 		{
 			Perspective = GarCameraPerspectiveTags::ThirdPerson;
-			ShoulderMode = DesiredShoulderMode == GarCameraShoulderModeTags::Left ? GarCameraShoulderModeTags::Right : GarCameraShoulderModeTags::Left;
-			if (Settings->ThirdPerson.bAllowPermanentSwitching)
+			if (ShoulderChangeBlockTime <= 0.0f)
 			{
-				SetDesiredShoulderMode(ShoulderMode);
+				ShoulderMode = DesiredShoulderMode == GarCameraShoulderModeTags::Left ? GarCameraShoulderModeTags::Right : GarCameraShoulderModeTags::Left;
+				if (Settings->ThirdPerson.bAllowPermanentSwitching)
+				{
+					SetDesiredShoulderMode(ShoulderMode);
+				}
 			}
 		}
-		else
+		else if(ShoulderChangeBlockTime <= 0.0f)
 		{
 			ShoulderMode = DesiredShoulderMode;
 		}
 	}
-	else
+	else if (ShoulderChangeBlockTime <= 0.0f)
 	{
 		ShoulderMode = DesiredShoulderMode;
 	}
@@ -659,29 +676,24 @@ void UGarGameplayCameraStateComponent::UpdateFocalLength()
 
 void UGarGameplayCameraStateComponent::SetDesiredPerspective(const FGameplayTag& NewDesiredPerspective)
 {
-	DesiredPerspective = NewDesiredPerspective;
-}
-
-void UGarGameplayCameraStateComponent::SetConfirmedDesiredPerspective(const FGameplayTag& NewConfirmedDesiredPerspective)
-{
-	if (ConfirmedDesiredPerspective == NewConfirmedDesiredPerspective || Character->GetLocalRole() < ROLE_AutonomousProxy)
+	if (DesiredPerspective == NewDesiredPerspective || Character->GetLocalRole() < ROLE_AutonomousProxy)
 	{
 		return;
 	}
 
-	ConfirmedDesiredPerspective = NewConfirmedDesiredPerspective;
+	DesiredPerspective = NewDesiredPerspective;
 
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ConfirmedDesiredPerspective, this)
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, DesiredPerspective, this)
 
 	if (Character->GetLocalRole() == ROLE_AutonomousProxy)
 	{
-		ServerSetConfirmedDesiredPerspective(NewConfirmedDesiredPerspective);
+		ServerSetDesiredPerspective(NewDesiredPerspective);
 	}
 }
 
-void UGarGameplayCameraStateComponent::ServerSetConfirmedDesiredPerspective_Implementation(const FGameplayTag& NewPerspective)
+void UGarGameplayCameraStateComponent::ServerSetDesiredPerspective_Implementation(const FGameplayTag& NewDesiredPerspective)
 {
-	SetConfirmedDesiredPerspective(NewPerspective);
+	SetDesiredPerspective(NewDesiredPerspective);
 }
 
 void UGarGameplayCameraStateComponent::SetDesiredShoulderMode(const FGameplayTag& NewDesiredShoulderMode)
