@@ -208,7 +208,7 @@ protected:
 	void ServerSetDesiredShoulderMode(const FGameplayTag& NewDesiredShoulderMode);
 
 private:
-	void UpdatePerspectiveAndShoulderMode();
+	bool UpdatePerspectiveAndShoulderMode();
 
 	void UpdateFocalLength();
 

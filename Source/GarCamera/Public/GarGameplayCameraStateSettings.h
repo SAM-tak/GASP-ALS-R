@@ -64,6 +64,11 @@ struct GARCAMERA_API FGarThirdPersonCameraStateSettings
 	// Shoulder switch automatically and permanently instead of temporary.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR",
 		Meta = (EditCondition = "AutoFPPStartDistance > 0.f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
+	bool bAllowFocusingPawnOnly{true};
+
+	// Shoulder switch automatically and permanently instead of temporary.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR",
+		Meta = (EditCondition = "AutoFPPStartDistance > 0.f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
 	bool bAllowPermanentSwitching{false};
 
 	// The horizontal field of view (in degrees) in panoramic rendering.
@@ -106,7 +111,4 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float FocusTraceRadius{3.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
-	TObjectPtr<UCurveFloat> HeuristicPitchMapping{nullptr};
 };
