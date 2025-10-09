@@ -3,6 +3,7 @@
 #include "DrawDebugHelpers.h"
 #include "GameFramework/WorldSettings.h"
 #include "GameFramework/GameplayCameraComponentBase.h"
+#include "GameFramework/GameplayCamerasPlayerCameraManager.h"
 #include "AbilitySystemComponent.h"
 #include "Core/CameraSystemEvaluator.h"
 #include "Core/CameraVariableAssets.h"
@@ -100,6 +101,7 @@ void UGarGameplayCameraStateComponent::Deactivate()
 		Character->OnDisplayDebug.RemoveAll(this);
 	}
 #endif
+
 	Super::Deactivate();
 }
 
@@ -114,6 +116,14 @@ void UGarGameplayCameraStateComponent::OnPossessed_Implementation(AController* N
 
 void UGarGameplayCameraStateComponent::OnUnPossessed_Implementation(AController* PreviousController)
 {
+	if (GameplayCameraComponent.IsValid())
+	{
+		auto Context = GameplayCameraComponent->GetEvaluationContext();
+		if (Context && (PreviousController == nullptr || Context->GetPlayerController() == PreviousController))
+		{
+			GameplayCameraComponent->DeactivateCamera();
+		}
+	}
 }
 
 void UGarGameplayCameraStateComponent::InitializeByCameraVariables(
@@ -220,7 +230,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!IsValid(Settings) || !Character.IsValid() || !GameplayCameraComponent.IsValid())
+	if (!IsValid(Settings) || !Character.IsValid() || !GameplayCameraComponent.IsValid() || !Character->IsLocallyControlled())
 	{
 		return;
 	}
@@ -231,11 +241,21 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 	if (CameraSystemEvaluator.IsValid())
 	{
 		const auto& Result = CameraSystemEvaluator->GetEvaluatedResult();
-		CameraLocation = Result.CameraPose.GetLocation();
-		CameraRotation = Result.CameraPose.GetRotation();
+
+		auto NewCameraLocation = Result.CameraPose.GetLocation();
+		auto NewCameraRotation = Result.CameraPose.GetRotation();
+
+		if (Character->GetRemoteRole() == ROLE_Authority
+			&& !NewCameraLocation.Equals(CameraLocation, 0.001) || !NewCameraRotation.Equals(CameraRotation, 0.001))
+		{
+			ServerSetCameraLocRot(NewCameraLocation, NewCameraRotation);
+		}
+
+		CameraLocation = NewCameraLocation;
+		CameraRotation = NewCameraRotation;
 
 		auto* PlayerController{Cast<APlayerController>(Character->GetController())};
-		if (GameplayCameraComponent.IsValid() && IsValid(PlayerController))
+		if (IsValid(PlayerController))
 		{
 			TanHalfVfov = FMath::Tan(FMath::DegreesToRadians(Result.CameraPose.GetEffectiveFieldOfView()) * 0.5f);
 			if (Result.CameraPose.GetPanoramic())
@@ -261,6 +281,60 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			if (Result.VariableTable.TryGetValue<float>(TraceSphreRadiusVariableId, OutValue))
 			{
 				TraceSphreRadius = FMath::Max(OutValue, 0.001f);
+			}
+		}
+	}
+	else
+	{
+		auto* PlayerController{Cast<APlayerController>(Character->GetController())};
+		if (IsValid(PlayerController) && IsValid(PlayerController->PlayerCameraManager))
+		{
+			auto NewCameraLocation = PlayerController->PlayerCameraManager->GetCameraLocation();
+			auto NewCameraRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
+
+			if (Character->GetRemoteRole() == ROLE_Authority
+				&& !NewCameraLocation.Equals(CameraLocation, 0.001) || !NewCameraRotation.Equals(CameraRotation, 0.001))
+			{
+				ServerSetCameraLocRot(NewCameraLocation, NewCameraRotation);
+			}
+
+			CameraLocation = NewCameraLocation;
+			CameraRotation = NewCameraRotation;
+
+			auto MinimalViewInfo{PlayerController->PlayerCameraManager->GetCameraCacheView()};
+			TanHalfVfov = FMath::Tan(FMath::DegreesToRadians(MinimalViewInfo.PanoramaFOV) * 0.5f);
+			if (MinimalViewInfo.bPanoramic)
+			{
+				int32 SizeX, SizeY;
+				PlayerController->GetViewportSize(SizeX, SizeY);
+				float AspectRatio{SizeX * (1 - MinimalViewInfo.PanoramaSideViewRate * 2 / 3) / (float)SizeY};
+				TanHalfVfov /= AspectRatio;
+			}
+
+			auto* GameplayCamerasPlayerCameraManager{Cast<AGameplayCamerasPlayerCameraManager>(PlayerController->PlayerCameraManager)};
+			if (GameplayCamerasPlayerCameraManager)
+			{
+				CameraSystemEvaluator = GameplayCamerasPlayerCameraManager->GetCameraSystemEvaluator();
+				if (CameraSystemEvaluator.IsValid())
+				{
+					const auto& Result = CameraSystemEvaluator->GetEvaluatedResult();
+					if(FirstPersonFactorVariableId.IsValid())
+					{
+						float OutValue;
+						if (Result.VariableTable.TryGetValue<float>(FirstPersonFactorVariableId, OutValue))
+						{
+							FirstPersonFactor = UGarMath::Clamp01(OutValue);
+						}
+					}
+					if(TraceSphreRadiusVariableId.IsValid())
+					{
+						float OutValue;
+						if (Result.VariableTable.TryGetValue<float>(TraceSphreRadiusVariableId, OutValue))
+						{
+							TraceSphreRadius = FMath::Max(OutValue, 0.001f);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -290,9 +364,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 		if (PreviousPerspective == GarCameraPerspectiveTags::FirstPerson && !bSkipCorrection)
 		{
 			// FPP -> TPP
-			auto FocusLocation{Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarAimingModeTags::Firing)
-				? GetEyeCameraLocation() + Character->GetViewRotation().Vector() * FocalLength // cos' position was zittered during fire
-				: GetCurrentFocusLocation()};
+			auto FocusLocation{GetCurrentFocusLocation()};
 			auto TraceStart{GetThirdPersonTraceStartLocation()};
 			auto RotMax{FRotationMatrix::MakeFromXZ(FocusLocation - TraceStart, Character->GetViewRotation().RotateVector(FVector::UpVector))};
 			auto FocalRotation{RotMax.Rotator()};
@@ -443,6 +515,12 @@ void UGarGameplayCameraStateComponent::UpdateState(const float DeltaTime)
 	{
 		VariableTable.SetValue<FVector3d>(LeftShoulderOffsetVariableId, LeftShoulderOffset);
 	}
+}
+
+void UGarGameplayCameraStateComponent::ServerSetCameraLocRot_Implementation(const FVector& NewCameraLocation, const FRotator& NewCameraRotation)
+{
+	CameraLocation = NewCameraLocation;
+	CameraRotation = NewCameraRotation;
 }
 
 FVector UGarGameplayCameraStateComponent::GetFirstPersonCameraLocation() const

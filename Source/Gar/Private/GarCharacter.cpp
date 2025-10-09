@@ -178,9 +178,7 @@ void AGarCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	// Enable view network smoothing on the listen server here because the remote role may not be valid yet during begin play.
-
-	if (GetLocalRole() >= ROLE_Authority)
+	if (HasAuthority())
 	{
 		ClientPossessed(NewController);
 	}
@@ -190,7 +188,7 @@ void AGarCharacter::UnPossessed()
 {
 	Super::UnPossessed();
 
-	if (GetLocalRole() >= ROLE_Authority)
+	if (HasAuthority())
 	{
 		ClientUnPossessed();
 	}
@@ -942,40 +940,40 @@ bool AGarCharacter::CanSprint_Implementation() const
 
 void AGarCharacter::RefreshInput()
 {
-	MovementInputVector = ConsumeMovementInputVector();
-
-	if (HasMovementInput())
-	{
-		InputDirection = MovementInputVector.GetUnsafeNormal2D();
-		InputYawAngle = UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(InputDirection));
-	}
-
 	if (IsLocallyControlled())
 	{
-		SetReplicatedControlRotation(GetControlRotation());
+		MovementInputVector = ConsumeMovementInputVector();
+
+		if (HasMovementInput())
+		{
+			InputDirection = MovementInputVector.GetUnsafeNormal2D();
+			InputYawAngle = UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(InputDirection));
+		}
+	}
+
+	if (GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		auto ControlRotation{Controller->GetControlRotation()};
+		if (!ReplicatedControlRotation.Equals(ControlRotation, 0.001))
+		{
+			ReplicatedControlRotation = ControlRotation;
+			ServerSetControlRotation(ReplicatedControlRotation);
+		}
+	}
+	else if(HasAuthority())
+	{
+		auto ControlRotation{Controller->GetControlRotation()};
+		if (!ReplicatedControlRotation.Equals(ControlRotation, 0.001))
+		{
+			ReplicatedControlRotation = ControlRotation;
+			MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ReplicatedControlRotation, this)
+		}
 	}
 }
 
-void AGarCharacter::SetReplicatedControlRotation(const FRotator& NewControlRotation)
+void AGarCharacter::ServerSetControlRotation_Implementation(const FRotator& NewControlRotation)
 {
-	if (ReplicatedControlRotation == NewControlRotation || GetLocalRole() < ROLE_AutonomousProxy)
-	{
-		return;
-	}
-
-	ReplicatedControlRotation = NewControlRotation;
-
-	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, ReplicatedControlRotation, this)
-
-	if(GetLocalRole() == ROLE_AutonomousProxy)
-	{
-		ServerSetReplicatedControlRotation(ReplicatedControlRotation);
-	}
-}
-
-void AGarCharacter::ServerSetReplicatedControlRotation_Implementation(const FRotator& NewControlRotation)
-{
-	SetReplicatedControlRotation(NewControlRotation);
+	Controller->SetControlRotation(NewControlRotation);
 }
 
 void AGarCharacter::SetFocalRotation(const FRotator& NewFocalRotation)

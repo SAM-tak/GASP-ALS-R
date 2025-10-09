@@ -54,21 +54,21 @@ struct GARCAMERA_API FGarThirdPersonCameraStateSettings
 	float AutoFPPStartDistance{80.0f};
 
 	// Ends Auto FPP when distance from third person camera pivot by blocking by geometry greater than this value.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.f", ClampMin = 0, ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.0f", ClampMin = 0, ForceUnits = "cm"))
 	float AutoFPPEndDistance{100.0f};
 
 	// Switch shoulder mode to counter side instead of Auto FPP if possible.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.f", ClampMin = 0, ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (EditCondition = "AutoFPPStartDistance > 0.0f", ClampMin = 0, ForceUnits = "cm"))
 	bool bAllowAutoShoulderSwitching{true};
 
 	// Shoulder switch automatically and permanently instead of temporary.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR",
-		Meta = (EditCondition = "AutoFPPStartDistance > 0.f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
+		Meta = (EditCondition = "AutoFPPStartDistance > 0.0f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
 	bool bAllowFocusingPawnOnly{true};
 
 	// Shoulder switch automatically and permanently instead of temporary.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR",
-		Meta = (EditCondition = "AutoFPPStartDistance > 0.f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
+		Meta = (EditCondition = "AutoFPPStartDistance > 0.0f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
 	bool bAllowPermanentSwitching{false};
 
 	// The horizontal field of view (in degrees) in panoramic rendering.

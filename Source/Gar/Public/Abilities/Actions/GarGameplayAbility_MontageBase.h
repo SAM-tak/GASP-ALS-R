@@ -29,6 +29,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GarAbility|Montage")
 	EMoveMixMode MoveMixMode{EMoveMixMode::OverrideAll};
 
+	// If true, any root motion rotations will be projected onto the movement plane (in worldspace), relative to the "up" direction. Otherwise, they'll be taken as-is.
+	UPROPERTY(EditDefaultsOnly, Category = "GarAbility|Montage")
+	bool bConstrainWorldRotToMovementPlane{true};
+
 	UPROPERTY(BlueprintAssignable, Category = "GarAbility|Montage")
 	FGarMontageNotifyDelegate OnNotifyBegin;
 

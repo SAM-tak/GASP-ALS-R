@@ -150,7 +150,6 @@ void UGarAnimationInstance::RefreshPose()
 	PoseState.GaitSprintingAmount = UGarMath::Clamp01(PoseState.GaitAmount - 1.0f);
 
 	PoseState.AimingAmount = GetCurveValue(Curves, UGarConstants::PoseAimingCurveName());
-
 }
 
 void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime)
@@ -173,7 +172,7 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 	{
 		CharacterMovement.UpVector = -CharacterMovement.GravityAcceleration.GetUnsafeNormal();
 	}
-	if (Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
+	if (FMath::Abs(CharacterMovement.Velocity.Z) > 0.5f && Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::InAir))
 	{
 		CharacterMovement.LatestVelocityInAir = CharacterMovement.Velocity;
 	}

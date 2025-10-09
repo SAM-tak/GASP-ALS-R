@@ -117,6 +117,9 @@ protected:
 
 	virtual void Deactivate() override;
 
+	UFUNCTION(Server, Unreliable)
+	void ServerSetCameraLocRot(const FVector& NewCameraLocation, const FRotator& NewCameraRotation);
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Gameplay Camera State")
 	void InitializeByCameraVariables(UVector3dCameraVariable* BoomOffsetVariable,

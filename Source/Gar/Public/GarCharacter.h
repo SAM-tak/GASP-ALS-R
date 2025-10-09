@@ -365,10 +365,8 @@ public:
 protected:
 	virtual void RefreshInput();
 
-	void SetReplicatedControlRotation(const FRotator& NewControlRotation);
-
 	UFUNCTION(Server, Unreliable)
-	void ServerSetReplicatedControlRotation(const FRotator& NewReplicatedControlRotation);
+	void ServerSetControlRotation(const FRotator& NewControlRotation);
 
 private:
 	FORCEINLINE bool HasSpeed() const { return GetVelocity().Size2D() > 1.0; }

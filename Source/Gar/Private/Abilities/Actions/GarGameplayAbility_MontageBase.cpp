@@ -4,6 +4,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "DefaultMovementSet/LayeredMoves/AnimRootMotionLayeredMove.h"
+#include "DefaultMovementSet/LayeredMoves/RootMotionAttributeLayeredMove.h"
 #include "GarCharacter.h"
 #include "GarCharacterMoverComponent.h"
 #include "GarAbilitySystemComponent.h"
@@ -131,6 +132,11 @@ bool UGarGameplayAbility_MontageBase::PlayMontage(const FGameplayAbilityActivati
 				LayeredMove_AnimRootMotion->Montage = Montage;
 				LayeredMove_AnimRootMotion->StartingMontagePosition = StartTime;
 				LayeredMove_AnimRootMotion->PlayRate = PlayRate;
+				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
+				auto LayeredMove_RootMotionAttribute = MakeShared<FLayeredMove_RootMotionAttribute>();
+				LayeredMove_RootMotionAttribute->DurationMs = CurrentMotangeDuration * 1000;
+				LayeredMove_RootMotionAttribute->MixMode = MoveMixMode;
+				LayeredMove_RootMotionAttribute->bConstrainWorldRotToMovementPlane = bConstrainWorldRotToMovementPlane;
 				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
 			}
 

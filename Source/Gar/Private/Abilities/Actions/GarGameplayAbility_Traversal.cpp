@@ -393,11 +393,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	const FVector EndLocationTraceStart{TargetLocation + TargetDirection * (MinimumDepth + CapsuleRadius + Character->GetVelocity().Size2D() * RisingTime)
 		+ FVector{0.f, 0.f, TraceCapsuleRadius + UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
 
-	const FVector EndLocationTraceEnd{
-		EndLocationTraceStart.X,
-		EndLocationTraceStart.Y,
-		Character->GetMover()->GetBaseVisualComponentTransform().GetLocation().Z
-	};
+	const FVector EndLocationTraceEnd{EndLocationTraceStart.X, EndLocationTraceStart.Y, CapsuleBottomLocation.Z};
 
 	FHitResult EndLocationTraceHit;
 	World->SweepSingleByChannel(EndLocationTraceHit, EndLocationTraceStart, EndLocationTraceEnd, FQuat::Identity,
