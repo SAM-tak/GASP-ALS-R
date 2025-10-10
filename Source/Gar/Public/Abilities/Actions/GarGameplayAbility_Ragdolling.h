@@ -5,6 +5,8 @@
 #include "Abilities/GarGameplayAbility_Action.h"
 #include "GarGameplayAbility_Ragdolling.generated.h"
 
+class UGarOverrideTask;
+
 /**
  * Ragdolling
  */
@@ -12,6 +14,16 @@ UCLASS(Abstract)
 class GAR_API UGarGameplayAbility_Ragdolling : public UGarGameplayAbility_Action
 {
 	GENERATED_UCLASS_BODY()
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAR", Transient, Meta = (DisplayThumbnail = false))
+	TSubclassOf<UGarOverrideTask> OverrideTaskClass;
+
+	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
+
+	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
+
+	virtual void OnRemoveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 
 protected:
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

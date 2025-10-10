@@ -6,13 +6,13 @@
 
 class UGarOverlayTask;
 
-UCLASS(Abstract, AutoExpandCategories = ("GarOverlayModeComponent|Settings"))
+UCLASS(AutoExpandCategories = ("GarOverlayModeComponent|Settings"), Meta = (BlueprintSpawnableComponent))
 class GAR_API UGarOverlayModeComponent : public UGarCharacterComponent
 {
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarOverlayModeComponent|Settings", Meta = (DisplayThumbnail = false))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient, Meta = (DisplayThumbnail = false))
 	TMap<FGameplayTag, TSubclassOf<UGarOverlayTask>> OverlayClassMap;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
@@ -21,12 +21,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	FGameplayTag CurrentOverlayTag;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverrideModeComponent|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
 protected:
-	virtual void OnRegister() override;
-
 	virtual void BeginPlay() override;
 
 	virtual void OnRefresh_Implementation(float DeltaTime) override;
@@ -37,7 +35,11 @@ protected:
 
 	void ChangeOverlayTask(const FGameplayTag& OverlayMode);
 
-private:
-	UFUNCTION()
-	void OnChangeOverlayModeTag(FGameplayTag Tag, int32 NewCount);
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ChangeOverlayTask(const FGameplayTag& Tag);
+
+public:
+	void RegisterOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarOverlayTask> OverlayTaskClass);
+
+	void UnregisterOverlayTask(const FGameplayTag& OverlayMode);
 };

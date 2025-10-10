@@ -27,6 +27,56 @@ UGarGameplayAbility_Ragdolling::UGarGameplayAbility_Ragdolling(const FObjectInit
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Unconsious);
 }
 
+void UGarGameplayAbility_Ragdolling::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+
+	if (ActorInfo->OwnerActor.IsValid())
+	{
+		auto OverrideModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverrideModeComponent>()};
+		if (OverrideModeComponent)
+		{
+			OverrideModeComponent->RegisterOverrideTask(GetAssetTags().First(), OverrideTaskClass);
+		}
+	}
+}
+
+void UGarGameplayAbility_Ragdolling::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+    Super::OnAvatarSet(ActorInfo, Spec);
+
+	if (ActorInfo->AvatarActor.IsValid())
+	{
+		auto OverrideModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverrideModeComponent>()};
+		if (OverrideModeComponent)
+		{
+			OverrideModeComponent->RegisterOverrideTask(GetAssetTags().First(), OverrideTaskClass);
+		}
+	}
+}
+
+void UGarGameplayAbility_Ragdolling::OnRemoveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	if (ActorInfo->OwnerActor.IsValid())
+	{
+		auto OverrideModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverrideModeComponent>()};
+		if (OverrideModeComponent)
+		{
+			OverrideModeComponent->UnregisterOverrideTask(GetAssetTags().First());
+		}
+	}
+	if (ActorInfo->AvatarActor.IsValid())
+	{
+		auto OverrideModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverrideModeComponent>()};
+		if (OverrideModeComponent)
+		{
+			OverrideModeComponent->UnregisterOverrideTask(GetAssetTags().First());
+		}
+	}
+
+	Super::OnRemoveAbility(ActorInfo, Spec);
+}
+
 bool UGarGameplayAbility_Ragdolling::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 														const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags,
 														OUT FGameplayTagContainer* OptionalRelevantTags) const

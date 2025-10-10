@@ -15,11 +15,6 @@ void UGarOverrideModeComponent::BeginPlay()
 	Super::BeginPlay();
 
 	InstancedOverrideTasks.Reset();
-	OverrideTagsMask.Reset();
-	for (auto& KeyValue : OverrideClassMap)
-	{
-		OverrideTagsMask.AddTag(KeyValue.Key);
-	}
 }
 
 void UGarOverrideModeComponent::EndCurrentRagdollingTask()
@@ -77,11 +72,17 @@ void UGarOverrideModeComponent::OnRefresh_Implementation(float DeltaTime)
 {
 	Super::OnRefresh_Implementation(DeltaTime);
 
+	FGameplayTagContainer OverrideTagsMask;
+	for (auto& KeyValue : OverrideClassMap)
+	{
+		OverrideTagsMask.AddTag(KeyValue.Key);
+	}
+
 	FGameplayTagContainer Container;
 	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(Container);
-	auto CurrentOverrideTags{Container.Filter(OverrideTagsMask)};
+	auto OverrideMode{Container.Filter(OverrideTagsMask).First()};
 
-	ChangeOverrideTaskIfNeeded(CurrentOverrideTags.First());
+	ChangeOverrideTaskIfNeeded(OverrideMode);
 
 	if (CurrentOverrideTask.IsValid())
 	{
@@ -104,5 +105,21 @@ void UGarOverrideModeComponent::OnUnPossessed_Implementation(AController* Previo
 	if (CurrentOverrideTask.IsValid())
 	{
 		CurrentOverrideTask->OnUnPossessed(PreviousController);
+	}
+}
+
+void UGarOverrideModeComponent::RegisterOverrideTask(const FGameplayTag& OverrideMode, TSubclassOf<UGarOverrideTask> OverrideTaskClass)
+{
+	if (OverrideTaskClass)
+	{
+		OverrideClassMap.Add(OverrideMode, OverrideTaskClass);
+	}
+}
+
+void UGarOverrideModeComponent::UnregisterOverrideTask(const FGameplayTag& OverrideMode)
+{
+	if (OverrideMode.IsValid())
+	{
+		OverrideClassMap.Remove(OverrideMode);
 	}
 }
