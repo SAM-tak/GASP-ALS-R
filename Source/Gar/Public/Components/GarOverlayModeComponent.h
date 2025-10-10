@@ -6,6 +6,11 @@
 
 class UGarOverlayTask;
 
+// This ability exists solely to apply a tag. It does not directly update state within the ability itself,
+// because state propagation to SimulatedProxies is achieved through tag application alone—OverlayModeComponent polls for tag changes
+// and updates its state accordingly.
+// As a result, while the ability defines the tag,
+// a separate mapping between GameplayTags and OverlayModeTasks must be defined within the OverlayModeComponent.
 UCLASS(Abstract, AutoExpandCategories = ("GarOverlayModeComponent|Settings"))
 class GAR_API UGarOverlayModeComponent : public UGarCharacterComponent
 {
