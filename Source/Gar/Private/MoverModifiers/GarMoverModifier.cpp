@@ -5,6 +5,8 @@
 #include "GarGameplayTags.h"
 #include "Utility/GarUtility.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GarMoverModifier)
+
 FGarMoverModifier::FGarMoverModifier()
 {
 	DurationMs = -1.0f;

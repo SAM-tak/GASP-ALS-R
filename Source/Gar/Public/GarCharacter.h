@@ -30,7 +30,8 @@ DECLARE_EVENT_FourParams(AGarCharacter, FGarCharacter_OnDebugDisplayDelegate, UC
 #endif
 
 UCLASS(Abstract, AutoExpandCategories = ("GarCharacter|Settings"))
-class GAR_API AGarCharacter : public APawn, public IMoverInputProducerInterface, public IAbilitySystemInterface, public IGameplayCueInterface
+class GAR_API AGarCharacter : public APawn, public IMoverInputProducerInterface,
+	public IAbilitySystemInterface, public IGameplayCueInterface, public IGameplayTagAssetInterface
 {
 	GENERATED_UCLASS_BODY()
 
@@ -220,11 +221,23 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	virtual FRotator GetViewRotation() const override;
 
+	virtual FVector GetVelocity() const override;
+
 	// IAbilitySystemInterface
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	virtual FVector GetVelocity() const override;
+	// IGameplayTagAssetInterface
+
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const override;
+	virtual bool HasMatchingGameplayTag(FGameplayTag TagToCheck) const override;
+	virtual bool HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
+	virtual bool HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const override;
+
+	void ReplaceAbilitySystem(UGarAbilitySystemComponent* NewAbilitySystem)
+	{
+		AbilitySystem = NewAbilitySystem;
+	}
 
 private:
 	UFUNCTION(Client, Reliable)
@@ -274,15 +287,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character", Meta = (AutoCreateRefTerm = "NewDesiredStance"))
 	void SetDesiredStance(const FGameplayTag& NewDesiredStance);
 
-protected:
-	virtual void ApplyDesiredStance();
-
-	// Stance
-
-public:
-	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
-	void SetInputStance(const FGameplayTag &NewInputStance);
-
 	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category = "GAR|Character")
 	bool CanCrouch() const;
 
@@ -301,13 +305,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
 	void Lie();
 
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	bool IsCrouching() const;
+
+	UFUNCTION(BlueprintPure, Category = "GAR|Character")
+	bool IsLying() const;
+
 protected:
+	virtual void ApplyDesiredStance();
+
 	void CheckCanUnCrouchIfNeeded();
 
 	void CheckCanCrouchIfNeeded();
 
 	void CheckCanLieIfNeeded();
 
+	// Stance
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void SetInputStance(const FGameplayTag &NewInputStance);
+
+protected:
 	bool UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed);
 
 	bool UpdateProneCapsule(float DeltaTime, float TargetHalfHeight, float HeightSpeed, float TargetRadius, float RadiusSpeed,

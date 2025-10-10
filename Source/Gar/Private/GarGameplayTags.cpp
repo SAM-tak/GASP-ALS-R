@@ -83,8 +83,6 @@ namespace GarOverlayModeTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.OverlayMode")
 	UE_DEFINE_GAMEPLAY_TAG(Default, "Gar.OverlayMode.Default")
-	UE_DEFINE_GAMEPLAY_TAG(Injured, "Gar.OverlayMode.Injured")
-	UE_DEFINE_GAMEPLAY_TAG(HandsTied, "Gar.OverlayMode.HandsTied")
 }
 
 namespace GarLocomotionActionTags

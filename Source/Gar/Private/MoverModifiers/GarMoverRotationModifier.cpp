@@ -4,6 +4,8 @@
 
 #include "GarGameplayTags.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GarMoverRotationModifier)
+
 FGarMoverViewDirectionModifier::FGarMoverViewDirectionModifier()
 {
 	ActiveTag = GarRotationModeTags::ViewDirection;

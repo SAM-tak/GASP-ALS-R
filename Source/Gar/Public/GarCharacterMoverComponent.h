@@ -14,7 +14,7 @@ class UCommonLegacyMovementSettings;
 class UGarMovementSettings;
 class AGarCharacter;
 
-UCLASS(ClassGroup = "GAR", BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = "GAR", BlueprintType, Blueprintable, Meta = (BlueprintSpawnableComponent))
 class GAR_API UGarCharacterMoverComponent : public UMoverComponent
 {
 	GENERATED_BODY()

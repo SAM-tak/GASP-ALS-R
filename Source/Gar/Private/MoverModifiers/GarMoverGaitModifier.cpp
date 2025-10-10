@@ -4,6 +4,8 @@
 
 #include "GarGameplayTags.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GarMoverGaitModifier)
+
 FGarMoverWalkingModifier::FGarMoverWalkingModifier()
 {
 	ActiveTag = GarGaitTags::Walking;

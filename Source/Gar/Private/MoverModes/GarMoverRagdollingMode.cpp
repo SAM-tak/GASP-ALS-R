@@ -22,6 +22,8 @@ UGarMoverRagdollingMode::UGarMoverRagdollingMode(const FObjectInitializer& Objec
 	: Super(ObjectInitializer)
 {
 	SharedSettingsClasses.Add(UGarMovementSettings::StaticClass());
+
+	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
 }
 
 void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const

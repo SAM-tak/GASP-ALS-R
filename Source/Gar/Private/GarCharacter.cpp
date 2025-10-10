@@ -103,6 +103,35 @@ UAbilitySystemComponent* AGarCharacter::GetAbilitySystemComponent() const
 	return AbilitySystem;
 }
 
+// IGameplayTagAssetInterface
+
+void AGarCharacter::GetOwnedGameplayTags(FGameplayTagContainer& TagContainer) const
+{
+	if (IsValid(AbilitySystem))
+	{
+		AbilitySystem->GetOwnedGameplayTags(TagContainer);
+	}
+	else
+	{
+		TagContainer.Reset();
+	}
+}
+
+bool AGarCharacter::HasMatchingGameplayTag(FGameplayTag TagToCheck) const
+{
+	return AbilitySystem->HasMatchingGameplayTag(TagToCheck);
+}
+
+bool AGarCharacter::HasAllMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
+{
+	return AbilitySystem->HasAllMatchingGameplayTags(TagContainer);
+}
+
+bool AGarCharacter::HasAnyMatchingGameplayTags(const FGameplayTagContainer& TagContainer) const
+{
+	return AbilitySystem->HasAnyMatchingGameplayTags(TagContainer);
+}
+
 void AGarCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -366,7 +395,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 		}
 	}
 
-	auto RotationMode{CharacterMover->GetRotationMode()};
+	auto& RotationMode{CharacterMover->GetRotationMode()};
 	if (RotationMode.IsValid())
 	{
 		AbilitySystem->SetLooseGameplayTagCount(GarRotationModeTags::ViewDirection, RotationMode == GarRotationModeTags::ViewDirection ? 1 : 0);
@@ -374,7 +403,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 		AbilitySystem->SetLooseGameplayTagCount(GarRotationModeTags::Aiming, RotationMode == GarRotationModeTags::Aiming ? 1 : 0);
 	}
 
-	auto Stance{CharacterMover->GetStance()};
+	auto& Stance{CharacterMover->GetStance()};
 	if (Stance.IsValid())
 	{
 		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Standing, Stance == GarStanceTags::Standing ? 1 : 0);
@@ -382,7 +411,7 @@ void AGarCharacter::Tick(const float DeltaTime)
 		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Lying, Stance == GarStanceTags::Lying ? 1 : 0);
 	}
 
-	auto Gait{CharacterMover->GetGait()};
+	auto& Gait{CharacterMover->GetGait()};
 	if (Gait.IsValid())
 	{
 		AbilitySystem->SetLooseGameplayTagCount(GarGaitTags::Walking, Gait == GarGaitTags::Walking ? 1 : 0);
@@ -702,6 +731,16 @@ void AGarCharacter::UnCrouch()
 void AGarCharacter::Lie()
 {
 	SetDesiredStance(GarDesiredStanceTags::Lying);
+}
+
+bool AGarCharacter::IsCrouching() const
+{
+	return AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Crouching);
+}
+
+bool AGarCharacter::IsLying() const
+{
+	return AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Lying);
 }
 
 void AGarCharacter::SetInputStance(const FGameplayTag & NewInputStance)
