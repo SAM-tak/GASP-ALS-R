@@ -29,7 +29,7 @@ void UGarAbilitySystemComponent::OnRegister()
 void UGarAbilitySystemComponent::Initialize(AGarCharacter* InOwnerCharacter)
 {
 	Super::InitAbilityActorInfo(InOwnerCharacter, InOwnerCharacter);
-	if (InOwnerCharacter->HasAuthority() && IsValid(AbilitySet))
+	if (IsValid(AbilitySet))
 	{
 		AbilitySet->GiveToAbilitySystem(this, InOwnerCharacter);
 	}
@@ -97,4 +97,11 @@ void UGarAbilitySystemComponent::OnUnPossessed_Implementation(AController* Previ
 			}
 		}
 	}
+}
+
+void UGarAbilitySystemComponent::OnRep_ActivateAbilities()
+{
+	Super::OnRep_ActivateAbilities();
+
+	OnRepActivateAbilities.Broadcast(this);
 }

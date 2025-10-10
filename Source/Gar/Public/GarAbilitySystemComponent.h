@@ -9,10 +9,12 @@ class UInputAction;
 class UGarAbilitySet;
 class AGarCharacter;
 
+DECLARE_EVENT_OneParam(UGarAbilitySystemComponent, FGarAbilitySystemComponent_OnRep_ActivateAbilities, UGarAbilitySystemComponent*);
+
 /**
  * AbilitySystemComponent for GAR Refactored
  */
-UCLASS()
+UCLASS(Meta = (BlueprintSpawnableComponent))
 class GAR_API UGarAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
@@ -46,6 +48,14 @@ protected:
 	{
 		CancelAbilitiesBySingleTag(Tag);
 	}
+
+	// ActivateAbilities
+
+protected:
+	virtual void OnRep_ActivateAbilities() override;
+
+public:
+	FGarAbilitySystemComponent_OnRep_ActivateAbilities OnRepActivateAbilities;
 
 	// Initalize
 

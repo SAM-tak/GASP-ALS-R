@@ -10,7 +10,7 @@
 #include "LinkedAnimLayers/GarOverlayAnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Components/GarOverrideModeComponent.h"
+#include "Components/GarOverlayModeComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
@@ -25,4 +25,54 @@ UGarGameplayAbility_OverlayMode::UGarGameplayAbility_OverlayMode(const FObjectIn
 	ActivationOwnedTags.AddTag(GarOverlayModeTags::Default);
 	CancelAbilitiesWithTag.AddTag(GarOverlayModeTags::Root);
 	BlockAbilitiesWithTag.AddTag(GarOverlayModeTags::Default);
+}
+
+void UGarGameplayAbility_OverlayMode::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	Super::OnGiveAbility(ActorInfo, Spec);
+
+	if (ActorInfo->OwnerActor.IsValid())
+	{
+		auto OverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverlayModeComponent>()};
+		if (OverlayModeComponent)
+		{
+			OverlayModeComponent->RegisterOverlayTask(GetAssetTags().First(), OverlayTaskClass);
+		}
+	}
+}
+
+void UGarGameplayAbility_OverlayMode::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+    Super::OnAvatarSet(ActorInfo, Spec);
+
+	if (ActorInfo->AvatarActor.IsValid())
+	{
+		auto OverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverlayModeComponent>()};
+		if (OverlayModeComponent)
+		{
+			OverlayModeComponent->RegisterOverlayTask(GetAssetTags().First(), OverlayTaskClass);
+		}
+	}
+}
+
+void UGarGameplayAbility_OverlayMode::OnRemoveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
+{
+	if (ActorInfo->OwnerActor.IsValid())
+	{
+		auto OverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverlayModeComponent>()};
+		if (OverlayModeComponent)
+		{
+			OverlayModeComponent->UnregisterOverlayTask(GetAssetTags().First());
+		}
+	}
+	if (ActorInfo->AvatarActor.IsValid())
+	{
+		auto OverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverlayModeComponent>()};
+		if (OverlayModeComponent)
+		{
+			OverlayModeComponent->UnregisterOverlayTask(GetAssetTags().First());
+		}
+	}
+
+	Super::OnRemoveAbility(ActorInfo, Spec);
 }

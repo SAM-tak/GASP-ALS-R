@@ -5,19 +5,15 @@
 #include "GarOverlayModeComponent.generated.h"
 
 class UGarOverlayTask;
+class UGarAbilitySystemComponent;
 
-// This ability exists solely to apply a tag. It does not directly update state within the ability itself,
-// because state propagation to SimulatedProxies is achieved through tag application alone—OverlayModeComponent polls for tag changes
-// and updates its state accordingly.
-// As a result, while the ability defines the tag,
-// a separate mapping between GameplayTags and OverlayModeTasks must be defined within the OverlayModeComponent.
-UCLASS(Abstract, AutoExpandCategories = ("GarOverlayModeComponent|Settings"))
+UCLASS(AutoExpandCategories = ("GarOverlayModeComponent|Settings"), Meta = (BlueprintSpawnableComponent))
 class GAR_API UGarOverlayModeComponent : public UGarCharacterComponent
 {
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarOverlayModeComponent|Settings", Meta = (DisplayThumbnail = false))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient, Meta = (DisplayThumbnail = false))
 	TMap<FGameplayTag, TSubclassOf<UGarOverlayTask>> OverlayClassMap;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
@@ -26,7 +22,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	FGameplayTag CurrentOverlayTag;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverrideModeComponent|State", Transient)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
 protected:
@@ -42,7 +38,10 @@ protected:
 
 	void ChangeOverlayTask(const FGameplayTag& OverlayMode);
 
-private:
-	UFUNCTION()
-	void OnChangeOverlayModeTag(FGameplayTag Tag, int32 NewCount);
+	void CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem);
+
+public:
+	void RegisterOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarOverlayTask> OverlayTaskClass);
+
+	void UnregisterOverlayTask(const FGameplayTag& OverlayMode);
 };

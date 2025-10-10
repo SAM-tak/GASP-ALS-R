@@ -6,6 +6,11 @@
 #include "Abilities/GarGameplayAbility.h"
 #include "Utility/GarLog.h"
 
+#include "Abilities/GarGameplayAbility_OverlayMode.h"
+#include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
+#include "Components/GarOverlayModeComponent.h"
+#include "Components/GarOverrideModeComponent.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarAbilitySet)
 
 void FGarAbilitySet_GrantedHandles::AddAbilitySpecHandle(const FGameplayAbilitySpecHandle& Handle)
@@ -65,10 +70,6 @@ void FGarAbilitySet_GrantedHandles::TakeFromAbilitySystem(UAbilitySystemComponen
 	GrantedAttributeSets.Reset();
 }
 
-UGarAbilitySet::UGarAbilitySet(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UGarAbilitySet::GiveToAbilitySystem(UGarAbilitySystemComponent* GarAsc, UObject* SourceObject, FGarAbilitySet_GrantedHandles* OutGrantedHandles) const
 {
 	check(GarAsc);
@@ -76,6 +77,35 @@ void UGarAbilitySet::GiveToAbilitySystem(UGarAbilitySystemComponent* GarAsc, UOb
 	if (!GarAsc->IsOwnerActorAuthoritative())
 	{
 		// Must be authoritative to give or take ability sets.
+		// but, call register method of OverlayMode Abilities and OverrideMode Abilities to make class map correctly.
+		// TODO: move this logic to UGarAbilitySystemComponent::OnRep_ReplicatedAbilities
+		if (GarAsc->GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+		{
+			auto OverlayModeComponent{GarAsc->GetOwner()->GetComponentByClass<UGarOverlayModeComponent>()};
+			if (OverlayModeComponent)
+			{
+				for (auto& Ability : GrantedGameplayAbilities)
+				{
+					auto OverlayModeAbility{Cast<UGarGameplayAbility_OverlayMode>(Ability.Ability->GetDefaultObject<UGarGameplayAbility>())};
+					if (OverlayModeAbility)
+					{
+						OverlayModeComponent->RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
+					}
+				}
+			}
+			auto OverrideModeComponent{GarAsc->GetOwner()->GetComponentByClass<UGarOverrideModeComponent>()};
+			if (OverrideModeComponent)
+			{
+				for (auto& Ability : GrantedGameplayAbilities)
+				{
+					auto RagdollingAbility{Cast<UGarGameplayAbility_Ragdolling>(Ability.Ability->GetDefaultObject<UGarGameplayAbility>())};
+					if (RagdollingAbility)
+					{
+						OverrideModeComponent->RegisterOverrideTask(RagdollingAbility->GetAssetTags().First(), RagdollingAbility->OverrideTaskClass);
+					}
+				}
+			}
+		}
 		return;
 	}
 
