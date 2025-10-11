@@ -23,9 +23,15 @@ protected:
 	bool IsGroundedAndAged() const;
 
 public:
-	virtual void Refresh(float DeltaTime) override;
+	virtual void Begin() override;
+
+	virtual void End() override;
+
+	virtual void Tick(float DeltaTime) override;
 
 	virtual bool IsEpilogRunning_Implementation() const override;
+
+	virtual void OnFinished() override;
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|CharacterTask|Ragdolling", DisplayName = "On Grounded And Aged", Meta = (ScriptName = "OnGroundedAndAged"))

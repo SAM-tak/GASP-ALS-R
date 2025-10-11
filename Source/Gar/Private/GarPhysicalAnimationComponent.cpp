@@ -239,7 +239,7 @@ void UGarPhysicalAnimationComponent::OnRegister()
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 	if (IsValid(Character))
 	{
-		Character->OnRefresh.AddUObject(this, &ThisClass::OnRefresh);
+		Character->OnTick.AddUObject(this, &ThisClass::OnOwnerTick);
 		RagdollingState.Character = Character;
 	}
 }
@@ -254,7 +254,7 @@ void UGarPhysicalAnimationComponent::BeginPlay()
 	}
 }
 
-void UGarPhysicalAnimationComponent::OnRefresh(float DeltaTime)
+void UGarPhysicalAnimationComponent::OnOwnerTick(float DeltaTime)
 {
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 
@@ -679,28 +679,34 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 			if (Settings->TimeAfterGroundedForForceFreezing > 0.0f &&
 				TimeAfterGrounded > Settings->TimeAfterGroundedForForceFreezing)
 			{
-				bFreezing = true;
+				if (ElapsedTime > Settings->StartBlendTime)
+				{
+					bFreezing = true;
+				}
 			}
 			else if (RootBoneSpeed < Settings->RootBoneSpeedConsideredAsStopped)
 			{
 				TimeAfterGroundedAndStopped += DeltaTime;
 
-				if (Settings->TimeAfterGroundedAndStoppedForForceFreezing > 0.0f &&
-					TimeAfterGroundedAndStopped > Settings->TimeAfterGroundedAndStoppedForForceFreezing)
+				if (ElapsedTime > Settings->StartBlendTime)
 				{
-					bFreezing = true;
-				}
-				else
-				{
-					MaxBoneSpeed = 0.0f;
-					MaxBoneAngularSpeed = 0.0f;
-					Character->GetMesh()->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body) {
-						float Speed = Body->GetUnrealWorldVelocity().Size();
-						if(Speed > MaxBoneSpeed) MaxBoneSpeed = Speed;
-						Speed = FMath::RadiansToDegrees(Body->GetUnrealWorldAngularVelocityInRadians().Size());
-						if(Speed > MaxBoneAngularSpeed) MaxBoneAngularSpeed = Speed;
-					});
-					bFreezing = MaxBoneSpeed < Settings->SpeedThresholdToFreeze && MaxBoneAngularSpeed < Settings->AngularSpeedThresholdToFreeze;
+					if (Settings->TimeAfterGroundedAndStoppedForForceFreezing > 0.0f &&
+						TimeAfterGroundedAndStopped > Settings->TimeAfterGroundedAndStoppedForForceFreezing)
+					{
+						bFreezing = true;
+					}
+					else
+					{
+						MaxBoneSpeed = 0.0f;
+						MaxBoneAngularSpeed = 0.0f;
+						Character->GetMesh()->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body) {
+							float Speed = Body->GetUnrealWorldVelocity().Size();
+							if(Speed > MaxBoneSpeed) MaxBoneSpeed = Speed;
+							Speed = FMath::RadiansToDegrees(Body->GetUnrealWorldAngularVelocityInRadians().Size());
+							if(Speed > MaxBoneAngularSpeed) MaxBoneAngularSpeed = Speed;
+						});
+						bFreezing = MaxBoneSpeed < Settings->SpeedThresholdToFreeze && MaxBoneAngularSpeed < Settings->AngularSpeedThresholdToFreeze;
+					}
 				}
 			}
 			else

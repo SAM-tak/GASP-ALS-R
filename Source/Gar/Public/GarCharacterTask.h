@@ -34,15 +34,15 @@ public:
 
 	virtual void Begin();
 
-	virtual void Refresh(float DeltaTime);
+	virtual void Tick(float DeltaTime);
 
 	virtual void OnPossessed(AController* NewController);
 
 	virtual void OnUnPossessed(AController* PreviousController);
 
-	void End();
+	virtual void End();
 
-	void Cancel();
+	virtual void Cancel();
 
 	UFUNCTION(BlueprintPure, BlueprintNativeEvent, Category = "GAR|CharacterTask")
 	bool IsEpilogRunning() const;
@@ -66,8 +66,8 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|CharacterTask", DisplayName = "OnBegin", Meta = (ScriptName = "OnBegin"))
 	void K2_OnBegin();
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|CharacterTask", DisplayName = "OnRefresh", Meta = (ScriptName = "OnRefresh"))
-	void K2_OnRefresh(float DeltaTime);
+	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|CharacterTask", DisplayName = "OnTick", Meta = (ScriptName = "OnTick"))
+	void K2_OnTick(float DeltaTime);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GAR|CharacterTask", DisplayName = "OnEnd", Meta = (ScriptName = "OnEnd"))
 	void K2_OnEnd(bool bWasCancelled);

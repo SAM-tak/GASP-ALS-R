@@ -17,22 +17,8 @@ void UGarOverlayTask::Begin()
 			Character->GetMesh()->LinkAnimClassLayers(OverlayAnimClass);
 			OverlayAnimInstance = Cast<UGarOverlayAnimInstance>(Character->GetMesh()->GetLinkedAnimLayerInstanceByClass(OverlayAnimClass));
 		}
-
-		if (OverlayAnimInstance.IsValid())
-		{
-			OverlayAnimInstance->Refresh(this);
-		}
 	}
 	Super::Begin();
-}
-
-void UGarOverlayTask::Refresh(float DeltaTime)
-{
-	Super::Refresh(DeltaTime);
-	if (OverlayAnimInstance.IsValid())
-	{
-		OverlayAnimInstance->Refresh(this);
-	}
 }
 
 void UGarOverlayTask::OnFinished()

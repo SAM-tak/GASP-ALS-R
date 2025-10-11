@@ -419,9 +419,9 @@ void AGarCharacter::Tick(const float DeltaTime)
 		AbilitySystem->SetLooseGameplayTagCount(GarGaitTags::Sprinting, Gait == GarGaitTags::Sprinting ? 1 : 0);
 	}
 
-	OnRefresh.Broadcast(DeltaTime);
-
 	Super::Tick(DeltaTime);
+
+	OnTick.Broadcast(DeltaTime);
 }
 
 void AGarCharacter::AddMovementInput(FVector WorldDirection, float ScaleValue, bool bForce)

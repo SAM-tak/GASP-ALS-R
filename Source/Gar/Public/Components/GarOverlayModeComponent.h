@@ -30,7 +30,7 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	virtual void OnRefresh_Implementation(float DeltaTime) override;
+	virtual void OnOwnerTick_Implementation(float DeltaTime) override;
 
 	virtual void OnPossessed_Implementation(AController* NewController) override;
 

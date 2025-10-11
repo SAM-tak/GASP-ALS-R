@@ -28,11 +28,11 @@ void UGarCharacterTask::Begin()
 	}
 }
 
-void UGarCharacterTask::Refresh(float DeltaTime)
+void UGarCharacterTask::Tick(float DeltaTime)
 {
 	if (bActive)
 	{
-		K2_OnRefresh(DeltaTime);
+		K2_OnTick(DeltaTime);
 	}
 }
 

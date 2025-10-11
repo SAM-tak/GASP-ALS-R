@@ -21,7 +21,7 @@ DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnPossessorChanged, AControl
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnSetupPlayerInputComponent, UInputComponent*);
 
-DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnRefresh, float);
+DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnTick, float);
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnChangeGameplayTag, const FGameplayTag &);
 
@@ -206,7 +206,7 @@ public:
 
 	FGarCharacter_OnSetupPlayerInputComponent OnSetupPlayerInputComponent;
 
-	FGarCharacter_OnRefresh OnRefresh;
+	FGarCharacter_OnTick OnTick;
 
 	virtual void Tick(float DeltaTime) override;
 

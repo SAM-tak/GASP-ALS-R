@@ -29,6 +29,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GAR|State", Transient)
 	uint8 bFacingUpward : 1{false};
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GAR|State", Transient)
+	uint8 bRagdollingTaskActive : 1{false};
+
 public:
 	FPoseSnapshot& GetFinalPoseSnapshot();
 
@@ -36,12 +39,15 @@ public:
 
 	void UnFreeze();
 
-	void SetStartBlendTime(float NewStartBlendTime);
+	FORCEINLINE void SetStartBlendTime(float NewStartBlendTime)
+	{
+		StartBlendTime = NewStartBlendTime;
+	}
+
+	FORCEINLINE void SetRagdollingTaskActive(bool bNewRagdollingTaskActive)
+	{
+		bRagdollingTaskActive = bNewRagdollingTaskActive;
+	}
 
 	void Refresh(const struct FGarRagdollingState& State, bool bNewActive);
 };
-
-inline void UGarRagdollingAnimInstance::SetStartBlendTime(float NewStartBlendTime)
-{
-	StartBlendTime = NewStartBlendTime;
-}

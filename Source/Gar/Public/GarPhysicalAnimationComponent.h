@@ -220,7 +220,7 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	virtual void OnRefresh(float DeltaTime);
+	virtual void OnOwnerTick(float DeltaTime);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Traversal")
 	void ChooseProfile(FGarPAProfileChooserResult& OutResult) const;

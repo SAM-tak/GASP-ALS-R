@@ -30,5 +30,5 @@ protected:
 	void OnUnPossessed(AController* PreviousController);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|CharacterComponent")
-	void OnRefresh(float DeltaTime);
+	void OnOwnerTick(float DeltaTime);
 };

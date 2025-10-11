@@ -38,13 +38,13 @@ protected:
 
 	virtual void BeginPlay() override;
 
-	virtual void OnRefresh_Implementation(float DeltaTime) override;
+	virtual void OnOwnerTick_Implementation(float DeltaTime) override;
 
 	virtual void OnPossessed_Implementation(AController* NewController) override;
 
 	virtual void OnUnPossessed_Implementation(AController* PreviousController) override;
 
-	void ChangeOverrideTaskIfNeeded(const FGameplayTag& Tag);
+	void ChangeOverrideTask(const FGameplayTag& Tag);
 
 	void CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem);
 };

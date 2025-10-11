@@ -87,13 +87,13 @@ void UGarLocalMontageComponent::OnEndTask(UGarLocalMontageTask* Task)
 	}
 }
 
-void UGarLocalMontageComponent::OnRefresh_Implementation(float DeltaTime)
+void UGarLocalMontageComponent::OnOwnerTick_Implementation(float DeltaTime)
 {
-	Super::OnRefresh_Implementation(DeltaTime);
+	Super::OnOwnerTick_Implementation(DeltaTime);
 
 	if (CurrentLocalMontageTask.IsValid())
 	{
-		CurrentLocalMontageTask->Refresh(DeltaTime);
+		CurrentLocalMontageTask->Tick(DeltaTime);
 	}
 }
 
@@ -115,8 +115,7 @@ void UGarLocalMontageComponent::OnUnPossessed_Implementation(AController* Previo
 	}
 }
 
-void UGarLocalMontageComponent::AddOrUpdateReplicatedWarpTargetFromLocationAndRotation(FName WarpTargetName, FVector TargetLocation,
-																									  FRotator TargetRotation)
+void UGarLocalMontageComponent::AddOrUpdateReplicatedWarpTargetFromLocationAndRotation(FName WarpTargetName, FVector TargetLocation, FRotator TargetRotation)
 {
 	ensure(Character->GetLocalRole() > ROLE_SimulatedProxy);
 
@@ -128,7 +127,8 @@ void UGarLocalMontageComponent::AddOrUpdateReplicatedWarpTargetFromLocationAndRo
 	}
 }
 
-void UGarLocalMontageComponent::MulticastAddOrUpdateWarpTargetFromLocationAndRotation_Implementation(FName WarpTargetName, FVector_NetQuantize TargetLocation,
+void UGarLocalMontageComponent::MulticastAddOrUpdateWarpTargetFromLocationAndRotation_Implementation(FName WarpTargetName,
+																									 FVector_NetQuantize TargetLocation,
 																									 FRotator TargetRotation)
 {
 	if (Character->GetLocalRole() == ROLE_SimulatedProxy)

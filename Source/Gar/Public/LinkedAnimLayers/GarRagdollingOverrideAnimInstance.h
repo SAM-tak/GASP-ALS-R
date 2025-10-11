@@ -1,30 +1,39 @@
 #pragma once
 
-#include "GarLinkedAnimationInstance.h"
-#include "GarCharacterTaskAnimInstance.generated.h"
+#include "GarOverrideAnimInstance.h"
+#include "GarRagdollingOverrideAnimInstance.generated.h"
 
-class UGarCharacterTask;
+class UGarRagdollingTask;
 struct FAnimUpdateContext;
 struct FAnimNodeReference;
 
 UCLASS(Abstract)
-class GAR_API UGarCharacterTaskAnimInstance : public UGarLinkedAnimationInstance
+class GAR_API UGarRagdollingOverrideAnimInstance : public UGarOverrideAnimInstance
 {
 	GENERATED_BODY()
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAR|State", Transient)
-	uint8 bCharacterTaskActive : 1{false};
+	uint8 bRagdollingTaskActive : 1{false};
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAR|State", Transient)
 	float ObservingFinalBlendWeight{0.0f};
 
 public:
-	virtual void Refresh(const UGarCharacterTask* CharacterTask);
-
-	bool GetCharacterTaskActive()
+	void Reset()
 	{
-		return bCharacterTaskActive;
+		bRagdollingTaskActive = false;
+		ObservingFinalBlendWeight = 0.0f;
+	}
+
+	void SetRagdollingTaskActive(bool bNewRagdollingTaskActive)
+	{
+		bRagdollingTaskActive = bNewRagdollingTaskActive;
+	}
+
+	bool GetRagdollingTaskActive()
+	{
+		return bRagdollingTaskActive;
 	}
 
 	float GetObservingFinalBlendWeight()

@@ -45,7 +45,7 @@ public:
 	float RootBoneSpeedConsideredAsStopped{5.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Freezing", Meta = (ClampMin = 0, EditCondition = "bAllowFreeze", ForceUnits = "cm/s"))
-	float SpeedThresholdToFreeze{5.0f};
+	float SpeedThresholdToFreeze{1.0f};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|Freezing", Meta = (ClampMin = 0, EditCondition = "bAllowFreeze", ForceUnits = "deg"))
 	float AngularSpeedThresholdToFreeze{45.0f};

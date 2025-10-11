@@ -3,7 +3,7 @@
 #include "AbilitySystemComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarCharacter.h"
-#include "LinkedAnimLayers/GarCharacterTaskAnimInstance.h"
+//#include "LinkedAnimLayers/GarOverlayAnimInstance.h"
 #include "CharacterTasks/GarOverlayTask.h"
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
 #include "Utility/GarMath.h"
@@ -15,8 +15,9 @@ void UGarOverlayModeComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	if (Character.IsValid() && Character->GetAbilitySystemComponent())
+	if (Character.IsValid() && Character->GetAbilitySystemComponent() && Character->GetLocalRole() == ROLE_SimulatedProxy)
 	{
+		// No effect
 		Character->GetGarAbilitySystem()->OnRepActivateAbilities.AddUObject(this, &ThisClass::CheckActiveAbility);
 	}
 }
@@ -36,6 +37,10 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& OverlayMode
 		if (CurrentOverlayTask->HasFinished())
 		{
 			CurrentOverlayTask.Reset();
+		}
+		else
+		{
+			return;
 		}
 	}
 
@@ -62,20 +67,20 @@ void UGarOverlayModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* Ab
 {
 	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
 	{
-		//for (auto& Ability : AbilitySystem->GetActivatableAbilities())
-		//{
-		//	auto OverlayModeAbility{Cast<UGarGameplayAbility_OverlayMode>(Ability.Ability)};
-		//	if (OverlayModeAbility)
-		//	{
-		//		RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
-		//	}
-		//}
+		for (auto& Ability : AbilitySystem->GetActivatableAbilities())
+		{
+			auto OverlayModeAbility{Cast<UGarGameplayAbility_OverlayMode>(Ability.Ability)};
+			if (OverlayModeAbility)
+			{
+				RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
+			}
+		}
 	}
 }
 
-void UGarOverlayModeComponent::OnRefresh_Implementation(float DeltaTime)
+void UGarOverlayModeComponent::OnOwnerTick_Implementation(float DeltaTime)
 {
-	Super::OnRefresh_Implementation(DeltaTime);
+	Super::OnOwnerTick_Implementation(DeltaTime);
 
 	FGameplayTagContainer OverlayTagsMask;
 	for (auto& KeyValue : OverlayClassMap)
@@ -94,7 +99,7 @@ void UGarOverlayModeComponent::OnRefresh_Implementation(float DeltaTime)
 
 	if (CurrentOverlayTask.IsValid())
 	{
-		CurrentOverlayTask->Refresh(DeltaTime);
+		CurrentOverlayTask->Tick(DeltaTime);
 	}
 }
 

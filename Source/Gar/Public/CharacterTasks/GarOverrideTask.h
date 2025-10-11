@@ -31,8 +31,6 @@ protected:
 public:
 	virtual void Begin() override;
 
-	virtual void Refresh(float DeltaTime) override;
-
 protected:
 	virtual void OnFinished() override;
 };

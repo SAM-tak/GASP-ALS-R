@@ -16,8 +16,9 @@ void UGarOverrideModeComponent::OnRegister()
 {
 	Super::OnRegister();
 
-	if (Character.IsValid() && Character->GetAbilitySystemComponent())
+	if (Character.IsValid() && Character->GetAbilitySystemComponent() && Character->GetLocalRole() == ROLE_SimulatedProxy)
 	{
+		// no effect
 		Character->GetGarAbilitySystem()->OnRepActivateAbilities.AddUObject(this, &ThisClass::CheckActiveAbility);
 	}
 }
@@ -42,22 +43,19 @@ void UGarOverrideModeComponent::EndCurrentRagdollingTask()
 	}
 }
 
-void UGarOverrideModeComponent::ChangeOverrideTaskIfNeeded(const FGameplayTag& OverrideMode)
+void UGarOverrideModeComponent::ChangeOverrideTask(const FGameplayTag& OverrideMode)
 {
 	if (CurrentOverrideTask.IsValid())
 	{
-		if (CurrentOverrideTag == OverrideMode)
+		CurrentOverrideTask->End();
+		if (CurrentOverrideTask->HasFinished())
 		{
-			return;
+			CurrentOverrideTask.Reset();
+			CurrentOverrideTag = FGameplayTag::EmptyTag;
 		}
 		else
 		{
-			CurrentOverrideTask->End();
-			if (CurrentOverrideTask->HasFinished())
-			{
-				CurrentOverrideTask.Reset();
-				CurrentOverrideTag = FGameplayTag::EmptyTag;
-			}
+			return;
 		}
 	}
 
@@ -84,20 +82,20 @@ void UGarOverrideModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* A
 {
 	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
 	{
-		//for (auto& Ability : AbilitySystem->GetActivatableAbilities())
-		//{
-		//	auto RagdollingAbility{Cast<UGarGameplayAbility_Ragdolling>(Ability.Ability)};
-		//	if (RagdollingAbility)
-		//	{
-		//		RegisterOverrideTask(RagdollingAbility->GetAssetTags().First(), RagdollingAbility->OverrideTaskClass);
-		//	}
-		//}
+		for (auto& Ability : AbilitySystem->GetActivatableAbilities())
+		{
+			auto RagdollingAbility{Cast<UGarGameplayAbility_Ragdolling>(Ability.Ability)};
+			if (RagdollingAbility)
+			{
+				RegisterOverrideTask(RagdollingAbility->GetAssetTags().First(), RagdollingAbility->OverrideTaskClass);
+			}
+		}
 	}
 }
 
-void UGarOverrideModeComponent::OnRefresh_Implementation(float DeltaTime)
+void UGarOverrideModeComponent::OnOwnerTick_Implementation(float DeltaTime)
 {
-	Super::OnRefresh_Implementation(DeltaTime);
+	Super::OnOwnerTick_Implementation(DeltaTime);
 
 	FGameplayTagContainer OverrideTagsMask;
 	for (auto& KeyValue : OverrideClassMap)
@@ -109,11 +107,14 @@ void UGarOverrideModeComponent::OnRefresh_Implementation(float DeltaTime)
 	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(Container);
 	auto OverrideMode{Container.Filter(OverrideTagsMask).First()};
 
-	ChangeOverrideTaskIfNeeded(OverrideMode);
+	if (CurrentOverrideTag != OverrideMode)
+	{
+		ChangeOverrideTask(OverrideMode);
+	}
 
 	if (CurrentOverrideTask.IsValid())
 	{
-		CurrentOverrideTask->Refresh(DeltaTime);
+		CurrentOverrideTask->Tick(DeltaTime);
 	}
 }
 

@@ -45,7 +45,7 @@ void UGarCharacterComponent::OnRegister()
 	{
 		Character->OnPossessed_Client.AddUObject(this, &ThisClass::OnPossessed);
 		Character->OnUnPossessed_Client.AddUObject(this, &ThisClass::OnUnPossessed);
-		Character->OnRefresh.AddUObject(this, &ThisClass::OnRefresh);
+		Character->OnTick.AddUObject(this, &ThisClass::OnOwnerTick);
 	}
 }
 
@@ -53,4 +53,4 @@ void UGarCharacterComponent::OnPossessed_Implementation(AController* NewControll
 
 void UGarCharacterComponent::OnUnPossessed_Implementation(AController* PreviousController) {}
 
-void UGarCharacterComponent::OnRefresh_Implementation(float DeltaTime) {}
+void UGarCharacterComponent::OnOwnerTick_Implementation(float DeltaTime) {}
