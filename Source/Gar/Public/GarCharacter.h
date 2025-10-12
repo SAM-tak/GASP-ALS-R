@@ -104,7 +104,10 @@ protected:
 	FGameplayTag InitialPerspective{GarPerspectiveTags::ThirdPerson};
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
-	FGameplayTag InitialOverlayMode{GarOverlayModeTags::Default};
+	FGameplayTag InitialOverlay{FGameplayTag::EmptyTag};
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings|Desired State")
+	FGameplayTag InitialDeltaOverlay{FGameplayTag::EmptyTag};
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter|State", Transient, Replicated)
 	FRotator ReplicatedControlRotation{ForceInit};

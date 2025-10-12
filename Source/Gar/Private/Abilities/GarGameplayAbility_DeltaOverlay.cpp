@@ -11,14 +11,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_DeltaOverlay)
 
-UGarGameplayAbility_DeltaOverlay::UGarGameplayAbility_DeltaOverlay(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-	SetAssetTags(FGameplayTagContainer(GarOverlayModeTags::Default));
-	ActivationOwnedTags.AddTag(GarOverlayModeTags::Default);
-	CancelAbilitiesWithTag.AddTag(GarOverlayModeTags::Root);
-	BlockAbilitiesWithTag.AddTag(GarOverlayModeTags::Default);
-}
-
 void UGarGameplayAbility_DeltaOverlay::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
 {
 	Super::OnGiveAbility(ActorInfo, Spec);

@@ -168,7 +168,8 @@ void AGarCharacter::PostInitializeComponents()
 	if (IsValid(AbilitySystem))
 	{
 		AbilitySystem->Initialize(this);
-		AbilitySystem->TryActivateAbilitiesBySingleTag(InitialOverlayMode);
+		AbilitySystem->TryActivateAbilitiesBySingleTag(InitialOverlay);
+		AbilitySystem->TryActivateAbilitiesBySingleTag(InitialDeltaOverlay);
 	}
 
 	Super::PostInitializeComponents();

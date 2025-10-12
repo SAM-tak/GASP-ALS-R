@@ -13,7 +13,7 @@ class UGarOverlayTask;
 UCLASS(Abstract)
 class GAR_API UGarGameplayAbility_OverlayMode : public UGarGameplayAbility
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAR", Transient, Meta = (DisplayThumbnail = false))

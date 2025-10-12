@@ -13,7 +13,7 @@ class UGarDeltaOverlayTask;
 UCLASS(Abstract)
 class GAR_API UGarGameplayAbility_DeltaOverlay : public UGarGameplayAbility
 {
-	GENERATED_UCLASS_BODY()
+	GENERATED_BODY()
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAR", Transient, Meta = (DisplayThumbnail = false))

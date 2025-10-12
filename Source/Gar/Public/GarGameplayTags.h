@@ -63,12 +63,6 @@ namespace GarLocomotionActionTags
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Dying)
 }
 
-namespace GarOverlayModeTags
-{
-	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
-	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Default)
-}
-
 // Loose Gameplay Tag
 
 namespace GarLocomotionModeTags

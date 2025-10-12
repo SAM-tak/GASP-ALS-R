@@ -11,14 +11,6 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_OverlayMode)
 
-UGarGameplayAbility_OverlayMode::UGarGameplayAbility_OverlayMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-	SetAssetTags(FGameplayTagContainer(GarOverlayModeTags::Default));
-	ActivationOwnedTags.AddTag(GarOverlayModeTags::Default);
-	CancelAbilitiesWithTag.AddTag(GarOverlayModeTags::Root);
-	BlockAbilitiesWithTag.AddTag(GarOverlayModeTags::Default);
-}
-
 void UGarGameplayAbility_OverlayMode::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
 {
 	Super::OnGiveAbility(ActorInfo, Spec);

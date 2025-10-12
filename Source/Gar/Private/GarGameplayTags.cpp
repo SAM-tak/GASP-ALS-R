@@ -79,12 +79,6 @@ namespace GarGaitTags
 	UE_DEFINE_GAMEPLAY_TAG(Sprinting, "Gar.Gait.Sprinting")
 }
 
-namespace GarOverlayModeTags
-{
-	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.OverlayMode")
-	UE_DEFINE_GAMEPLAY_TAG(Default, "Gar.OverlayMode.Default")
-}
-
 namespace GarLocomotionActionTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.LocomotionAction")

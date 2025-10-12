@@ -47,9 +47,6 @@ public:
 	float SprintOffSpeed = 200.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
-	FGameplayTagContainer OverlayModeTags{GarOverlayModeTags::Root};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
 	FGameplayTagContainer ActionTags{GarLocomotionActionTags::Root};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
