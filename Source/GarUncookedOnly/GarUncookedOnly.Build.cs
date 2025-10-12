@@ -18,7 +18,7 @@ public class GARUncookedOnly : ModuleRules
 		{
 			PublicDependencyModuleNames.AddRange(
 			[
-				"AnimGraph"
+				"AnimGraph", "AnimGraphRuntime"
 			]);
 
 			PrivateDependencyModuleNames.AddRange(

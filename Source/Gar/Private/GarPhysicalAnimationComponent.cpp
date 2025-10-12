@@ -616,9 +616,9 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	auto NetMode{Character->GetWorld()->GetNetMode()};
 
 	// just for info.
-	Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
-											DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
-											DeltaTime, Settings->VelocityInterpolationSpeed);
+	//Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
+	//										DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
+	//										DeltaTime, Settings->VelocityInterpolationSpeed);
 	PrevActorLocation = Mover->GetUpdatedComponentTransform().GetLocation();
 
 	// Prevent the capsule from going through the ground when the ragdoll is lying on the ground.

@@ -11,7 +11,8 @@ public class GAR : ModuleRules
 
         PublicDependencyModuleNames.AddRange(
 		[
-			"Core", "CoreUObject", "Engine", "EnhancedInput", "GameplayTags", "GameplayAbilities", "GameplayTasks", "ModularGameplay", "PoseSearch", "Mover"
+			"Core", "CoreUObject", "Engine", "EnhancedInput", "GameplayTags", "GameplayAbilities", "GameplayTasks", "ModularGameplay", "PoseSearch",
+			"Mover", "AnimationWarpingRuntime"
 		]);
 
         PrivateDependencyModuleNames.AddRange(
