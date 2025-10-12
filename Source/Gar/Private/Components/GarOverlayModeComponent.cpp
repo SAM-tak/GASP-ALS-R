@@ -4,9 +4,9 @@
 #include "GarAbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "CharacterTasks/GarOverlayTask.h"
-#include "CharacterTasks/GarAdditiveOverlayTask.h"
+#include "CharacterTasks/GarDeltaOverlayTask.h"
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
-#include "Abilities/GarGameplayAbility_AdditiveOverlay.h"
+#include "Abilities/GarGameplayAbility_DeltaOverlay.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 
@@ -28,7 +28,7 @@ void UGarOverlayModeComponent::BeginPlay()
 	Super::BeginPlay();
 
 	InstancedOverlayTasks.Reset();
-	InstancedAdditiveOverlayTasks.Reset();
+	InstancedDeltaOverlayTasks.Reset();
 }
 
 void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayMode)
@@ -65,14 +65,14 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayM
 	}
 }
 
-void UGarOverlayModeComponent::ChangeAdditiveOverlayTask(const FGameplayTag& NewAdditiveOverlayMode)
+void UGarOverlayModeComponent::ChangeDeltaOverlayTask(const FGameplayTag& NewDeltaOverlayMode)
 {
-	if (CurrentAdditiveOverlayTask.IsValid())
+	if (CurrentDeltaOverlayTask.IsValid())
 	{
-		CurrentAdditiveOverlayTask->End();
-		if (CurrentAdditiveOverlayTask->HasFinished())
+		CurrentDeltaOverlayTask->End();
+		if (CurrentDeltaOverlayTask->HasFinished())
 		{
-			CurrentAdditiveOverlayTask.Reset();
+			CurrentDeltaOverlayTask.Reset();
 		}
 		else
 		{
@@ -80,22 +80,22 @@ void UGarOverlayModeComponent::ChangeAdditiveOverlayTask(const FGameplayTag& New
 		}
 	}
 
-	if (!CurrentAdditiveOverlayTask.IsValid() && AdditiveOverlayClassMap.Contains(NewAdditiveOverlayMode))
+	if (!CurrentDeltaOverlayTask.IsValid() && DeltaOverlayClassMap.Contains(NewDeltaOverlayMode))
 	{
-		if (InstancedAdditiveOverlayTasks.Contains(NewAdditiveOverlayMode))
+		if (InstancedDeltaOverlayTasks.Contains(NewDeltaOverlayMode))
 		{
-			CurrentAdditiveOverlayTask = InstancedAdditiveOverlayTasks[NewAdditiveOverlayMode];
+			CurrentDeltaOverlayTask = InstancedDeltaOverlayTasks[NewDeltaOverlayMode];
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarAdditiveOverlayTask>(Character.Get(), AdditiveOverlayClassMap[NewAdditiveOverlayMode])};
+			auto* NewTask{NewObject<UGarDeltaOverlayTask>(Character.Get(), DeltaOverlayClassMap[NewDeltaOverlayMode])};
 			NewTask->Component = this;
-			InstancedAdditiveOverlayTasks.Add(NewAdditiveOverlayMode, NewTask);
-			CurrentAdditiveOverlayTask = NewTask;
+			InstancedDeltaOverlayTasks.Add(NewDeltaOverlayMode, NewTask);
+			CurrentDeltaOverlayTask = NewTask;
 			NewTask->OnRegister();
 		}
-		CurrentAdditiveOverlayTag = NewAdditiveOverlayMode;
-		CurrentAdditiveOverlayTask->Begin();
+		CurrentDeltaOverlayTag = NewDeltaOverlayMode;
+		CurrentDeltaOverlayTask->Begin();
 	}
 }
 
@@ -110,10 +110,10 @@ void UGarOverlayModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* Ab
 			{
 				RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
 			}
-			auto AdditiveOverlayModeAbility{Cast<UGarGameplayAbility_AdditiveOverlay>(Ability.Ability)};
-			if (AdditiveOverlayModeAbility)
+			auto DeltaOverlayModeAbility{Cast<UGarGameplayAbility_DeltaOverlay>(Ability.Ability)};
+			if (DeltaOverlayModeAbility)
 			{
-				RegisterAdditiveOverlayTask(AdditiveOverlayModeAbility->GetAssetTags().First(), AdditiveOverlayModeAbility->AdditiveOverlayTaskClass);
+				RegisterDeltaOverlayTask(DeltaOverlayModeAbility->GetAssetTags().First(), DeltaOverlayModeAbility->DeltaOverlayTaskClass);
 			}
 		}
 	}
@@ -178,18 +178,18 @@ void UGarOverlayModeComponent::UnregisterOverlayTask(const FGameplayTag& Overlay
 	}
 }
 
-void UGarOverlayModeComponent::RegisterAdditiveOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarAdditiveOverlayTask> AdditiveOverlayTaskClass)
+void UGarOverlayModeComponent::RegisterDeltaOverlayTask(const FGameplayTag& DeltaOverlayMode, TSubclassOf<UGarDeltaOverlayTask> DeltaOverlayTaskClass)
 {
-	if (OverlayMode.IsValid() && AdditiveOverlayTaskClass)
+	if (DeltaOverlayMode.IsValid() && DeltaOverlayTaskClass)
 	{
-		AdditiveOverlayClassMap.Add(OverlayMode, AdditiveOverlayTaskClass);
+		DeltaOverlayClassMap.Add(DeltaOverlayMode, DeltaOverlayTaskClass);
 	}
 }
 
-void UGarOverlayModeComponent::UnregisterAdditiveOverlayTask(const FGameplayTag& OverlayMode)
+void UGarOverlayModeComponent::UnregisterDeltaOverlayTask(const FGameplayTag& DeltaOverlayMode)
 {
-	if (OverlayMode.IsValid())
+	if (DeltaOverlayMode.IsValid())
 	{
-		AdditiveOverlayClassMap.Remove(OverlayMode);
+		DeltaOverlayClassMap.Remove(DeltaOverlayMode);
 	}
 }

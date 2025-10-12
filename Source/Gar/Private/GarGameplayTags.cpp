@@ -85,14 +85,6 @@ namespace GarOverlayModeTags
 	UE_DEFINE_GAMEPLAY_TAG(Default, "Gar.OverlayMode.Default")
 }
 
-namespace GarAdditiveOverlayModeTags
-{
-	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.AdditiveOverlayMode")
-	UE_DEFINE_GAMEPLAY_TAG(Default, "Gar.AdditiveOverlayMode.Default")
-	UE_DEFINE_GAMEPLAY_TAG(Masculine, "Gar.AdditiveOverlayMode.Masculine")
-	UE_DEFINE_GAMEPLAY_TAG(Feminine, "Gar.AdditiveOverlayMode.Feminine")
-}
-
 namespace GarLocomotionActionTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.LocomotionAction")

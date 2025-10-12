@@ -7,7 +7,7 @@
 #include "Utility/GarLog.h"
 
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
-#include "Abilities/GarGameplayAbility_AdditiveOverlay.h"
+#include "Abilities/GarGameplayAbility_DeltaOverlay.h"
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "Components/GarOverlayModeComponent.h"
 #include "Components/GarOverrideModeComponent.h"
@@ -92,11 +92,11 @@ void UGarAbilitySet::GiveToAbilitySystem(UGarAbilitySystemComponent* GarAsc, UOb
 					{
 						OverlayModeComponent->RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
 					}
-					auto AdditiveOverlayModeAbility{Cast<UGarGameplayAbility_AdditiveOverlay>(Ability.Ability->GetDefaultObject<UGarGameplayAbility>())};
-					if (AdditiveOverlayModeAbility)
+					auto DeltaOverlayModeAbility{Cast<UGarGameplayAbility_DeltaOverlay>(Ability.Ability->GetDefaultObject<UGarGameplayAbility>())};
+					if (DeltaOverlayModeAbility)
 					{
-						OverlayModeComponent->RegisterAdditiveOverlayTask(AdditiveOverlayModeAbility->GetAssetTags().First(),
-							AdditiveOverlayModeAbility->AdditiveOverlayTaskClass);
+						OverlayModeComponent->RegisterDeltaOverlayTask(DeltaOverlayModeAbility->GetAssetTags().First(),
+							DeltaOverlayModeAbility->DeltaOverlayTaskClass);
 					}
 				}
 			}

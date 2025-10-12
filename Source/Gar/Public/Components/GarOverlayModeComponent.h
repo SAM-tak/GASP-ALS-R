@@ -5,7 +5,7 @@
 #include "GarOverlayModeComponent.generated.h"
 
 class UGarOverlayTask;
-class UGarAdditiveOverlayTask;
+class UGarDeltaOverlayTask;
 class UGarAbilitySystemComponent;
 
 UCLASS(AutoExpandCategories = ("GarOverlayModeComponent|Settings"), Meta = (BlueprintSpawnableComponent))
@@ -27,16 +27,16 @@ protected:
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient, Meta = (DisplayThumbnail = false))
-	TMap<FGameplayTag, TSubclassOf<UGarAdditiveOverlayTask>> AdditiveOverlayClassMap;
+	TMap<FGameplayTag, TSubclassOf<UGarDeltaOverlayTask>> DeltaOverlayClassMap;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	TWeakObjectPtr<UGarAdditiveOverlayTask> CurrentAdditiveOverlayTask;
+	TWeakObjectPtr<UGarDeltaOverlayTask> CurrentDeltaOverlayTask;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	FGameplayTag CurrentAdditiveOverlayTag;
+	FGameplayTag CurrentDeltaOverlayTag;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	TMap<FGameplayTag, TObjectPtr<UGarAdditiveOverlayTask>> InstancedAdditiveOverlayTasks;
+	TMap<FGameplayTag, TObjectPtr<UGarDeltaOverlayTask>> InstancedDeltaOverlayTasks;
 
 protected:
 	virtual void OnRegister() override;
@@ -51,7 +51,7 @@ protected:
 
 	void ChangeOverlayTask(const FGameplayTag& NewOverlayMode);
 
-	void ChangeAdditiveOverlayTask(const FGameplayTag& NewAdditiveOverlayMode);
+	void ChangeDeltaOverlayTask(const FGameplayTag& NewDeltaOverlayMode);
 
 	void CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem);
 
@@ -60,7 +60,7 @@ public:
 
 	void UnregisterOverlayTask(const FGameplayTag& OverlayMode);
 
-	void RegisterAdditiveOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarAdditiveOverlayTask> AdditiveOverlayTaskClass);
+	void RegisterDeltaOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarDeltaOverlayTask> DeltaOverlayTaskClass);
 
-	void UnregisterAdditiveOverlayTask(const FGameplayTag& OverlayMode);
+	void UnregisterDeltaOverlayTask(const FGameplayTag& OverlayMode);
 };

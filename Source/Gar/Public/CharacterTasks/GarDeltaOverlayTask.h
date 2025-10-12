@@ -3,16 +3,16 @@
 #pragma once
 
 #include "GarCharacterTask.h"
-#include "GarAdditiveOverlayTask.generated.h"
+#include "GarDeltaOverlayTask.generated.h"
 
-class UGarAdditiveOverlayAnimInstance;
+class UGarDeltaOverlayAnimInstance;
 class UGarOverlayModeComponent;
 
 /**
  *
  */
 UCLASS(Abstract)
-class GAR_API UGarAdditiveOverlayTask : public UGarCharacterTask
+class GAR_API UGarDeltaOverlayTask : public UGarCharacterTask
 {
 	GENERATED_BODY()
 
@@ -20,13 +20,13 @@ class GAR_API UGarAdditiveOverlayTask : public UGarCharacterTask
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Settings")
-	TSubclassOf<UGarAdditiveOverlayAnimInstance> AdditiveOverlayAnimClass;
+	TSubclassOf<UGarDeltaOverlayAnimInstance> DeltaOverlayAnimClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<UGarOverlayModeComponent> Component;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	TWeakObjectPtr<UGarAdditiveOverlayAnimInstance> AdditiveOverlayAnimInstance;
+	TWeakObjectPtr<UGarDeltaOverlayAnimInstance> DeltaOverlayAnimInstance;
 
 public:
 	virtual void Begin() override;

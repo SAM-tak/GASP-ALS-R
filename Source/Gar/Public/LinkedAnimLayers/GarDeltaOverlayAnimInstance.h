@@ -1,12 +1,12 @@
 #pragma once
 
 #include "GarLayeringAnimInstance.h"
-#include "GarAdditiveOverlayAnimInstance.generated.h"
+#include "GarDeltaOverlayAnimInstance.generated.h"
 
 // Additive Overlay Linked Anim Layer
 // Tag : "AdditiveOverlay"
 UCLASS(Abstract, AutoExpandCategories = ("GAR|Settings"))
-class GAR_API UGarAdditiveOverlayAnimInstance : public UGarLinkedAnimationInstance
+class GAR_API UGarDeltaOverlayAnimInstance : public UGarLinkedAnimationInstance
 {
 	GENERATED_BODY()
 };
