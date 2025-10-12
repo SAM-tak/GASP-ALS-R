@@ -71,6 +71,12 @@ protected:
 	UFUNCTION()
 	virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);
 
+	UFUNCTION()
+	virtual void OnMoverPostMovement(const FMoverTimeStep& TimeStep, FMoverSyncState& SyncState, FMoverAuxStateContext& AuxState);
+
+	UFUNCTION()
+	virtual void OnMoverPostFinalize(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState);
+
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|CharacterMover")
 	const UGarMovementSettings* GetSettings() const { return Settings; }

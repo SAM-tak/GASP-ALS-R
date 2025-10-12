@@ -24,6 +24,7 @@
 #include "GarPhysicalAnimationComponent.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
+#include "State/GarCharacterMoverSyncState.h"
 #include "Utility/GarUtility.h"
 #include "Utility/GarLog.h"
 
@@ -34,6 +35,8 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 #if !GAR_USE_GE_FOR_MOVEMENTSTATE
 	SetIsReplicatedByDefault(true);
 #endif
+	//PersistentSyncStateDataTypes.Add(FMoverDataPersistence(FGarCharacterMoverSyncState::StaticStruct(), true));
+
 	LocomotionModeTags.AddTag(GarLocomotionModeTags::Grounded);
 	LocomotionModeTags.AddTag(GarLocomotionModeTags::InAir);
 
@@ -107,6 +110,11 @@ void UGarCharacterMoverComponent::BeginPlay()
 	Super::BeginPlay();
 
 	OnPreSimulationTick.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPreSimulationTick);
+	//OnPostMovement.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPostMovement);
+	if (GetOwnerRole() == ROLE_SimulatedProxy)
+	{
+		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPostFinalize);
+	}
 }
 
 void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd)
@@ -202,6 +210,28 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 			JumpMove->UpwardsSpeed = CommonSettings->JumpUpwardsSpeed;
  			QueueInstantMovementEffect(JumpMove);
 		}
+	}
+}
+
+void UGarCharacterMoverComponent::OnMoverPostMovement(const FMoverTimeStep& TimeStep, FMoverSyncState& SyncState, FMoverAuxStateContext& AuxState)
+{
+	auto MySyncState = SyncState.SyncStateCollection.FindMutableDataByType<FGarCharacterMoverSyncState>();
+	if (MySyncState)
+	{
+		MySyncState->RotationMode = RotationMode;
+		MySyncState->Stance = Stance;
+		MySyncState->Gait = Gait;
+	}
+}
+
+void UGarCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+{
+	auto MySyncState = SyncState.SyncStateCollection.FindMutableDataByType<FGarCharacterMoverSyncState>();
+	if (MySyncState)
+	{
+		RotationMode = MySyncState->RotationMode;
+		Stance = MySyncState->Stance;
+		Gait = MySyncState->Gait;
 	}
 }
 
@@ -308,5 +338,13 @@ FGameplayTag UGarCharacterMoverComponent::GetGait() const
 
 bool UGarCharacterMoverComponent::IsWalkable(const FHitResult& Hit) const
 {
-	return Hit.IsValidBlockingHit() && UFloorQueryUtils::IsHitSurfaceWalkable(Hit, GetUpDirection(), Settings->MaxWalkSlopeCosine);
+	if (Settings)
+	{
+		return Hit.IsValidBlockingHit() && UFloorQueryUtils::IsHitSurfaceWalkable(Hit, GetUpDirection(), Settings->MaxWalkSlopeCosine);
+	}
+	if (CommonSettings)
+	{
+		return Hit.IsValidBlockingHit() && UFloorQueryUtils::IsHitSurfaceWalkable(Hit, GetUpDirection(), CommonSettings->MaxWalkSlopeCosine);
+	}
+	return Hit.IsValidBlockingHit() && UFloorQueryUtils::IsHitSurfaceWalkable(Hit, GetUpDirection(), 0.0f);
 }
