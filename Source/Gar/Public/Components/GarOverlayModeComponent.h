@@ -5,6 +5,7 @@
 #include "GarOverlayModeComponent.generated.h"
 
 class UGarOverlayTask;
+class UGarAdditiveOverlayTask;
 class UGarAbilitySystemComponent;
 
 UCLASS(AutoExpandCategories = ("GarOverlayModeComponent|Settings"), Meta = (BlueprintSpawnableComponent))
@@ -25,6 +26,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient, Meta = (DisplayThumbnail = false))
+	TMap<FGameplayTag, TSubclassOf<UGarAdditiveOverlayTask>> AdditiveOverlayClassMap;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
+	TWeakObjectPtr<UGarAdditiveOverlayTask> CurrentAdditiveOverlayTask;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
+	FGameplayTag CurrentAdditiveOverlayTag;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
+	TMap<FGameplayTag, TObjectPtr<UGarAdditiveOverlayTask>> InstancedAdditiveOverlayTasks;
+
 protected:
 	virtual void OnRegister() override;
 
@@ -36,7 +49,9 @@ protected:
 
 	virtual void OnUnPossessed_Implementation(AController* PreviousController) override;
 
-	void ChangeOverlayTask(const FGameplayTag& OverlayMode);
+	void ChangeOverlayTask(const FGameplayTag& NewOverlayMode);
+
+	void ChangeAdditiveOverlayTask(const FGameplayTag& NewAdditiveOverlayMode);
 
 	void CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem);
 
@@ -44,4 +59,8 @@ public:
 	void RegisterOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarOverlayTask> OverlayTaskClass);
 
 	void UnregisterOverlayTask(const FGameplayTag& OverlayMode);
+
+	void RegisterAdditiveOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarAdditiveOverlayTask> AdditiveOverlayTaskClass);
+
+	void UnregisterAdditiveOverlayTask(const FGameplayTag& OverlayMode);
 };

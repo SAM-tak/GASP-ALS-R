@@ -43,7 +43,7 @@ void UGarOverrideModeComponent::EndCurrentRagdollingTask()
 	}
 }
 
-void UGarOverrideModeComponent::ChangeOverrideTask(const FGameplayTag& OverrideMode)
+void UGarOverrideModeComponent::ChangeOverrideTask(const FGameplayTag& NewOverrideMode)
 {
 	if (CurrentOverrideTask.IsValid())
 	{
@@ -59,21 +59,21 @@ void UGarOverrideModeComponent::ChangeOverrideTask(const FGameplayTag& OverrideM
 		}
 	}
 
-	if (!CurrentOverrideTask.IsValid() && OverrideClassMap.Contains(OverrideMode))
+	if (!CurrentOverrideTask.IsValid() && OverrideClassMap.Contains(NewOverrideMode))
 	{
-		if (InstancedOverrideTasks.Contains(OverrideMode))
+		if (InstancedOverrideTasks.Contains(NewOverrideMode))
 		{
-			CurrentOverrideTask = InstancedOverrideTasks[OverrideMode];
+			CurrentOverrideTask = InstancedOverrideTasks[NewOverrideMode];
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarOverrideTask>(Character.Get(), OverrideClassMap[OverrideMode])};
+			auto* NewTask{NewObject<UGarOverrideTask>(Character.Get(), OverrideClassMap[NewOverrideMode])};
 			NewTask->Component = this;
-			InstancedOverrideTasks.Add(OverrideMode, NewTask);
+			InstancedOverrideTasks.Add(NewOverrideMode, NewTask);
 			CurrentOverrideTask = NewTask;
 			CurrentOverrideTask->OnRegister();
 		}
-		CurrentOverrideTag = OverrideMode;
+		CurrentOverrideTag = NewOverrideMode;
 		CurrentOverrideTask->Begin();
 	}
 }

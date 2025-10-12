@@ -69,6 +69,14 @@ namespace GarOverlayModeTags
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Default)
 }
 
+namespace GarAdditiveOverlayModeTags
+{
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Default)
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Masculine)
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Feminine)
+}
+
 // Loose Gameplay Tag
 
 namespace GarLocomotionModeTags

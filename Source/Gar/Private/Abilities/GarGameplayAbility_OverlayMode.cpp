@@ -1,17 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
-#include "Abilities/Tasks/GarAbilityTask_Tick.h"
-#include "GarCharacter.h"
-#include "GarCharacterMoverComponent.h"
-#include "GarAnimationInstance.h"
+
 #include "GarAbilitySystemComponent.h"
-#include "GarPhysicalAnimationComponent.h"
-#include "LinkedAnimLayers/GarOverlayAnimInstance.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "Components/GarOverlayModeComponent.h"
-#include "Net/UnrealNetwork.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
 #include "Utility/GarMath.h"

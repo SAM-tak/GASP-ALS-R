@@ -3,9 +3,10 @@
 #include "AbilitySystemComponent.h"
 #include "GarAbilitySystemComponent.h"
 #include "GarCharacter.h"
-//#include "LinkedAnimLayers/GarOverlayAnimInstance.h"
 #include "CharacterTasks/GarOverlayTask.h"
+#include "CharacterTasks/GarAdditiveOverlayTask.h"
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
+#include "Abilities/GarGameplayAbility_AdditiveOverlay.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 
@@ -27,9 +28,10 @@ void UGarOverlayModeComponent::BeginPlay()
 	Super::BeginPlay();
 
 	InstancedOverlayTasks.Reset();
+	InstancedAdditiveOverlayTasks.Reset();
 }
 
-void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& OverlayMode)
+void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayMode)
 {
 	if (CurrentOverlayTask.IsValid())
 	{
@@ -44,22 +46,56 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& OverlayMode
 		}
 	}
 
-	if (!CurrentOverlayTask.IsValid() && OverlayClassMap.Contains(OverlayMode))
+	if (!CurrentOverlayTask.IsValid() && OverlayClassMap.Contains(NewOverlayMode))
 	{
-		if (InstancedOverlayTasks.Contains(OverlayMode))
+		if (InstancedOverlayTasks.Contains(NewOverlayMode))
 		{
-			CurrentOverlayTask = InstancedOverlayTasks[OverlayMode];
+			CurrentOverlayTask = InstancedOverlayTasks[NewOverlayMode];
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarOverlayTask>(Character.Get(), OverlayClassMap[OverlayMode])};
+			auto* NewTask{NewObject<UGarOverlayTask>(Character.Get(), OverlayClassMap[NewOverlayMode])};
 			NewTask->Component = this;
-			InstancedOverlayTasks.Add(OverlayMode, NewTask);
+			InstancedOverlayTasks.Add(NewOverlayMode, NewTask);
 			CurrentOverlayTask = NewTask;
 			NewTask->OnRegister();
 		}
-		CurrentOverlayTag = OverlayMode;
+		CurrentOverlayTag = NewOverlayMode;
 		CurrentOverlayTask->Begin();
+	}
+}
+
+void UGarOverlayModeComponent::ChangeAdditiveOverlayTask(const FGameplayTag& NewAdditiveOverlayMode)
+{
+	if (CurrentAdditiveOverlayTask.IsValid())
+	{
+		CurrentAdditiveOverlayTask->End();
+		if (CurrentAdditiveOverlayTask->HasFinished())
+		{
+			CurrentAdditiveOverlayTask.Reset();
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	if (!CurrentAdditiveOverlayTask.IsValid() && AdditiveOverlayClassMap.Contains(NewAdditiveOverlayMode))
+	{
+		if (InstancedAdditiveOverlayTasks.Contains(NewAdditiveOverlayMode))
+		{
+			CurrentAdditiveOverlayTask = InstancedAdditiveOverlayTasks[NewAdditiveOverlayMode];
+		}
+		else
+		{
+			auto* NewTask{NewObject<UGarAdditiveOverlayTask>(Character.Get(), AdditiveOverlayClassMap[NewAdditiveOverlayMode])};
+			NewTask->Component = this;
+			InstancedAdditiveOverlayTasks.Add(NewAdditiveOverlayMode, NewTask);
+			CurrentAdditiveOverlayTask = NewTask;
+			NewTask->OnRegister();
+		}
+		CurrentAdditiveOverlayTag = NewAdditiveOverlayMode;
+		CurrentAdditiveOverlayTask->Begin();
 	}
 }
 
@@ -73,6 +109,11 @@ void UGarOverlayModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* Ab
 			if (OverlayModeAbility)
 			{
 				RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
+			}
+			auto AdditiveOverlayModeAbility{Cast<UGarGameplayAbility_AdditiveOverlay>(Ability.Ability)};
+			if (AdditiveOverlayModeAbility)
+			{
+				RegisterAdditiveOverlayTask(AdditiveOverlayModeAbility->GetAssetTags().First(), AdditiveOverlayModeAbility->AdditiveOverlayTaskClass);
 			}
 		}
 	}
@@ -134,5 +175,21 @@ void UGarOverlayModeComponent::UnregisterOverlayTask(const FGameplayTag& Overlay
 	if (OverlayMode.IsValid())
 	{
 		OverlayClassMap.Remove(OverlayMode);
+	}
+}
+
+void UGarOverlayModeComponent::RegisterAdditiveOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarAdditiveOverlayTask> AdditiveOverlayTaskClass)
+{
+	if (OverlayMode.IsValid() && AdditiveOverlayTaskClass)
+	{
+		AdditiveOverlayClassMap.Add(OverlayMode, AdditiveOverlayTaskClass);
+	}
+}
+
+void UGarOverlayModeComponent::UnregisterAdditiveOverlayTask(const FGameplayTag& OverlayMode)
+{
+	if (OverlayMode.IsValid())
+	{
+		AdditiveOverlayClassMap.Remove(OverlayMode);
 	}
 }
