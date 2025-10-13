@@ -80,6 +80,10 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 		return false;
 	}
 
+#if ENABLE_DRAW_DEBUG
+	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName())};
+#endif
+
 	Params.TargetPrimitive = TraceResult.TargetPrimitive;
 	Params.FrontWallNormal = TraceResult.FrontWallNormal;
 	Params.FrontLedgeLocation = TraceResult.FrontLedgeLocation;
@@ -105,9 +109,21 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 	TArray<UAnimMontage*> Candidates;
 
 	ChooseCandidate(ChooserInputs, Params.ChooserOutput, Candidates);
+#if ENABLE_DRAW_DEBUG
+	if (bDisplayDebug)
+	{
+		UE_LOG(LogGar, Log, TEXT("Chooser Input bHasFrontLedge: %d bHasBackLedge:%d bHasBackFloor:%d ObstacleHeight:%f ObstacleDepth:%f BackFloorFall:%f Speed:%f CurrentGameplayTags:%s"), ChooserInputs.bHasFrontLedge, ChooserInputs.bHasBackLedge, ChooserInputs.bHasBackFloor, ChooserInputs.ObstacleHeight, ChooserInputs.ObstacleDepth, ChooserInputs.BackFloorFall, ChooserInputs.Speed, *ChooserInputs.CurrentGameplayTags.ToString());
+	}
+#endif
 
 	if (Candidates.IsEmpty())
 	{
+#if ENABLE_DRAW_DEBUG
+		if (bDisplayDebug)
+		{
+			UE_LOG(LogGar, Log, TEXT("Chooser Faild."));
+		}
+#endif
 		return false;
 	}
 
@@ -115,13 +131,18 @@ bool UGarGameplayAbility_Traversal::CanTraversal(const FGameplayAbilitySpecHandl
 
 	if (!IsValid(Params.Result.SelectedAnim))
 	{
+#if ENABLE_DRAW_DEBUG
+		if (bDisplayDebug)
+		{
+			UE_LOG(LogGar, Log, TEXT("MotionMatch Faild."));
+		}
+#endif
 		return false;
 	}
 
 	ensure(Cast<UAnimMontage>(Params.Result.SelectedAnim));
 
 #if ENABLE_DRAW_DEBUG
-	bool bDisplayDebug{UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::TraversalDebugDisplayName())};
 	if (bDisplayDebug)
 	{
 		auto SelectedMontage{Cast<UAnimMontage>(Params.Result.SelectedAnim)};
@@ -205,7 +226,9 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 	                            FCollisionShape::MakeCapsule(TraceCapsuleRadius, ForwardTraceCapsuleHalfHeight),
 	                            {ForwardTraceTag, false, Character}, TraversalTraceResponses);
 
-	if (!ForwardTraceHit.IsValidBlockingHit())
+	const auto WallAngleCos{UE_REAL_TO_FLOAT(FMath::Max(FMath::Abs(ForwardTraceHit.ImpactNormal.X), FMath::Abs(ForwardTraceHit.ImpactNormal.Y)))};
+
+	if (!ForwardTraceHit.IsValidBlockingHit() || WallAngleCos < WallAngleThresholdCos)
 	{
 #if ENABLE_DRAW_DEBUG
 		if (bDisplayDebug)
@@ -224,13 +247,11 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	const auto TargetDirection{-ForwardTraceHit.ImpactNormal.GetSafeNormal2D()};
 
-	static const FName FrontLedgeTraceTag{FString::Printf(TEXT("%hs (FrontEdge Trace)"), __FUNCTION__)};
-
-	const FVector2D TargetLocationOffset{TargetDirection * (TraceSettings.TargetLocationOffset * CapsuleScale)};
+	static const FName FrontLedgeTraceTag{FString::Printf(TEXT("%hs (Front Ledge Trace)"), __FUNCTION__)};
 
 	const FVector FrontLedgeTraceStart{
-		ForwardTraceHit.ImpactPoint.X + TargetLocationOffset.X,
-		ForwardTraceHit.ImpactPoint.Y + TargetLocationOffset.Y,
+		ForwardTraceHit.ImpactPoint.X,
+		ForwardTraceHit.ImpactPoint.Y,
 		CapsuleBottomLocation.Z + LedgeHeightDelta + 2.5f * TraceCapsuleRadius + UGarCharacterMoverComponent::MIN_FLOOR_DIST
 	};
 
@@ -305,15 +326,15 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 
 	// Check that there is enough free space for the capsule at the target location.
 
-	static const FName TargetLocationTraceTag{FString::Printf(TEXT("%hs (Target Location Overlap)"), __FUNCTION__)};
+	static const FName StanceSpaceTraceTag{FString::Printf(TEXT("%hs (Stance Space Overlap)"), __FUNCTION__)};
 
-	const FVector TargetLocation{FrontLedgeTraceHit.ImpactPoint + FVector{0.0f, 0.0f, UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
+	const FVector StanceLocation{FrontLedgeTraceHit.ImpactPoint + FVector{0.0f, 0.0f, UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
 
-	const FVector TargetCapsuleLocation{TargetLocation.X, TargetLocation.Y, TargetLocation.Z + CapsuleHalfHeight};
+	const FVector StanceSpaceCapsuleLocation{StanceLocation.X, StanceLocation.Y, StanceLocation.Z + CapsuleHalfHeight};
 
-	if (World->OverlapBlockingTestByChannel(TargetCapsuleLocation, FQuat::Identity, TraversalTraceChannel,
+	if (World->OverlapBlockingTestByChannel(StanceSpaceCapsuleLocation, FQuat::Identity, TraversalTraceChannel,
 	                                        FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
-	                                        {TargetLocationTraceTag, false, Character}, TraversalTraceResponses))
+	                                        {StanceSpaceTraceTag, false, Character}, TraversalTraceResponses))
 	{
 #if ENABLE_DRAW_DEBUG
 		if (bDisplayDebug)
@@ -326,7 +347,7 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 			                                        false, FrontLedgeTraceHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
 			                                        TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
 
-			DrawDebugCapsule(World, TargetCapsuleLocation, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity,
+			DrawDebugCapsule(World, StanceSpaceCapsuleLocation, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity,
 			                 FColor::Red, false, TraceSettings.bDrawFailedTraces ? 10.0f : 0.0f);
 		}
 #endif
@@ -334,94 +355,80 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 		return false;
 	}
 
-	// Perform additional overlap at the approximate start location to
-	// ensure there are no vertical obstacles on the path, such as a ceiling.
+	FVector BackLedgeLocation{ForceInit};
 
-	static const FName StartLocationTraceTag{FString::Printf(TEXT("%hs (Start Location Overlap)"), __FUNCTION__)};
+	static const FName DepthTraceTag{FString::Printf(TEXT("%hs (Depth Trace)"), __FUNCTION__)};
+	const FVector DepthTraceStartLocation{ForwardTraceHit.ImpactPoint + TargetDirection * TargetPrimitive->Bounds.SphereRadius * 2};
 
-	const FVector2D StartLocationOffset{TargetDirection * (TraceSettings.StartLocationOffset * CapsuleScale)};
-
-	const FVector StartLocation{
-		TargetLocation.X - StartLocationOffset.X,
-		TargetLocation.Y - StartLocationOffset.Y,
-		(FrontLedgeTraceHit.Location.Z + FrontLedgeTraceEnd.Z) * 0.5f
-	};
-
-	const auto StartLocationTraceCapsuleHalfHeight{(FrontLedgeTraceHit.Location.Z - FrontLedgeTraceEnd.Z) * 0.5f + TraceCapsuleRadius};
-
-	if (World->OverlapBlockingTestByChannel(StartLocation, FQuat::Identity, TraversalTraceChannel,
-	                                        FCollisionShape::MakeCapsule(TraceCapsuleRadius, StartLocationTraceCapsuleHalfHeight),
-	                                        {StartLocationTraceTag, false, Character}, TraversalTraceResponses))
+	FHitResult DepthTraceHit;
+	if (TargetPrimitive->LineTraceComponent(DepthTraceHit, DepthTraceStartLocation, ForwardTraceHit.ImpactPoint, {StanceSpaceTraceTag, false, Character}))
 	{
-#if ENABLE_DRAW_DEBUG
-		if (bDisplayDebug)
-		{
-			UGarUtility::DrawDebugSweepSingleCapsuleAlternative(World, ForwardTraceStart, ForwardTraceEnd, TraceCapsuleRadius,
-			                                                    ForwardTraceCapsuleHalfHeight, true, ForwardTraceHit,
-			                                                    {0.0f, 0.25f, 1.0f},
-			                                                    {0.0f, 0.75f, 1.0f}, TraceSettings.bDrawFailedTraces ? 5.0f : 0.0f);
+		BackLedgeLocation.X = DepthTraceHit.ImpactPoint.X;
+		BackLedgeLocation.Y = DepthTraceHit.ImpactPoint.Y;
+	}
+	else
+	{
+		const FVector2D BackLedgeLocationOffset{TargetDirection * MinimumDepth};
+		BackLedgeLocation.X = StanceLocation.X - BackLedgeLocationOffset.X;
+		BackLedgeLocation.Y = StanceLocation.Y - BackLedgeLocationOffset.Y;
+	}
+	BackLedgeLocation.Z = OutResult.FrontLedgeLocation.Z;
 
-			UGarUtility::DrawDebugSweepSingleSphere(World, FrontLedgeTraceStart, FrontLedgeTraceEnd, TraceCapsuleRadius,
-			                                        false, FrontLedgeTraceHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
-			                                        TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
+	static const FName BackLedgeTraceTag{FString::Printf(TEXT("%hs (Back Ledge Trace)"), __FUNCTION__)};
+	const FVector BackLedgeTraceStart{BackLedgeLocation.X, BackLedgeLocation.Y, BackLedgeLocation.Z + CapsuleHalfHeight};
+	const FVector BackLedgeTraceEnd{BackLedgeLocation.X, BackLedgeLocation.Y, CapsuleBottomLocation.Z};
 
-			DrawDebugCapsule(World, StartLocation, StartLocationTraceCapsuleHalfHeight, TraceCapsuleRadius, FQuat::Identity,
-			                 FLinearColor{1.0f, 0.5f, 0.0f}.ToFColor(true), false, TraceSettings.bDrawFailedTraces ? 10.0f : 0.0f);
-		}
-#endif
-
-		return false;
+	FHitResult BackLedgeTraceHit;
+	World->SweepSingleByChannel(BackLedgeTraceHit, BackLedgeTraceStart, BackLedgeTraceEnd, FQuat::Identity,
+		TraversalTraceChannel, FCollisionShape::MakeSphere(TraceCapsuleRadius),
+		{BackLedgeTraceTag, false, Character}, TraversalTraceResponses);
+	if (BackLedgeTraceHit.IsValidBlockingHit())
+	{
+		BackLedgeLocation = BackLedgeTraceHit.ImpactPoint;
 	}
 
 #if ENABLE_DRAW_DEBUG
 	if (bDisplayDebug)
 	{
-		UGarUtility::DrawDebugSweepSingleCapsuleAlternative(World, ForwardTraceStart, ForwardTraceEnd, TraceCapsuleRadius,
-		                                                    ForwardTraceCapsuleHalfHeight, true, ForwardTraceHit,
-		                                                    {0.0f, 0.25f, 1.0f}, {0.0f, 0.75f, 1.0f}, 5.0f);
-
-		UGarUtility::DrawDebugSweepSingleSphere(World, FrontLedgeTraceStart, FrontLedgeTraceEnd,
-		                                        TraceCapsuleRadius, true, FrontLedgeTraceHit,
-		                                        {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f}, 7.5f);
+		UGarUtility::DrawDebugSweepSingleSphere(World, BackLedgeTraceStart, BackLedgeTraceEnd,
+		                                        TraceCapsuleRadius, BackLedgeTraceHit.IsValidBlockingHit(), BackLedgeTraceHit,
+		                                        {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
+												BackLedgeTraceHit.IsValidBlockingHit() || TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
 	}
 #endif
 
-	OutResult.BackLedgeLocation = TargetLocation;
+	OutResult.BackLedgeLocation = BackLedgeLocation;
 
-	static const FName EndLocationTraceTag{FString::Printf(TEXT("%hs (End Location Overlap)"), __FUNCTION__)};
+	static const FName BackFloorTraceTag{FString::Printf(TEXT("%hs (Back Floor Trace)"), __FUNCTION__)};
 
-	const FVector EndLocationTraceStart{TargetLocation + TargetDirection * (MinimumDepth + CapsuleRadius + Character->GetVelocity().Size2D() * RisingTime)
+	const FVector BackFloorTraceStart{BackLedgeLocation + (2 * CapsuleRadius + 5.0) * TargetDirection
 		+ FVector{0.f, 0.f, TraceCapsuleRadius + UGarCharacterMoverComponent::MIN_FLOOR_DIST}};
 
-	const FVector EndLocationTraceEnd{EndLocationTraceStart.X, EndLocationTraceStart.Y, CapsuleBottomLocation.Z};
+	const FVector BackFloorTraceEnd{BackFloorTraceStart.X, BackFloorTraceStart.Y, CapsuleBottomLocation.Z};
 
-	FHitResult EndLocationTraceHit;
-	World->SweepSingleByChannel(EndLocationTraceHit, EndLocationTraceStart, EndLocationTraceEnd, FQuat::Identity,
+	FHitResult BackFloorTraceHit;
+	World->SweepSingleByChannel(BackFloorTraceHit, BackFloorTraceStart, BackFloorTraceEnd, FQuat::Identity,
 		TraversalTraceChannel, FCollisionShape::MakeSphere(TraceCapsuleRadius),
-		{EndLocationTraceTag, false, Character}, TraversalTraceResponses);
+		{BackFloorTraceTag, false, Character}, TraversalTraceResponses);
 
 	#if ENABLE_DRAW_DEBUG
 	if (bDisplayDebug)
 	{
-		UGarUtility::DrawDebugSweepSingleSphere(World, EndLocationTraceStart, EndLocationTraceEnd, TraceCapsuleRadius,
-			EndLocationTraceHit.IsValidBlockingHit(), EndLocationTraceHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
-			EndLocationTraceHit.IsValidBlockingHit() || TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
+		UGarUtility::DrawDebugSweepSingleSphere(World, BackFloorTraceStart, BackFloorTraceEnd, TraceCapsuleRadius,
+			BackFloorTraceHit.IsValidBlockingHit(), BackFloorTraceHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
+			BackFloorTraceHit.IsValidBlockingHit() || TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
 	}
 	#endif
 
-	if (EndLocationTraceHit.IsValidBlockingHit())
+	if (BackFloorTraceHit.IsValidBlockingHit())
 	{
 		OutResult.bHasBackFloor = true;
-		OutResult.BackFloorLocation = EndLocationTraceHit.ImpactPoint;
-		if(FVector::DistXY(EndLocationTraceHit.ImpactPoint, EndLocationTraceStart) >= 0.001f)
-		{
-			OutResult.BackLedgeLocation = EndLocationTraceHit.ImpactPoint;
-		}
+		OutResult.BackFloorLocation = BackFloorTraceHit.ImpactPoint;
 	}
 	else
 	{
 		OutResult.bHasBackFloor = false;
-		OutResult.BackFloorLocation = EndLocationTraceEnd;
+		OutResult.BackFloorLocation = BackFloorTraceEnd;
 	}
 
 	return true;
@@ -474,9 +481,9 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: AddOrUpdateWarpT
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
 	const auto& PrimitiveTransform{CurrentTargetPrimitive->GetComponentTransform()};
-	auto FrontWallNormal = PrimitiveTransform.InverseTransformVectorNoScale(FrontWallNormalLS);
+	auto FrontWallNormal = PrimitiveTransform.TransformVectorNoScale(FrontWallNormalLS);
 	auto FrontLedgeLocation = PrimitiveTransform.TransformPosition(FrontLedgeOffset);
-	auto UpperLedgeNormal = PrimitiveTransform.InverseTransformVectorNoScale(UpperLedgeNormalLS);
+	auto UpperLedgeNormal = PrimitiveTransform.TransformVectorNoScale(UpperLedgeNormalLS);
 	auto BackLedgeLocation = PrimitiveTransform.TransformPosition(BackLedgeOffset);
 	auto BackFloorLocation = PrimitiveTransform.TransformPosition(BackFloorOffset);
 
@@ -497,8 +504,7 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget() // TODO: AddOrUpdateWarpT
 	// Update the FrontLedge warp target using the front ledge's location and rotation.
 	MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("FrontLedge")),
 		FrontLedgeLocation + FVector(0.f, 0.f, 0.5f),
-		FRotationMatrix::MakeFromXZ((FrontLedgeLocation - Character->GetActorLocation()).GetSafeNormal2D(), UpperLedgeNormal)
-			.Rotator());
+		FRotationMatrix::MakeFromXZ(-FrontWallNormal, UpperLedgeNormal).Rotator());
 
 	// If the action type was a hurdle or a vault, we need to also update the BackLedge target. If it is not a hurdle or vault, remove it.
 	if (ActionTags.HasTag(GarTraversalActionTags::Hurdle) || ActionTags.HasTag(GarTraversalActionTags::Vault))
@@ -899,6 +905,10 @@ void UGarGameplayAbility_Traversal::PostEditChangeProperty(FPropertyChangedEvent
 	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, SlopeAngleThreshold))
 	{
 		SlopeAngleThresholdCos = FMath::Cos(FMath::DegreesToRadians(SlopeAngleThreshold));
+	}
+	else if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(ThisClass, WallAngleThreshold))
+	{
+		WallAngleThresholdCos = FMath::Cos(FMath::DegreesToRadians(WallAngleThreshold));
 	}
 	else if (PropertyChangedEvent.GetPropertyName() != GET_MEMBER_NAME_CHECKED(ThisClass, TraversalTraceResponseChannels))
 	{

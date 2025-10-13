@@ -118,12 +118,6 @@ struct GAR_API FGarTraversalTraceSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float ReachDistance{75.0f};
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
-	float TargetLocationOffset{15.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
-	float StartLocationOffset{55.0f};
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	uint8 bDrawFailedTraces : 1{false};
 };
@@ -154,6 +148,13 @@ public:
 
 	// Prevents mantling on surfaces whose slope angle exceeds this value.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
+	float WallAngleThreshold{30.0f};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", AdvancedDisplay, Meta = (ClampMin = 0, ClampMax = 1))
+	float WallAngleThresholdCos{FMath::Cos(FMath::DegreesToRadians(30.0f))};
+
+	// Prevents mantling on surfaces whose slope angle exceeds this value.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ClampMax = 90, ForceUnits = "deg"))
 	float SlopeAngleThreshold{35.0f};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", AdvancedDisplay, Meta = (ClampMin = 0, ClampMax = 1))
@@ -180,9 +181,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float MinimumDepth{25.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal", Meta = (ClampMin = 0, ForceUnits = "s"))
-	float RisingTime{0.15f};
 
 	// If checked, ragdolling will start if the object the character is mantling on was destroyed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
