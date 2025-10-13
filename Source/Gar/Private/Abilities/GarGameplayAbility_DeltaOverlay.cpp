@@ -3,7 +3,7 @@
 #include "Abilities/GarGameplayAbility_DeltaOverlay.h"
 
 #include "GarAbilitySystemComponent.h"
-#include "Components/GarOverlayModeComponent.h"
+#include "Components/GarDeltaOverlayModeComponent.h"
 #include "GarGameplayTags.h"
 #include "GarConstants.h"
 #include "Utility/GarMath.h"
@@ -17,10 +17,10 @@ void UGarGameplayAbility_DeltaOverlay::OnGiveAbility(const FGameplayAbilityActor
 
 	if (ActorInfo->OwnerActor.IsValid())
 	{
-		auto OverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverlayModeComponent>()};
-		if (OverlayModeComponent)
+		auto DeltaOverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarDeltaOverlayModeComponent>()};
+		if (DeltaOverlayModeComponent)
 		{
-			OverlayModeComponent->RegisterDeltaOverlayTask(GetAssetTags().First(), DeltaOverlayTaskClass);
+			DeltaOverlayModeComponent->RegisterDeltaOverlayTask(GetAssetTags().First(), DeltaOverlayTaskClass);
 		}
 	}
 }
@@ -31,10 +31,10 @@ void UGarGameplayAbility_DeltaOverlay::OnAvatarSet(const FGameplayAbilityActorIn
 
 	if (ActorInfo->AvatarActor.IsValid())
 	{
-		auto OverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverlayModeComponent>()};
-		if (OverlayModeComponent)
+		auto DeltaOverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarDeltaOverlayModeComponent>()};
+		if (DeltaOverlayModeComponent)
 		{
-			OverlayModeComponent->RegisterDeltaOverlayTask(GetAssetTags().First(), DeltaOverlayTaskClass);
+			DeltaOverlayModeComponent->RegisterDeltaOverlayTask(GetAssetTags().First(), DeltaOverlayTaskClass);
 		}
 	}
 }
@@ -43,18 +43,18 @@ void UGarGameplayAbility_DeltaOverlay::OnRemoveAbility(const FGameplayAbilityAct
 {
 	if (ActorInfo->OwnerActor.IsValid())
 	{
-		auto OverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarOverlayModeComponent>()};
-		if (OverlayModeComponent)
+		auto DeltaOverlayModeComponent{ActorInfo->OwnerActor->GetComponentByClass<UGarDeltaOverlayModeComponent>()};
+		if (DeltaOverlayModeComponent)
 		{
-			OverlayModeComponent->UnregisterDeltaOverlayTask(GetAssetTags().First());
+			DeltaOverlayModeComponent->UnregisterDeltaOverlayTask(GetAssetTags().First());
 		}
 	}
 	if (ActorInfo->AvatarActor.IsValid())
 	{
-		auto OverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarOverlayModeComponent>()};
-		if (OverlayModeComponent)
+		auto DeltaOverlayModeComponent{ActorInfo->AvatarActor->GetComponentByClass<UGarDeltaOverlayModeComponent>()};
+		if (DeltaOverlayModeComponent)
 		{
-			OverlayModeComponent->UnregisterDeltaOverlayTask(GetAssetTags().First());
+			DeltaOverlayModeComponent->UnregisterDeltaOverlayTask(GetAssetTags().First());
 		}
 	}
 

@@ -4,7 +4,7 @@
 #include "GarDeltaOverlayAnimInstance.generated.h"
 
 // Additive Overlay Linked Anim Layer
-// Tag : "AdditiveOverlay"
+// Tag : "DeltaOverlay"
 UCLASS(Abstract, AutoExpandCategories = ("GAR|Settings"))
 class GAR_API UGarDeltaOverlayAnimInstance : public UGarLinkedAnimationInstance
 {

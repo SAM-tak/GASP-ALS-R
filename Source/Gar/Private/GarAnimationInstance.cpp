@@ -12,6 +12,7 @@
 #include "GarConstants.h"
 #include "LinkedAnimLayers/GarLayeringAnimInstance.h"
 #include "LinkedAnimLayers/GarRagdollingAnimInstance.h"
+#include "LinkedAnimLayers/GarDeltaOverlayAnimInstance.h"
 #include "Abilities/Actions/GarGameplayAbility_Ragdolling.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarUtility.h"
@@ -94,6 +95,8 @@ void UGarAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTim
 	{
 		return;
 	}
+
+	bIsValidDeltaOverlay = GetLinkedAnimLayerInstanceByClass(UGarDeltaOverlayAnimInstance::StaticClass(), true) != nullptr;
 
 	if (LayeringAnimInstance.IsValid())
 	{

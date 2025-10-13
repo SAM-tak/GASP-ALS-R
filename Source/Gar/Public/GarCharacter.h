@@ -16,6 +16,9 @@ class UGarAnimationInstance;
 class UGarCharacterMoverComponent;
 class UGarPhysicalAnimationComponent;
 class UGarAbilitySystemComponent;
+class UGarOverlayModeComponent;
+class UGarDeltaOverlayModeComponent;
+class UGarOverrideModeComponent;
 
 DECLARE_EVENT_OneParam(AGarCharacter, FGarCharacter_OnPossessorChanged, AController*);
 
@@ -62,6 +65,15 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
 	TObjectPtr<UGarPhysicalAnimationComponent> PhysicalAnimation;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarOverlayModeComponent> OverlayModeComponent;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarDeltaOverlayModeComponent> DeltaOverlayModeComponent;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacter")
+	TObjectPtr<UGarOverrideModeComponent> OverrideModeComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GarCharacter|Settings")
 	TObjectPtr<UGarCharacterSettings> Settings;
@@ -189,6 +201,21 @@ public:
 	static FName MotionWarpingComponentName;
 
 	FORCEINLINE UMotionWarpingComponent* GetMotionWarping() const { return MotionWarping; }
+
+	/** Name of the OverlayModeComponent. */
+	static FName OverlayModeComponentName;
+
+	FORCEINLINE UGarOverlayModeComponent* GetOverlayComponent() const { return OverlayModeComponent; }
+
+	/** Name of the DeltaOverlayModeComponent. */
+	static FName DeltaOverlayModeComponentName;
+
+	FORCEINLINE UGarDeltaOverlayModeComponent* GetDeltaOverlayComponent() const { return DeltaOverlayModeComponent; }
+
+	/** Name of the OverrideModeComponent. */
+	static FName OverrideModeComponentName;
+
+	FORCEINLINE UGarOverrideModeComponent* GetOverrideComponent() const { return OverrideModeComponent; }
 
 	// Accessor for the mesh's GarAnimationInstance
 	FORCEINLINE UGarAnimationInstance* GetGarAnimationInstace() const { return AnimationInstance.Get(); }

@@ -72,6 +72,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ViewOffset", Transient, Meta = (ClampMin = -180, ClampMax = 180, ForceUnits = "deg"))
 	float SpineYawAngle{0.0f};
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR|State", Transient)
+	bool bIsValidDeltaOverlay{false};
+
 public:
 	FORCEINLINE const FGameplayTagContainer& GetCurrentGameplayTags() const
 	{

@@ -26,18 +26,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
 	TMap<FGameplayTag, TObjectPtr<UGarOverlayTask>> InstancedOverlayTasks;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient, Meta = (DisplayThumbnail = false))
-	TMap<FGameplayTag, TSubclassOf<UGarDeltaOverlayTask>> DeltaOverlayClassMap;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	TWeakObjectPtr<UGarDeltaOverlayTask> CurrentDeltaOverlayTask;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	FGameplayTag CurrentDeltaOverlayTag;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarOverlayModeComponent|State", Transient)
-	TMap<FGameplayTag, TObjectPtr<UGarDeltaOverlayTask>> InstancedDeltaOverlayTasks;
-
 protected:
 	virtual void OnRegister() override;
 
@@ -51,16 +39,10 @@ protected:
 
 	void ChangeOverlayTask(const FGameplayTag& NewOverlayMode);
 
-	void ChangeDeltaOverlayTask(const FGameplayTag& NewDeltaOverlayMode);
-
 	void CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem);
 
 public:
 	void RegisterOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarOverlayTask> OverlayTaskClass);
 
 	void UnregisterOverlayTask(const FGameplayTag& OverlayMode);
-
-	void RegisterDeltaOverlayTask(const FGameplayTag& OverlayMode, TSubclassOf<UGarDeltaOverlayTask> DeltaOverlayTaskClass);
-
-	void UnregisterDeltaOverlayTask(const FGameplayTag& OverlayMode);
 };

@@ -11,6 +11,9 @@
 #include "Net/Core/PushModel/PushModel.h"
 #include "MoveLibrary/BasedMovementUtils.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
+#include "Components/GarOverlayModeComponent.h"
+#include "Components/GarDeltaOverlayModeComponent.h"
+#include "Components/GarOverrideModeComponent.h"
 #include "Settings/GarCharacterSettings.h"
 #include "State/GarCharacterMoverInputs.h"
 #include "GarAnimationInstance.h"
@@ -36,6 +39,9 @@ FName AGarCharacter::CharacterMoverComponentName(TEXT("CharacterMoverComp"));
 FName AGarCharacter::MotionWarpingComponentName(TEXT("MotionWarpComp"));
 FName AGarCharacter::PhysicalAnimationComponentName(TEXT("PhysicalAnimComp"));
 FName AGarCharacter::AbilitySystemComponentName(TEXT("AbilitySystemComp"));
+FName AGarCharacter::OverlayModeComponentName(TEXT("OverlayComp"));
+FName AGarCharacter::DeltaOverlayModeComponentName(TEXT("DeltaOverlayComp"));
+FName AGarCharacter::OverrideModeComponentName(TEXT("OverrideComp"));
 
 AGarCharacter::AGarCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -94,6 +100,12 @@ AGarCharacter::AGarCharacter(const FObjectInitializer& ObjectInitializer) : Supe
 	PhysicalAnimation = CreateDefaultSubobject<UGarPhysicalAnimationComponent>(PhysicalAnimationComponentName);
 
 	AbilitySystem = CreateDefaultSubobject<UGarAbilitySystemComponent>(AbilitySystemComponentName);
+
+	OverlayModeComponent = CreateDefaultSubobject<UGarOverlayModeComponent>(OverlayModeComponentName);
+
+	DeltaOverlayModeComponent = CreateDefaultSubobject<UGarDeltaOverlayModeComponent>(DeltaOverlayModeComponentName);
+
+	OverrideModeComponent = CreateDefaultSubobject<UGarOverrideModeComponent>(OverrideModeComponentName);
 }
 
 // IAbilitySystemInterface

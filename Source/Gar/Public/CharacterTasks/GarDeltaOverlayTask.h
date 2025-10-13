@@ -6,7 +6,7 @@
 #include "GarDeltaOverlayTask.generated.h"
 
 class UGarDeltaOverlayAnimInstance;
-class UGarOverlayModeComponent;
+class UGarDeltaOverlayModeComponent;
 
 /**
  *
@@ -16,14 +16,14 @@ class GAR_API UGarDeltaOverlayTask : public UGarCharacterTask
 {
 	GENERATED_BODY()
 
-	friend UGarOverlayModeComponent;
+	friend UGarDeltaOverlayModeComponent;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Settings")
 	TSubclassOf<UGarDeltaOverlayAnimInstance> DeltaOverlayAnimClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
-	TWeakObjectPtr<UGarOverlayModeComponent> Component;
+	TWeakObjectPtr<UGarDeltaOverlayModeComponent> Component;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State", Transient)
 	TWeakObjectPtr<UGarDeltaOverlayAnimInstance> DeltaOverlayAnimInstance;

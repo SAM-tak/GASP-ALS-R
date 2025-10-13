@@ -4,9 +4,7 @@
 #include "GarAbilitySystemComponent.h"
 #include "GarCharacter.h"
 #include "CharacterTasks/GarOverlayTask.h"
-#include "CharacterTasks/GarDeltaOverlayTask.h"
 #include "Abilities/GarGameplayAbility_OverlayMode.h"
-#include "Abilities/GarGameplayAbility_DeltaOverlay.h"
 #include "Utility/GarMath.h"
 #include "Utility/GarLog.h"
 
@@ -28,7 +26,6 @@ void UGarOverlayModeComponent::BeginPlay()
 	Super::BeginPlay();
 
 	InstancedOverlayTasks.Reset();
-	InstancedDeltaOverlayTasks.Reset();
 }
 
 void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayMode)
@@ -65,40 +62,6 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayM
 	}
 }
 
-void UGarOverlayModeComponent::ChangeDeltaOverlayTask(const FGameplayTag& NewDeltaOverlayMode)
-{
-	if (CurrentDeltaOverlayTask.IsValid())
-	{
-		CurrentDeltaOverlayTask->End();
-		if (CurrentDeltaOverlayTask->HasFinished())
-		{
-			CurrentDeltaOverlayTask.Reset();
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	if (!CurrentDeltaOverlayTask.IsValid() && DeltaOverlayClassMap.Contains(NewDeltaOverlayMode))
-	{
-		if (InstancedDeltaOverlayTasks.Contains(NewDeltaOverlayMode))
-		{
-			CurrentDeltaOverlayTask = InstancedDeltaOverlayTasks[NewDeltaOverlayMode];
-		}
-		else
-		{
-			auto* NewTask{NewObject<UGarDeltaOverlayTask>(Character.Get(), DeltaOverlayClassMap[NewDeltaOverlayMode])};
-			NewTask->Component = this;
-			InstancedDeltaOverlayTasks.Add(NewDeltaOverlayMode, NewTask);
-			CurrentDeltaOverlayTask = NewTask;
-			NewTask->OnRegister();
-		}
-		CurrentDeltaOverlayTag = NewDeltaOverlayMode;
-		CurrentDeltaOverlayTask->Begin();
-	}
-}
-
 void UGarOverlayModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* AbilitySystem)
 {
 	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
@@ -109,11 +72,6 @@ void UGarOverlayModeComponent::CheckActiveAbility(UGarAbilitySystemComponent* Ab
 			if (OverlayModeAbility)
 			{
 				RegisterOverlayTask(OverlayModeAbility->GetAssetTags().First(), OverlayModeAbility->OverlayTaskClass);
-			}
-			auto DeltaOverlayModeAbility{Cast<UGarGameplayAbility_DeltaOverlay>(Ability.Ability)};
-			if (DeltaOverlayModeAbility)
-			{
-				RegisterDeltaOverlayTask(DeltaOverlayModeAbility->GetAssetTags().First(), DeltaOverlayModeAbility->DeltaOverlayTaskClass);
 			}
 		}
 	}
@@ -175,21 +133,5 @@ void UGarOverlayModeComponent::UnregisterOverlayTask(const FGameplayTag& Overlay
 	if (OverlayMode.IsValid())
 	{
 		OverlayClassMap.Remove(OverlayMode);
-	}
-}
-
-void UGarOverlayModeComponent::RegisterDeltaOverlayTask(const FGameplayTag& DeltaOverlayMode, TSubclassOf<UGarDeltaOverlayTask> DeltaOverlayTaskClass)
-{
-	if (DeltaOverlayMode.IsValid() && DeltaOverlayTaskClass)
-	{
-		DeltaOverlayClassMap.Add(DeltaOverlayMode, DeltaOverlayTaskClass);
-	}
-}
-
-void UGarOverlayModeComponent::UnregisterDeltaOverlayTask(const FGameplayTag& DeltaOverlayMode)
-{
-	if (DeltaOverlayMode.IsValid())
-	{
-		DeltaOverlayClassMap.Remove(DeltaOverlayMode);
 	}
 }
