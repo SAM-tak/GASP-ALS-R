@@ -33,7 +33,8 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 	check(StartingSyncState);
 
 	const AGarCharacter* Character{Cast<AGarCharacter>(MoverComp->GetOwner())};
-	auto TargetLocation{Character->GetMesh()->GetBoneLocation(TopBoneName)};
+	auto TargetTransform{Character->GetMesh()->GetBoneTransform(TopBoneName)};
+	auto TargetLocation{TargetTransform.GetLocation()};
 
 #if ENABLE_DRAW_DEBUG
 	if (UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::PADebugDisplayName()))
@@ -46,9 +47,33 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 
 	const FVector CurrentLocation = Character->GetActorLocation();
 
-	FVector Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(MaxSpeed);
+	auto TopBoneBody{Character->GetMesh()->GetBodyInstance(TopBoneName)};
+
+	float TopBoneSpeed = 0;
+	
+	if (TopBoneBody)
+	{
+		TopBoneSpeed = TopBoneBody->GetUnrealWorldVelocity().Size2D();
+	}
+
+	FVector Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
+
+	if (GameplayTags.HasTag(GarLocomotionModeTags::Grounded))
+	{
+		Velocity.Z = 0.0f;
+	}
+
+	auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
+	TargetDirection.Z = 0;
+	if (TargetDirection.SizeSquared2D() < 0.001f)
+	{
+		TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
+		TargetDirection.Z = 0;
+	}
 
 	OutProposedMove.LinearVelocity = Velocity;
+	OutProposedMove.bHasDirIntent = true;
+	OutProposedMove.DirectionIntent = TargetDirection.GetSafeNormal2D();
 }
 
 void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState)
@@ -73,10 +98,13 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 	FMovementRecord MoveRecord;
 	MoveRecord.SetDeltaSeconds(DeltaSeconds);
 
-	UMoverBlackboard* SimBlackboard = MoverComp->GetSimBlackboard_Mutable();
+	if (GameplayTags.HasTag(GarLocomotionModeTags::InAir))
+	{
+		UMoverBlackboard* SimBlackboard = MoverComp->GetSimBlackboard_Mutable();
 
-	SimBlackboard->Invalidate(CommonBlackboard::LastFloorResult);	// flying = no valid floor
-	SimBlackboard->Invalidate(CommonBlackboard::LastFoundDynamicMovementBase);
+		SimBlackboard->Invalidate(CommonBlackboard::LastFloorResult);	// flying = no valid floor
+		SimBlackboard->Invalidate(CommonBlackboard::LastFoundDynamicMovementBase);
+	}
 
 	OutputSyncState.MoveDirectionIntent = (ProposedMove.bHasDirIntent ? ProposedMove.DirectionIntent : FVector::ZeroVector);
 

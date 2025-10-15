@@ -73,7 +73,7 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	auto* Mesh{GetSkelMeshComponent()};
 	CharacterTransform = Mesh->GetComponentTransform();
 
-	const auto WarpTarget {Character->GetMotionWarping()->FindWarpTarget(FName(TEXTVIEW("FrontLedge")))};
+	const auto WarpTarget{Character->GetMotionWarping()->FindWarpTarget(FName(TEXTVIEW("FrontLedge")))};
 	if (WarpTarget)
 	{
 		InteractionTransform = WarpTarget->GetTargetTrasform();
@@ -95,8 +95,6 @@ void UGarAnimationInstance::NativeThreadSafeUpdateAnimation(const float DeltaTim
 	{
 		return;
 	}
-
-	bIsValidDeltaOverlay = GetLinkedAnimLayerInstanceByClass(UGarDeltaOverlayAnimInstance::StaticClass(), true) != nullptr;
 
 	if (LayeringAnimInstance.IsValid())
 	{

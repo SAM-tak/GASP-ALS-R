@@ -22,7 +22,10 @@ public:
 	FName TopBoneName{TEXTVIEW("pelvis")};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mover)
-	float MaxSpeed{300.0f};
+	float MinSpeed{300.0f};
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Mover)
+	float MaxSpeed{5000.0f};
 
 	virtual void GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const override;
 

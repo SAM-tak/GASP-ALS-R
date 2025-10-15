@@ -411,14 +411,14 @@ bool UGarGameplayAbility_Traversal::TraceEnvironment_Implementation(AGarCharacte
 		TraversalTraceChannel, FCollisionShape::MakeSphere(TraceCapsuleRadius),
 		{BackFloorTraceTag, false, Character}, TraversalTraceResponses);
 
-	#if ENABLE_DRAW_DEBUG
+#if ENABLE_DRAW_DEBUG
 	if (bDisplayDebug)
 	{
 		UGarUtility::DrawDebugSweepSingleSphere(World, BackFloorTraceStart, BackFloorTraceEnd, TraceCapsuleRadius,
 			BackFloorTraceHit.IsValidBlockingHit(), BackFloorTraceHit, {0.25f, 0.0f, 1.0f}, {0.75f, 0.0f, 1.0f},
 			BackFloorTraceHit.IsValidBlockingHit() || TraceSettings.bDrawFailedTraces ? 7.5f : 0.0f);
 	}
-	#endif
+#endif
 
 	if (BackFloorTraceHit.IsValidBlockingHit())
 	{

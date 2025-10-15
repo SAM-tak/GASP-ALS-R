@@ -627,7 +627,7 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 	// as the character's location, we don't do that because the camera depends on the
 	// capsule's bottom location, so its removal will cause the camera to behave erratically.
 
-	bGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
+	bGrounded = Character->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 
 	// Clip velocity each body
 
