@@ -16,6 +16,7 @@
 #include "MoverModes/GarMoverFallingMode.h"
 #include "MoverModes/GarMoverWalkingMode.h"
 #include "MoverModes/GarMoverRagdollingMode.h"
+#include "MoverModes/GarMoverTraversalMode.h"
 #if GAR_USE_GE_FOR_MOVEMENTSTATE
 #include "MoverModifiers/GarMoverRotationModifier.h"
 #include "MoverModifiers/GarMoverStanceModifier.h"
@@ -45,11 +46,17 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 	MovementModes.Add(DefaultModeNames::Falling, CreateDefaultSubobject<UGarMoverFallingMode>(TEXT("DefaultFallingMode")));
 	MovementModes.Add(TEXT("Ragdolling"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultRagdollingMode")));
 	MovementModes.Add(TEXT("Ragdolling In Air"), CreateDefaultSubobject<UGarMoverRagdollingMode>(TEXT("DefaultAirborneRagdollingMode")));
+	MovementModes.Add(TEXT("Traversal"), CreateDefaultSubobject<UGarMoverTraversalMode>(TEXT("DefaultTraversalMode")));
+	MovementModes.Add(TEXT("Traversal In Air"), CreateDefaultSubobject<UGarMoverTraversalMode>(TEXT("DefaultAirborneTraversalMode")));
 	MovementModes.Add(DefaultModeNames::Flying, CreateDefaultSubobject<UFlyingMode>(TEXT("DefaultFlyingMode")));
 
 	auto AirborneRagdolling{MovementModes[TEXT("Ragdolling In Air")]};
 	AirborneRagdolling->GameplayTags.Reset();
 	AirborneRagdolling->GameplayTags.AddTag(GarLocomotionModeTags::InAir);
+
+	auto AirborneTraversal{MovementModes[TEXT("Traversal In Air")]};
+	AirborneTraversal->GameplayTags.Reset();
+	AirborneTraversal->GameplayTags.AddTag(GarLocomotionModeTags::InAir);
 
 	auto FlyingMode{MovementModes[DefaultModeNames::Flying]};
 	FlyingMode->GameplayTags.Reset();

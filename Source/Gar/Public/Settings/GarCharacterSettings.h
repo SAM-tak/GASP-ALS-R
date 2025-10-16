@@ -66,6 +66,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings|GameplayTag")
 	TMap<FGameplayTag, FName> TagToMovementModeMap{
+		{GarLocomotionActionTags::Traversal, TEXT("Traversal")},
 		{GarLocomotionActionTags::Dying, TEXT("Ragdolling")},
 		{GarLocomotionActionTags::Unconsious, TEXT("Ragdolling")},
 		{GarLocomotionActionTags::FreeFalling, TEXT("Ragdolling")},

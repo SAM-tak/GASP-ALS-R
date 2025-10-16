@@ -423,6 +423,7 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 						 ProneCapsule->GetScaledCapsuleRadius(), ProneCapsule->GetComponentRotation().Quaternion(),
 						 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 	}
+	DrawDebugCoordinateSystem(GetWorld(), GetMesh()->GetComponentLocation(), GetMesh()->GetComponentRotation(), 10.0f);
 #endif
 }
 

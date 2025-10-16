@@ -563,8 +563,6 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	// Clear the character movement mode and set the locomotion action to ragdolling.
 
-	Mover->SetPrimaryVisualComponent(nullptr);
-
 	//Mover->SetMovementMode(MOVE_Custom);
 	//Mover->SetMovementModeLocked(true);
 
@@ -804,8 +802,6 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 			// We expect the pelvis bone to be the root bone or attached to it, so we can safely use the mesh transform here.
 			FinalRagdollPose.LocalTransforms[TopBoneIndex] = TopTransform.GetRelativeTransform(Character->GetMesh()->GetComponentTransform());
 		}
-
-		Mover->SetPrimaryVisualComponent(Character->GetMesh());
 	}
 
 	// If the ragdoll is on the ground, set the movement mode to walking and play a get up montage. If not, set

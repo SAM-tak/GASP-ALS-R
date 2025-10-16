@@ -11,6 +11,7 @@
 #include "MoveLibrary/AirMovementUtils.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
+#include "GarPhysicalAnimationComponent.h"
 #include "GarCharacterMoverComponent.h"
 #include "GarCharacter.h"
 #include "GarConstants.h"
@@ -39,9 +40,14 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 #if ENABLE_DRAW_DEBUG
 	if (UGarUtility::ShouldDisplayDebugForActor(Character, UGarConstants::PADebugDisplayName()))
 	{
-		DrawDebugCrosshairs(Character->GetWorld(), TargetLocation, FRotator::ZeroRotator, 100.0f, FColor::Green, false, 1.0f);
+		DrawDebugCoordinateSystem(Character->GetWorld(), TargetLocation, TargetTransform.Rotator(), 150.0f);
 	}
 #endif
+
+	if (Character->GetPhysicalAnimation()->GetRagdollingState().bFreezing)
+	{
+		return;
+	}
 
 	const float DeltaSeconds = TimeStep.StepMs * 0.001f;
 
@@ -56,24 +62,49 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 		TopBoneSpeed = TopBoneBody->GetUnrealWorldVelocity().Size2D();
 	}
 
-	FVector Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
-
+	FVector Velocity{ForceInit};
+	auto Diff{TargetLocation - CurrentLocation};
 	if (GameplayTags.HasTag(GarLocomotionModeTags::Grounded))
 	{
-		Velocity.Z = 0.0f;
+		auto Len = Diff.Size2D();
+		if (DeltaSeconds > 0 && Len > 0.1f)
+		{
+			auto Dir{Diff.GetSafeNormal2D()};
+			Velocity = (Dir * (Len / DeltaSeconds)).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
+		}
+	}
+	else
+	{
+		auto Len = Diff.Size();
+		if (DeltaSeconds > 0 && Len > 0.1f)
+		{
+			Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
+		}
 	}
 
 	auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
-	TargetDirection.Z = 0;
-	if (TargetDirection.SizeSquared2D() < 0.001f)
+	auto DotY{FVector::UpVector.Dot(TargetDirection)};
+	if (FMath::Abs(DotY) > 0.7)
 	{
-		TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
-		TargetDirection.Z = 0;
+		if (DotY > 0)
+		{
+			TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
+		}
+		else
+		{
+			TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::ForwardVector);
+		}
+	}
+	const FRotator CurrentRotation = Character->GetActorRotation();
+	const FRotator RDiff{(TargetDirection.GetSafeNormal2D().Rotation() - CurrentRotation).GetNormalized()};
+	FRotator AngularVelocity{ForceInit};
+	if (DeltaSeconds > 0 && !RDiff.IsNearlyZero(1.0))
+	{
+		AngularVelocity.Yaw = FMath::Clamp((RDiff * (1.0f / DeltaSeconds)).Yaw, 1, 360*2);
 	}
 
 	OutProposedMove.LinearVelocity = Velocity;
-	OutProposedMove.bHasDirIntent = true;
-	OutProposedMove.DirectionIntent = TargetDirection.GetSafeNormal2D();
+	OutProposedMove.AngularVelocity = AngularVelocity;
 }
 
 void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState)
@@ -151,7 +182,7 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 
 	if (FloorUnderActor.IsWalkableFloor())
 	{
-		UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComp, FloorUnderActor, Settings->MaxWalkSlopeCosine, MoveRecord);
+		//UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComp, FloorUnderActor, Settings->MaxWalkSlopeCosine, MoveRecord);
 		if (HasGameplayTag(GarLocomotionModeTags::InAir, true))
 		{
 			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling");
