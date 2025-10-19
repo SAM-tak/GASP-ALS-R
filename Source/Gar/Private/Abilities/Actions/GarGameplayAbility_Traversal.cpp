@@ -838,7 +838,7 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 		CapsuleComponent->SetCapsuleRadius(CapsuleRadiusWhileInAction);
 	}
 
-	if (ActorInfo->IsNetAuthority())
+	if (ActorInfo->IsNetAuthority() && CurrentTargetPrimitive->Mobility == EComponentMobility::Movable)
 	{
 		TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Traversal")));
 		if (TickTask.IsValid())

@@ -662,6 +662,27 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		}
 	}
 
+	{
+		auto TargetTransform{Character->GetMesh()->GetBoneTransform(PhysicalAnimation->GetTopBoneName())};
+		auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
+		auto DotY{FVector::UpVector.Dot(TargetDirection)};
+		if (FMath::Abs(DotY) > 0.7)
+		{
+			if (DotY > 0)
+			{
+				//TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
+				bFacingUpward = true;
+			}
+			else
+			{
+				//TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::ForwardVector);
+				bFacingUpward = false;
+			}
+		}
+		//const FRotator CurrentRotation = Character->GetActorRotation();
+		//const FRotator RDiff{(TargetDirection.GetSafeNormal2D().Rotation() - CurrentRotation).GetNormalized()};
+	}
+
 	RagdollingAnimInstance->Refresh(*this, true);
 
 	if (Settings->bAllowFreeze)
@@ -786,7 +807,7 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 		auto TeleportEffect = MakeShared<FTeleportEffect>();
 		TeleportEffect->TargetLocation = Mover->GetUpdatedComponentTransform().GetLocation();
-		TeleportEffect->bUseActorRotation = true;
+		//TeleportEffect->bUseActorRotation = true;
 		TeleportEffect->TargetRotation = NewActorRotation;
 		Mover->QueueInstantMovementEffect(TeleportEffect);
 
