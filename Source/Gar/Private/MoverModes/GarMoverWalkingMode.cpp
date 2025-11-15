@@ -119,7 +119,7 @@ void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData
 
 	if (TurnGenerator)
 	{
-		OutProposedMove.AngularVelocity = ITurnGeneratorInterface::Execute_GetTurn(TurnGenerator, IntendedOrientation_WorldSpace, StartState, *StartingSyncState, TimeStep, OutProposedMove, SimBlackboard);
+		OutProposedMove.AngularVelocityDegrees = ITurnGeneratorInterface::Execute_GetTurn(TurnGenerator, IntendedOrientation_WorldSpace, StartState, *StartingSyncState, TimeStep, OutProposedMove, SimBlackboard);
 	}
 }
 
@@ -157,22 +157,15 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 	// If we don't have cached floor information, we need to search for it again
 	if (!SimBlackboard->TryGet(CommonBlackboard::LastFloorResult, CurrentFloor))
 	{
-		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 	}
 
 	OutputSyncState.MoveDirectionIntent = (ProposedMove.bHasDirIntent ? ProposedMove.DirectionIntent : FVector::ZeroVector);
 
 	const FRotator StartingOrient = StartingSyncState->GetOrientation_WorldSpace();
-	FRotator TargetOrient = StartingOrient;
-
-	bool bIsOrientationChanging = false;
-
-	// Apply orientation changes (if any)
-	if (!UMovementUtils::IsAngularVelocityZero(ProposedMove.AngularVelocity))
-	{ 
-		TargetOrient += (ProposedMove.AngularVelocity * DeltaSeconds);
-		bIsOrientationChanging = (TargetOrient != StartingOrient);
-	}
+	const FRotator TargetOrient = UMovementUtils::ApplyAngularVelocityToRotator(StartingOrient, ProposedMove.AngularVelocityDegrees, DeltaSeconds);
+	
+	const bool bIsOrientationChanging = !StartingOrient.Equals(TargetOrient);
 
 	FQuat TargetOrientQuat = TargetOrient.Quaternion();
 	if (Settings->bShouldRemainVertical)
@@ -209,12 +202,11 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 
 			// Check if the blockage is a walkable ramp rising in front of us
 			if ((MoveHitResult.Time > 0.f) && (MoveHitResult.Normal.Dot(UpDirection) > UE_KINDA_SMALL_NUMBER) && 
-				UFloorQueryUtils::IsHitSurfaceWalkable(MoveHitResult, UpDirection, Settings->MaxWalkSlopeCosine))
+			    UFloorQueryUtils::IsHitSurfaceWalkable(MoveHitResult, UpDirection, Settings->MaxWalkSlopeCosine))
 			{
 				// It's a walkable ramp, so cut up the move and attempt to move the remainder of it along the ramp's surface, possibly generating another hit
 				const float PercentTimeRemaining = 1.f - PercentTimeAppliedSoFar;
-				CurMoveDelta = UGroundMovementUtils::ComputeDeflectedMoveOntoRamp(CurMoveDelta * PercentTimeRemaining, UpDirection, MoveHitResult,
-					Settings->MaxWalkSlopeCosine, CurrentFloor.bLineTrace);
+				CurMoveDelta = UGroundMovementUtils::ComputeDeflectedMoveOntoRamp(CurMoveDelta * PercentTimeRemaining, UpDirection, MoveHitResult, Settings->MaxWalkSlopeCosine, CurrentFloor.bLineTrace);
 				UMovementUtils::TrySafeMoveUpdatedComponent(Params.MovingComps, CurMoveDelta, TargetOrientQuat, true, MoveHitResult, ETeleportType::None, MoveRecord);
 				LastMoveSeconds = PercentTimeRemaining * LastMoveSeconds;
 
@@ -233,7 +225,7 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 					const FVector PreStepUpLocation = UpdatedComponent->GetComponentLocation();
 					const FVector DownwardDir = -MoverComp->GetUpDirection();
 
-					if (!UGroundMovementUtils::TryMoveToStepUp(Params.MovingComps, DownwardDir, Settings->MaxStepHeight, Settings->MaxWalkSlopeCosine, Settings->FloorSweepDistance, OrigMoveDelta * (1.f - PercentTimeAppliedSoFar), MoveHitResult, CurrentFloor, false, &StepUpFloorResult, MoveRecord))
+					if (!UGroundMovementUtils::TryMoveToStepUp(Params.MovingComps, DownwardDir, Settings->MaxStepHeight, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, Settings->FloorSweepDistance, OrigMoveDelta * (1.f - PercentTimeAppliedSoFar), MoveHitResult, CurrentFloor, false, &StepUpFloorResult, MoveRecord))
 					{
 						FMoverOnImpactParams ImpactParams(DefaultModeNames::Walking, MoveHitResult, OrigMoveDelta);
 						MoverComp->HandleImpact(ImpactParams);
@@ -254,53 +246,59 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 		}
 
 		// Search for the floor we've ended up on
-		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 
 		if (CurrentFloor.IsWalkableFloor())
 		{
 			UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComp, CurrentFloor, Settings->MaxWalkSlopeCosine, MoveRecord);
 		}
-	
+    
 		if (!CurrentFloor.IsWalkableFloor() && !CurrentFloor.HitResult.bStartPenetrating)
 		{
 			// No floor or not walkable, so let's let the airborne movement mode deal with it
 			OutputState.MovementEndState.NextModeName = Settings->AirMovementModeName;
 			OutputState.MovementEndState.RemainingMs = Params.TimeStep.StepMs - (Params.TimeStep.StepMs * PercentTimeAppliedSoFar);
 			MoveRecord.SetDeltaSeconds((Params.TimeStep.StepMs - OutputState.MovementEndState.RemainingMs) * 0.001f);
-			CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, OutputSyncState);
+			CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, ProposedMove.AngularVelocityDegrees, OutputSyncState);
 			return;
 		}
 	}
 	else
 	{
-		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), CurrentFloor);
-		
-		FHitResult Hit(CurrentFloor.HitResult);
-		if (Hit.bStartPenetrating)
+		// If the actor isn't moving we still may need to check if they have a valid floor, such as if they're on an elevator platform moving up/down
+		if ((FloorCheckPolicy == EGarStaticFloorCheckPolicy::Always) ||
+		    (FloorCheckPolicy == EGarStaticFloorCheckPolicy::OnDynamicBaseOnly && StartingSyncState->GetMovementBase()))
 		{
-			// The floor check failed because it started in penetration
-			// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
-			Hit.TraceEnd = Hit.TraceStart + UpDirection * 2.4;
-			FVector RequestedAdjustment = UMovementUtils::ComputePenetrationAdjustment(Hit);
+			UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+		
+			FHitResult Hit(CurrentFloor.HitResult);
+			if (Hit.bStartPenetrating)
+			{
+				// The floor check failed because it started in penetration
+				// We do not want to try to move downward because the downward sweep failed, rather we'd like to try to pop out of the floor.
+				Hit.TraceEnd = Hit.TraceStart + UpDirection * 2.4;
+				FVector RequestedAdjustment = UMovementUtils::ComputePenetrationAdjustment(Hit);
 			
-			const EMoveComponentFlags IncludeBlockingOverlapsWithoutEvents = (MOVECOMP_NeverIgnoreBlockingOverlaps | MOVECOMP_DisableBlockingOverlapDispatch);
-			EMoveComponentFlags MoveComponentFlags = MOVECOMP_NoFlags;
-			MoveComponentFlags = (MoveComponentFlags | IncludeBlockingOverlapsWithoutEvents);
-			UMovementUtils::TryMoveToResolvePenetration(Params.MovingComps, MoveComponentFlags, RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat(), MoveRecord);
-		}
+				const EMoveComponentFlags IncludeBlockingOverlapsWithoutEvents = (MOVECOMP_NeverIgnoreBlockingOverlaps | MOVECOMP_DisableBlockingOverlapDispatch);
+				EMoveComponentFlags MoveComponentFlags = MOVECOMP_NoFlags;
+				MoveComponentFlags = (MoveComponentFlags | IncludeBlockingOverlapsWithoutEvents);
+				UMovementUtils::TryMoveToResolvePenetration(Params.MovingComps, MoveComponentFlags, RequestedAdjustment, Hit, UpdatedComponent->GetComponentQuat(), MoveRecord);
+			}
 		
-		if (!CurrentFloor.IsWalkableFloor() && !Hit.bStartPenetrating)
-		{
-			// No floor or not walkable, so let's let the airborne movement mode deal with it
-			OutputState.MovementEndState.NextModeName = Settings->AirMovementModeName;
-			OutputState.MovementEndState.RemainingMs = Params.TimeStep.StepMs;
-			MoveRecord.SetDeltaSeconds((Params.TimeStep.StepMs - OutputState.MovementEndState.RemainingMs) * 0.001f);
-			CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, OutputSyncState);
-			return;
+			if (!CurrentFloor.IsWalkableFloor() && !Hit.bStartPenetrating)
+			{
+				// No floor or not walkable, so let's let the airborne movement mode deal with it
+				OutputState.MovementEndState.NextModeName = Settings->AirMovementModeName;
+				OutputState.MovementEndState.RemainingMs = Params.TimeStep.StepMs;
+				MoveRecord.SetDeltaSeconds((Params.TimeStep.StepMs - OutputState.MovementEndState.RemainingMs) * 0.001f);
+				CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, ProposedMove.AngularVelocityDegrees, OutputSyncState);
+				return;
+			}
 		}
 	}
 
-	CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, OutputSyncState);
+	CaptureFinalState(UpdatedComponent, bDidAttemptMovement, CurrentFloor, MoveRecord, ProposedMove.AngularVelocityDegrees, OutputSyncState);
+
 }
 
 UObject* UGarMoverWalkingMode::GetTurnGenerator()
@@ -335,8 +333,7 @@ void UGarMoverWalkingMode::OnUnregistered()
 	Super::OnUnregistered();
 }
 
-void UGarMoverWalkingMode::CaptureFinalState(USceneComponent* UpdatedComponent, bool bDidAttemptMovement, const FFloorCheckResult& FloorResult,
-											 const FMovementRecord& Record, FMoverDefaultSyncState& OutputSyncState) const
+void UGarMoverWalkingMode::CaptureFinalState(USceneComponent* UpdatedComponent, bool bDidAttemptMovement, const FFloorCheckResult& FloorResult, const FMovementRecord& Record, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState) const
 {
 	FRelativeBaseInfo PriorBaseInfo;
 
@@ -365,6 +362,8 @@ void UGarMoverWalkingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 		OutputSyncState.SetTransforms_WorldSpace( UpdatedComponent->GetComponentLocation(),
 												  UpdatedComponent->GetComponentRotation(),
 												  Record.GetRelevantVelocity(),
+												  AngularVelocityDegrees,
+												  
 												  CurrentBaseInfo.MovementBase.Get(), CurrentBaseInfo.BoneName);
 	}
 	else
@@ -374,6 +373,7 @@ void UGarMoverWalkingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 		OutputSyncState.SetTransforms_WorldSpace( UpdatedComponent->GetComponentLocation(),
 												  UpdatedComponent->GetComponentRotation(),
 												  Record.GetRelevantVelocity(),
+												  AngularVelocityDegrees,
 												  nullptr);	// no movement base
 	}
 

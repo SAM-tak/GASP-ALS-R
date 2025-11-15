@@ -139,18 +139,12 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 
 	OutputSyncState.MoveDirectionIntent = (ProposedMove.bHasDirIntent ? ProposedMove.DirectionIntent : FVector::ZeroVector);
 
+
 	// Use the orientation intent directly. If no intent is provided, use last frame's orientation. Note that we are assuming rotation changes can't fail. 
 	const FRotator StartingOrient = StartingSyncState->GetOrientation_WorldSpace();
-	FRotator TargetOrient = StartingOrient;
 
-	bool bIsOrientationChanging = false;
-
-	// Apply orientation changes (if any)
-	if (!UMovementUtils::IsAngularVelocityZero(ProposedMove.AngularVelocity))
-	{
-		TargetOrient += (ProposedMove.AngularVelocity * DeltaSeconds);
-		bIsOrientationChanging = (TargetOrient != StartingOrient);
-	}
+	const FRotator TargetOrient = UMovementUtils::ApplyAngularVelocityToRotator(StartingOrient, ProposedMove.AngularVelocityDegrees, DeltaSeconds);
+	const bool bIsOrientationChanging = !StartingOrient.Equals(TargetOrient);
 	
 	FVector MoveDelta = ProposedMove.LinearVelocity * DeltaSeconds;
 
@@ -178,7 +172,7 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 
 	// If we are very close to a walkable surface, make sure we maintain a small gap over it
 	FFloorCheckResult FloorUnderActor;
-	UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
+	UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 	if (FloorUnderActor.IsWalkableFloor())
 	{
@@ -198,12 +192,11 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 		}
 	}
 
-	CaptureFinalState(UpdatedComponent, MoveRecord, *StartingSyncState, OutputSyncState, DeltaSeconds);
+	CaptureFinalState(UpdatedComponent, MoveRecord, *StartingSyncState, ProposedMove.AngularVelocityDegrees, OutputSyncState, DeltaSeconds);
 }
 
 // TODO: replace this function with simply looking at/collapsing the MovementRecord
-void UGarMoverRagdollingMode::CaptureFinalState(USceneComponent* UpdatedComponent, FMovementRecord& Record, const FMoverDefaultSyncState& StartSyncState,
-	FMoverDefaultSyncState& OutputSyncState, const float DeltaSeconds) const
+void UGarMoverRagdollingMode::CaptureFinalState(USceneComponent* UpdatedComponent, FMovementRecord& Record, const FMoverDefaultSyncState& StartSyncState, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState, const float DeltaSeconds) const
 {
 	const FVector FinalLocation = UpdatedComponent->GetComponentLocation();
 	const FVector FinalVelocity = Record.GetRelevantVelocity();
@@ -213,6 +206,7 @@ void UGarMoverRagdollingMode::CaptureFinalState(USceneComponent* UpdatedComponen
 	OutputSyncState.SetTransforms_WorldSpace(FinalLocation,
 											  UpdatedComponent->GetComponentRotation(),
 											  FinalVelocity,
+											  AngularVelocityDegrees,
 											  nullptr); // no movement base
 
 	UpdatedComponent->ComponentVelocity = FinalVelocity;

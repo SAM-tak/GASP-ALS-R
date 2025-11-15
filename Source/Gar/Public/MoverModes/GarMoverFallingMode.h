@@ -50,6 +50,15 @@ public:
 	float FallingDeceleration;
 
 	/**
+	 * Friction to apply to air movement.
+	 * Lateral velocity is scaled each tick by a factor (1-Friction * TimeStep) so friction
+	 * values greater than 1/TimeStep will result in all lateral velocity being removed.
+	 * Note: This is NOT applied to vertical velocity, only movement plane velocity
+	 */
+	UPROPERTY(Category = Mover, EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0"))
+	float FallingLateralFriction;
+
+	/**
      * Deceleration to apply to air movement when falling faster than terminal velocity
 	 * Note: This is NOT applied to vertical velocity, only movement plane velocity
      */
@@ -89,7 +98,7 @@ protected:
 	UFUNCTION(BlueprintCallable, Category=Mover)
 	virtual void ProcessLanded(const FFloorCheckResult& FloorResult, FVector& Velocity, FRelativeBaseInfo& BaseInfo, FMoverTickEndData& TickEndData) const;
 
-	void CaptureFinalState(USceneComponent* UpdatedComponent, const FMoverDefaultSyncState& StartSyncState, const FFloorCheckResult& FloorResult, float DeltaSeconds, float DeltaSecondsUsed, FMoverDefaultSyncState& OutputSyncState, FMoverTickEndData& TickEndData, FMovementRecord& Record) const;
+	void CaptureFinalState(USceneComponent* UpdatedComponent, const FMoverDefaultSyncState& StartSyncState, const FFloorCheckResult& FloorResult, float DeltaSeconds, float DeltaSecondsUsed, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState, FMoverTickEndData& TickEndData, FMovementRecord& Record) const;
 
 	TObjectPtr<const UGarMovementSettings> Settings;
 };

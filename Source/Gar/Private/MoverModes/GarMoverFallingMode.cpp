@@ -77,8 +77,7 @@ void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData
 		IntendedOrientation_WorldSpace = CharacterInputs->GetOrientationIntentDir_WorldSpace().ToOrientationRotator();
 	}
 
-	IntendedOrientation_WorldSpace = UMovementUtils::ApplyGravityToOrientationIntent(IntendedOrientation_WorldSpace, MoverComp->GetWorldToGravityTransform(),
-		Settings->bShouldRemainVertical);
+	IntendedOrientation_WorldSpace = UMovementUtils::ApplyGravityToOrientationIntent(IntendedOrientation_WorldSpace, MoverComp->GetWorldToGravityTransform(), Settings->bShouldRemainVertical);
 	
 	Params.OrientationIntent = IntendedOrientation_WorldSpace;
 	Params.PriorVelocity = StartHorizontalVelocity;
@@ -91,6 +90,7 @@ void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData
 	Params.Deceleration = FallingDeceleration;
 	Params.WorldToGravityQuat = MoverComp->GetWorldToGravityTransform();
 	Params.bUseAccelerationForVelocityMove = Settings->InAirSettings.bUseAccelerationForVelocityMove;
+	Params.Friction = FallingLateralFriction;
 
 	MoverComp->CurrentMaxSpeed = Settings->InAirSettings.MaxSpeed;
 	MoverComp->CurrentAcceleration = Params.Acceleration;
@@ -178,14 +178,9 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 	OutputSyncState.MoveDirectionIntent = (ProposedMove.bHasDirIntent ? ProposedMove.DirectionIntent : FVector::ZeroVector);
 
 	// Use the orientation intent directly. If no intent is provided, use last frame's orientation. Note that we are assuming rotation changes can't fail. 
-	FRotator TargetOrient = StartingSyncState->GetOrientation_WorldSpace();
+	const FRotator StartingOrient = StartingSyncState->GetOrientation_WorldSpace();
+	const FRotator TargetOrient = UMovementUtils::ApplyAngularVelocityToRotator(StartingOrient, ProposedMove.AngularVelocityDegrees, DeltaSeconds);
 
-	// Apply orientation changes (if any)
-	if (!UMovementUtils::IsAngularVelocityZero(ProposedMove.AngularVelocity))
-	{
-		TargetOrient += (ProposedMove.AngularVelocity * DeltaSeconds);
-	}
-	
 	const FVector StartingFallingVelocity = StartingSyncState->GetVelocity_WorldSpace();
 
 	const FVector UpDirection = MoverComponent->GetUpDirection();
@@ -196,13 +191,12 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 	{
 		// If we are very close to a walkable floor, make sure we're maintaining the correct distance from it
 		FFloorCheckResult FloorUnderActor;
-		UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(),
-			OUT FloorUnderActor);
+		UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 		if (FloorUnderActor.IsWalkableFloor())
 		{
-			UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComponent, FloorUnderActor, Settings->MaxWalkSlopeCosine, MoveRecord);
-			CaptureFinalState(UpdatedComponent, *StartingSyncState, FloorUnderActor, DeltaSeconds, DeltaSeconds * PctTimeApplied, OutputSyncState, OutputState, MoveRecord);
+			UGroundMovementUtils::TryMoveToKeepMinHeightAboveFloor(MoverComponent, FloorUnderActor, Settings->MaxWalkSlopeCosine, MoveRecord);
+			CaptureFinalState(UpdatedComponent, *StartingSyncState, FloorUnderActor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
 			return;
 		}
 	}
@@ -232,30 +226,30 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 
 		// Check for hitting a landing surface
 		if (UAirMovementUtils::IsValidLandingSpot(Params.MovingComps, UpdatedComponent->GetComponentLocation(),
-			Hit, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, OUT LandingFloor))
+			Hit, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, OUT LandingFloor))
 		{
-			UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComponent, LandingFloor, Settings->MaxWalkSlopeCosine, MoveRecord); // make sure we maintain a small gap over walking surfaces
-			CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, OutputSyncState, OutputState, MoveRecord);
+			UGroundMovementUtils::TryMoveToKeepMinHeightAboveFloor(MoverComponent, LandingFloor, Settings->MaxWalkSlopeCosine, MoveRecord); // make sure we maintain a small gap over walking surfaces
+			CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
 			return;
 		}
-		
+
 		LandingFloor.HitResult = Hit;
 		SimBlackboard->Set(CommonBlackboard::LastFloorResult, LandingFloor);
-		
+
 		FMoverOnImpactParams ImpactParams(DefaultModeNames::Falling, Hit, MoveDelta);
 		MoverComponent->HandleImpact(ImpactParams);
 
 		// We didn't land on a walkable surface, so let's try to slide along it
 		UAirMovementUtils::TryMoveToFallAlongSurface(Params.MovingComps, MoveDelta,
 			(1.f - Hit.Time), TargetOrientQuat, Hit.Normal, Hit, true,
-			Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, LandingFloor, MoveRecord);
+			Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, LandingFloor, MoveRecord);
 
 		PctTimeApplied += Hit.Time * (1.f - PctTimeApplied);
 
 		if (LandingFloor.IsWalkableFloor())
 		{
-			UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComponent, LandingFloor, Settings->MaxWalkSlopeCosine, MoveRecord); // make sure we maintain a small gap over walking surfaces
-			CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, OutputSyncState, OutputState, MoveRecord);
+			UGroundMovementUtils::TryMoveToKeepMinHeightAboveFloor(MoverComponent, LandingFloor, Settings->MaxWalkSlopeCosine, MoveRecord); // make sure we maintain a small gap over walking surfaces
+			CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
 			return;
 		}
 	}
@@ -265,7 +259,22 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 		PctTimeApplied = 1.f;
 	}
 	
-	CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds* PctTimeApplied, OutputSyncState, OutputState, MoveRecord);
+	CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
+}
+
+void UGarMoverFallingMode::OnRegistered(const FName ModeName)
+{
+	Super::OnRegistered(ModeName);
+
+	Settings = GetMoverComponent()->FindSharedSettings<UGarMovementSettings>();
+	ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
+}
+
+void UGarMoverFallingMode::OnUnregistered()
+{
+	Settings = nullptr;
+
+	Super::OnUnregistered();
 }
 
 void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, FVector& Velocity, FRelativeBaseInfo& BaseInfo, FMoverTickEndData& TickEndData) const
@@ -309,22 +318,7 @@ void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, F
 	}
 }
 
-void UGarMoverFallingMode::OnRegistered(const FName ModeName)
-{
-	Super::OnRegistered(ModeName);
-
-	Settings = GetMoverComponent()->FindSharedSettings<UGarMovementSettings>();
-	ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
-}
-
-void UGarMoverFallingMode::OnUnregistered()
-{
-	Settings = nullptr;
-
-	Super::OnUnregistered();
-}
-
-void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, const FMoverDefaultSyncState& StartSyncState, const FFloorCheckResult& FloorResult, float DeltaSeconds, float DeltaSecondsUsed, FMoverDefaultSyncState& OutputSyncState, FMoverTickEndData& TickEndData, FMovementRecord& Record) const
+void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, const FMoverDefaultSyncState& StartSyncState, const FFloorCheckResult& FloorResult, float DeltaSeconds, float DeltaSecondsUsed, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState, FMoverTickEndData& TickEndData, FMovementRecord& Record) const
 {
 	UMoverBlackboard* SimBlackboard = GetMoverComponent()->GetSimBlackboard_Mutable();
 
@@ -345,7 +339,8 @@ void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 	
 	Record.SetDeltaSeconds( DeltaSecondsUsed );
 	
-	FVector EffectiveVelocity = Record.GetRelevantVelocity();
+	// If we didn't use any time lets just pass along velocity so we don't lose it when we go into the next mode with refunded time
+	FVector EffectiveVelocity = DeltaSecondsUsed <= UE_SMALL_NUMBER ? StartSyncState.GetVelocity_WorldSpace() : Record.GetRelevantVelocity();
 	// TODO: Update Main/large movement record with substeps from our local record
 
 	FRelativeBaseInfo MovementBaseInfo;
@@ -358,6 +353,7 @@ void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 		OutputSyncState.SetTransforms_WorldSpace( FinalLocation,
 												  UpdatedComponent->GetComponentRotation(),
 												  EffectiveVelocity,
+												  AngularVelocityDegrees,
 												  MovementBaseInfo.MovementBase.Get(), MovementBaseInfo.BoneName);
 	}
 	else
@@ -365,6 +361,7 @@ void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 		OutputSyncState.SetTransforms_WorldSpace( FinalLocation,
 												  UpdatedComponent->GetComponentRotation(),
 												  EffectiveVelocity,
+												  AngularVelocityDegrees,
 												  nullptr); // no movement base
 	}
 

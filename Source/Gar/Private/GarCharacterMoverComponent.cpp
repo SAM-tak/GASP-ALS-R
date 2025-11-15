@@ -1,5 +1,7 @@
 #include "GarCharacterMoverComponent.h"
 
+#define GAR_USE_GE_FOR_MOVEMENTSTATE 0
+
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"

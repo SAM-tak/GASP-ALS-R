@@ -110,17 +110,10 @@ void UGarMoverTraversalMode::SimulationTick_Implementation(const FSimulationTick
 
 	// Use the orientation intent directly. If no intent is provided, use last frame's orientation. Note that we are assuming rotation changes can't fail. 
 	const FRotator StartingOrient = StartingSyncState->GetOrientation_WorldSpace();
-	FRotator TargetOrient = StartingOrient;
 
-	bool bIsOrientationChanging = false;
+	const FRotator TargetOrient = UMovementUtils::ApplyAngularVelocityToRotator(StartingOrient, ProposedMove.AngularVelocityDegrees, DeltaSeconds);
+	const bool bIsOrientationChanging = !StartingOrient.Equals(TargetOrient);
 
-	// Apply orientation changes (if any)
-	if (!UMovementUtils::IsAngularVelocityZero(ProposedMove.AngularVelocity))
-	{
-		TargetOrient += (ProposedMove.AngularVelocity * DeltaSeconds);
-		bIsOrientationChanging = (TargetOrient != StartingOrient);
-	}
-	
 	FVector MoveDelta = ProposedMove.LinearVelocity * DeltaSeconds;
 
 	FQuat TargetOrientQuat = TargetOrient.Quaternion();
@@ -147,29 +140,29 @@ void UGarMoverTraversalMode::SimulationTick_Implementation(const FSimulationTick
 
 	// If we are very close to a walkable surface, make sure we maintain a small gap over it
 	FFloorCheckResult FloorUnderActor;
-	UFloorQueryUtils::FindFloor(Params.MovingComps, CommonLegacySettings->FloorSweepDistance, CommonLegacySettings->MaxWalkSlopeCosine, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
+	UFloorQueryUtils::FindFloor(Params.MovingComps, CommonLegacySettings->FloorSweepDistance, CommonLegacySettings->MaxWalkSlopeCosine, CommonLegacySettings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 	if (FloorUnderActor.IsWalkableFloor())
 	{
 		//UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MoverComp, FloorUnderActor, CommonLegacySettings->MaxWalkSlopeCosine, MoveRecord);
 		if (HasGameplayTag(GarLocomotionModeTags::InAir, true))
 		{
-			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling");
+			OutputState.MovementEndState.NextModeName = TEXT("Traversal");
 		}
 	}
 	else
 	{
 		if (HasGameplayTag(GarLocomotionModeTags::Grounded, true))
 		{
-			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling In Air");
+			OutputState.MovementEndState.NextModeName = TEXT("Traversal In Air");
 		}
 	}
 
-	CaptureFinalState(UpdatedComponent, MoveRecord, *StartingSyncState, OutputSyncState, DeltaSeconds);
+	CaptureFinalState(UpdatedComponent, MoveRecord, *StartingSyncState, ProposedMove.AngularVelocityDegrees, OutputSyncState, DeltaSeconds);
 }
 
 // TODO: replace this function with simply looking at/collapsing the MovementRecord
-void UGarMoverTraversalMode::CaptureFinalState(USceneComponent* UpdatedComponent, FMovementRecord& Record, const FMoverDefaultSyncState& StartSyncState, FMoverDefaultSyncState& OutputSyncState, const float DeltaSeconds) const
+void UGarMoverTraversalMode::CaptureFinalState(USceneComponent* UpdatedComponent, FMovementRecord& Record, const FMoverDefaultSyncState& StartSyncState, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState, const float DeltaSeconds) const
 {
 	const FVector FinalLocation = UpdatedComponent->GetComponentLocation();
 	const FVector FinalVelocity = Record.GetRelevantVelocity();
@@ -179,6 +172,7 @@ void UGarMoverTraversalMode::CaptureFinalState(USceneComponent* UpdatedComponent
 	OutputSyncState.SetTransforms_WorldSpace(FinalLocation,
 											  UpdatedComponent->GetComponentRotation(),
 											  FinalVelocity,
+											  AngularVelocityDegrees,
 											  nullptr); // no movement base
 
 	UpdatedComponent->ComponentVelocity = FinalVelocity;

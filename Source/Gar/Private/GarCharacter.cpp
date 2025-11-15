@@ -512,14 +512,11 @@ void AGarCharacter::SetDesiredRotationMode(const FGameplayTag& NewDesiredRotatio
 	}
 
 	AbilitySystem->SetLooseGameplayTagCount(GarDesiredRotationModeTags::ViewDirection,
-		NewDesiredRotationMode == GarDesiredRotationModeTags::ViewDirection ? 1 : 0);
+		NewDesiredRotationMode == GarDesiredRotationModeTags::ViewDirection ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
 	AbilitySystem->SetLooseGameplayTagCount(GarDesiredRotationModeTags::VelocityDirection,
-		NewDesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection ? 1 : 0);
-
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredRotationModeTags::ViewDirection,
-		NewDesiredRotationMode == GarDesiredRotationModeTags::ViewDirection ? 1 : 0);
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredRotationModeTags::VelocityDirection,
-		NewDesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection ? 1 : 0);
+		NewDesiredRotationMode == GarDesiredRotationModeTags::VelocityDirection ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
 }
 
 void AGarCharacter::RefreshRotationMode()
@@ -610,13 +607,12 @@ void AGarCharacter::SetDesiredStance(const FGameplayTag& NewDesiredStance)
 		return;
 	}
 
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Standing, NewDesiredStance == GarDesiredStanceTags::Standing ? 1 : 0);
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0);
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0);
-
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Standing, NewDesiredStance == GarDesiredStanceTags::Standing ? 1 : 0);
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0);
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Standing, NewDesiredStance == GarDesiredStanceTags::Standing ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
 }
 
 void AGarCharacter::ApplyDesiredStance()
@@ -924,13 +920,12 @@ void AGarCharacter::SetDesiredGait(const FGameplayTag& NewDesiredGait)
 		return;
 	}
 
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Walking, NewDesiredGait == GarDesiredGaitTags::Walking ? 1 : 0);
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Running, NewDesiredGait == GarDesiredGaitTags::Running ? 1 : 0);
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Sprinting, NewDesiredGait == GarDesiredGaitTags::Sprinting ? 1 : 0);
-
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Walking, NewDesiredGait == GarDesiredGaitTags::Walking ? 1 : 0);
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Running, NewDesiredGait == GarDesiredGaitTags::Running ? 1 : 0);
-	AbilitySystem->SetReplicatedLooseGameplayTagCount(GarDesiredGaitTags::Sprinting, NewDesiredGait == GarDesiredGaitTags::Sprinting ? 1 : 0);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Walking, NewDesiredGait == GarDesiredGaitTags::Walking ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Running, NewDesiredGait == GarDesiredGaitTags::Running ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredGaitTags::Sprinting, NewDesiredGait == GarDesiredGaitTags::Sprinting ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
 }
 
 FGameplayTag AGarCharacter::LimitGaitIfNeeded_Implementation(const FGameplayTag& NewGait) const

@@ -43,9 +43,7 @@ bool FGarLayeredMove_TurnTo::GenerateMove(const FMoverTickStartData& StartState,
 
 	const FRotator CurrentRotation = MoverActor->GetActorRotation();
 
-	FRotator AngularVelocity = (CurrentTargetRotation - CurrentRotation).GetNormalized() * (1.0f / DeltaSeconds);
-
-	OutProposedMove.AngularVelocity = AngularVelocity;
+	OutProposedMove.AngularVelocityDegrees = UMovementUtils::ComputeAngularVelocityDegrees(CurrentRotation, CurrentTargetRotation, DeltaSeconds);
 
 	return true;
 }

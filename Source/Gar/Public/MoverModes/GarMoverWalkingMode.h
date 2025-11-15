@@ -10,6 +10,17 @@ struct FFloorCheckResult;
 struct FRelativeBaseInfo;
 struct FMovementRecord;
 
+// Behavior policy for performing floor checks in walking mode when no movement is occurring. 
+UENUM(BlueprintType)
+enum class EGarStaticFloorCheckPolicy : uint8
+{
+	// Always perform floor checks, even when not moving. You may want this if static bases may disappear from underneath.
+	Always = 0				UMETA(DisplayName = "Always"),
+
+	// Only perform floor checks when not moving IF we're on a dynamic movement base
+	OnDynamicBaseOnly = 1	UMETA(DisplayName = "OnDynamicBaseOnly"),
+};
+
 UCLASS(Blueprintable, BlueprintType)
 class UGarMoverWalkingMode : public UBaseMovementMode
 {
@@ -31,6 +42,10 @@ public:
 
 protected:
 
+	/** Choice of behavior for floor checks while not moving.  */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Mover)
+	EGarStaticFloorCheckPolicy FloorCheckPolicy = EGarStaticFloorCheckPolicy::OnDynamicBaseOnly;
+
 	/** Optional modular object for generating rotation towards desired orientation. If not specified, linear interpolation will be used. */
 	UPROPERTY(EditAnywhere, Instanced, Category = Mover, meta = (ObjectMustImplement = "/Script/Mover.TurnGeneratorInterface"))
 	TObjectPtr<UObject> TurnGenerator;
@@ -38,7 +53,7 @@ protected:
 	virtual void OnRegistered(const FName ModeName) override;
 	virtual void OnUnregistered() override;
 
-	void CaptureFinalState(USceneComponent* UpdatedComponent, bool bDidAttemptMovement, const FFloorCheckResult& FloorResult, const FMovementRecord& Record, FMoverDefaultSyncState& OutputSyncState) const;
+	void CaptureFinalState(USceneComponent* UpdatedComponent, bool bDidAttemptMovement, const FFloorCheckResult& FloorResult, const FMovementRecord& Record, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState) const;
 
 	FRelativeBaseInfo UpdateFloorAndBaseInfo(const FFloorCheckResult& FloorResult) const;
 

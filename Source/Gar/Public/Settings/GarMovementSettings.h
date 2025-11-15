@@ -156,6 +156,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ground Movement", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
 	float FloorSweepDistance = 40.0f;
 
+	/** Performs floor checks as if the object is using a shape with a flat base.
+	 *  This avoids the situation where we slowly lower off the side of a ledge when using shapes with rounded bottoms, like a capsule.
+	 */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ground Movement")
+	bool bUseFlatBaseForFloorChecks = true;
+
 	/** Mover actors will be able to step up onto or over obstacles shorter than this */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ground Movement", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
 	float MaxStepHeight = 40.0f;
