@@ -67,11 +67,9 @@ void UGarOverrideModeComponent::ChangeOverrideTask(const FGameplayTag& NewOverri
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarOverrideTask>(Character.Get(), OverrideClassMap[NewOverrideMode])};
-			NewTask->Component = this;
+			auto* NewTask = UGarOverrideTask::New(Character.Get(), OverrideClassMap[NewOverrideMode], this);
 			InstancedOverrideTasks.Add(NewOverrideMode, NewTask);
 			CurrentOverrideTask = NewTask;
-			CurrentOverrideTask->OnRegister();
 		}
 		CurrentOverrideTag = NewOverrideMode;
 		CurrentOverrideTask->Begin();

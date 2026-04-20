@@ -57,11 +57,9 @@ UGarLocalMontageTask* UGarLocalMontageComponent::PlayImplementation(const FGamep
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarLocalMontageTask>(Character.Get(), LocalMontageTaskClassMap[LocalMontageTag])};
-			NewTask->Component = this;
+			auto* NewTask = UGarLocalMontageTask::New(Character.Get(), LocalMontageTaskClassMap[LocalMontageTag], this);
 			InstancedLocalMontageTasks.Add(LocalMontageTag, NewTask);
 			CurrentLocalMontageTask = NewTask;
-			CurrentLocalMontageTask->OnRegister();
 		}
 
 		if (CurrentLocalMontageTask.IsValid())

@@ -13,8 +13,10 @@ class GAR_API UGarLocalMontageTask : public UGarCharacterTask
 {
 	GENERATED_BODY()
 
-	friend class UGarLocalMontageComponent;
 	friend class UGarAbilityTask_PlayLocalMontage;
+
+public:
+	static UGarLocalMontageTask* New(UObject* Outer, TSubclassOf<UGarLocalMontageTask> Class, UGarLocalMontageComponent* InComponent);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "LocalMontageTask|Settings", Transient)

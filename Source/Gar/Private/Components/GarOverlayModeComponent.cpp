@@ -51,11 +51,9 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayM
 		}
 		else
 		{
-			auto* NewTask{NewObject<UGarOverlayTask>(Character.Get(), OverlayClassMap[NewOverlayMode])};
-			NewTask->Component = this;
+			auto* NewTask = UGarOverlayTask::New(Character.Get(), OverlayClassMap[NewOverlayMode], this);
 			InstancedOverlayTasks.Add(NewOverlayMode, NewTask);
 			CurrentOverlayTask = NewTask;
-			NewTask->OnRegister();
 		}
 		CurrentOverlayTag = NewOverlayMode;
 		CurrentOverlayTask->Begin();

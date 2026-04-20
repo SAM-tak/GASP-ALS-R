@@ -16,7 +16,8 @@ class GAR_API UGarOverlayTask : public UGarCharacterTask
 {
 	GENERATED_BODY()
 
-	friend UGarOverlayModeComponent;
+public:
+	static UGarOverlayTask* New(UObject* Outer, TSubclassOf<UGarOverlayTask> Class, UGarOverlayModeComponent* InComponent);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Settings")

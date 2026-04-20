@@ -7,6 +7,14 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarLocalMontageTask)
 
+UGarLocalMontageTask* UGarLocalMontageTask::New(UObject* Outer, TSubclassOf<UGarLocalMontageTask> Class, UGarLocalMontageComponent* InComponent)
+{
+	auto* Task = NewObject<UGarLocalMontageTask>(Outer, Class);
+	Task->Component = InComponent;
+	Task->OnRegister();
+	return Task;
+}
+
 bool UGarLocalMontageTask::Play(const FGarPlayMontageParameter& Parameter)
 {
 	auto* AnimInstance{Character->GetMesh()->GetAnimInstance()};

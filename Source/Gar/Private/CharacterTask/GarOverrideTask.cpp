@@ -2,9 +2,18 @@
 
 #include "CharacterTasks/GarOverrideTask.h"
 #include "GarCharacter.h"
+#include "Components/GarOverrideModeComponent.h"
 #include "LinkedAnimLayers/GarOverrideAnimInstance.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarOverrideTask)
+
+UGarOverrideTask* UGarOverrideTask::New(UObject* Outer, TSubclassOf<UGarOverrideTask> Class, UGarOverrideModeComponent* InComponent)
+{
+	auto* Task = NewObject<UGarOverrideTask>(Outer, Class);
+	Task->Component = InComponent;
+	Task->OnRegister();
+	return Task;
+}
 
 void UGarOverrideTask::Begin()
 {

@@ -2,9 +2,18 @@
 
 #include "CharacterTasks/GarOverlayTask.h"
 #include "GarCharacter.h"
+#include "Components/GarOverlayModeComponent.h"
 #include "LinkedAnimLayers/GarOverlayAnimInstance.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarOverlayTask)
+
+UGarOverlayTask* UGarOverlayTask::New(UObject* Outer, TSubclassOf<UGarOverlayTask> Class, UGarOverlayModeComponent* InComponent)
+{
+	auto* Task = NewObject<UGarOverlayTask>(Outer, Class);
+	Task->Component = InComponent;
+	Task->OnRegister();
+	return Task;
+}
 
 void UGarOverlayTask::Begin()
 {

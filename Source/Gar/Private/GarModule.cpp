@@ -50,37 +50,32 @@ void FGarModule::Console_OnRegisterAutoCompleteEntries(TArray<FAutoCompleteComma
 	const auto CommandColor{GetDefault<UConsoleSettings>()->AutoCompleteCommandColor};
 
 	auto* Command{&AutoCompleteCommands.AddDefaulted_GetRef()};
-	Command->Command = FString{TEXTVIEW("Stat Gar")};
+	Command->Command = FString{TEXTVIEW("Stat GAR")};
 	Command->Desc = FString{TEXTVIEW("Displays GAR performance statistics.")};
 	Command->Color = CommandColor;
 
 	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.Curves")};
+	Command->Command = FString{TEXTVIEW("ShowDebug GAR.Curves")};
 	Command->Desc = FString{TEXTVIEW("Displays animation curves.")};
 	Command->Color = CommandColor;
 
 	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.State")};
-	Command->Desc = FString{TEXTVIEW("Displays character state.")};
-	Command->Color = CommandColor;
-
-	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.Shapes")};
+	Command->Command = FString{TEXTVIEW("ShowDebug GAR.Shapes")};
 	Command->Desc = FString{TEXTVIEW("Displays debug shapes.")};
 	Command->Color = CommandColor;
 
 	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.Traces")};
+	Command->Command = FString{TEXTVIEW("ShowDebug GAR.Traces")};
 	Command->Desc = FString{TEXTVIEW("Displays animation traces.")};
 	Command->Color = CommandColor;
 
 	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.Mantling")};
-	Command->Desc = FString{TEXTVIEW("Displays mantling traces.")};
+	Command->Command = FString{TEXTVIEW("ShowDebug GAR.Traversal")};
+	Command->Desc = FString{TEXTVIEW("Displays traversal traces.")};
 	Command->Color = CommandColor;
 
 	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
-	Command->Command = FString{TEXTVIEW("ShowDebug Gar.PhysicalAnimation")};
+	Command->Command = FString{TEXTVIEW("ShowDebug GAR.PhysicalAnimation")};
 	Command->Desc = FString{TEXTVIEW("Displays Physical Animation Info.")};
 	Command->Color = CommandColor;
 }
