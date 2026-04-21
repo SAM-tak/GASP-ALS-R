@@ -67,15 +67,6 @@ public:
 
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintCallable, Category = "GAR|CharacterMover")
-	void InitializeTrajectoryPredictor();
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|CharacterMover")
-	void InitializeMotionWarpingAdapter();
-
-	UFUNCTION(BlueprintCallable, Category = "GAR|CharacterMover")
-	void InitializeMoverRuntimeObjects();
-
 protected:
 	UFUNCTION()
 	virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);

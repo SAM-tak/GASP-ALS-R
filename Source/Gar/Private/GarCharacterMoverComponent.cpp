@@ -73,52 +73,11 @@ void UGarCharacterMoverComponent::InitializeComponent()
 	Super::InitializeComponent();
 
 	Character = Cast<AGarCharacter>(GetOwner());
-	InitializeMoverRuntimeObjects();
-}
 
-void UGarCharacterMoverComponent::InitializeTrajectoryPredictor()
-{
-	if (!IsValid(TrajectoryPredictor))
-	{
-		TrajectoryPredictor = NewObject<UMoverTrajectoryPredictor>(this);
-	}
-
+	TrajectoryPredictor = NewObject<UMoverTrajectoryPredictor>();
 	TrajectoryPredictor->Setup(this);
-}
-
-void UGarCharacterMoverComponent::InitializeMotionWarpingAdapter()
-{
-	if (!Character.IsValid())
-	{
-		Character = Cast<AGarCharacter>(GetOwner());
-	}
-
-	if (!Character.IsValid())
-	{
-		return;
-	}
-
-	UMotionWarpingComponent* MotionWarping = Character->GetMotionWarping();
-	if (!IsValid(MotionWarping))
-	{
-		return;
-	}
-
-	if (!IsValid(MotionWarpingMoverAdapter))
-	{
-		MotionWarpingMoverAdapter = MotionWarping->CreateOwnerAdapter<UMotionWarpingMoverAdapter>();
-	}
-
-	if (IsValid(MotionWarpingMoverAdapter))
-	{
-		MotionWarpingMoverAdapter->SetMoverComp(this);
-	}
-}
-
-void UGarCharacterMoverComponent::InitializeMoverRuntimeObjects()
-{
-	InitializeTrajectoryPredictor();
-	InitializeMotionWarpingAdapter();
+	MotionWarpingMoverAdapter = Character->GetMotionWarping()->CreateOwnerAdapter<UMotionWarpingMoverAdapter>();
+	MotionWarpingMoverAdapter->SetMoverComp(this);
 }
 
 #if !GAR_USE_MOVEMENTMODIFIER

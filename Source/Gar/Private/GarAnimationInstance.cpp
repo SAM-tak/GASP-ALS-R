@@ -165,19 +165,14 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 {
 	check(IsInGameThread())
 
-	auto* Mover{Character->GetMover()};
-	if (!IsValid(Mover))
-	{
-		CharacterMovement.TrajectoryPredictor.Reset();
-		return;
-	}
+	const auto* Mover{Character->GetMover()};
 
 	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - Mover->GetVelocity()) / FMath::Max(DeltaTime, 0.001f);
 	CharacterMovement.Velocity = Mover->GetVelocity();
 	CharacterMovement.CurrentMaxSpeed = Mover->CurrentMaxSpeed;
 	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
 	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
-	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
+	CharacterMovement.bIsGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
 	CharacterMovement.ViewRotation = Character->GetViewRotation();
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
