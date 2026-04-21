@@ -10,6 +10,7 @@
 #include "GarCharacterMoverComponent.h"
 #include "GarGameplayTags.h"
 #include "Utility/GarMath.h"
+#include "MoverSimulationTypes.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_Rolling)
 
@@ -26,9 +27,34 @@ UGarGameplayAbility_Rolling::UGarGameplayAbility_Rolling(const FObjectInitialize
 float UGarGameplayAbility_Rolling::CalcTargetYawAngle_Implementation() const
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
-	return bRotateToInputOnStart && Character->HasMovementInput()
-		? Character->GetInputYawAngle()
-		: UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(Character->GetActorRotation().Yaw));
+
+	if (!bRotateToInputOnStart)
+	{
+		return UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(Character->GetActorRotation().Yaw));
+	}
+
+	// ローカル制御下: MovementInputVector から直接取得
+	if (Character->HasMovementInput())
+	{
+		return Character->GetInputYawAngle();
+	}
+
+	// サーバー上のリモートAP: Mover の最終入力コマンドから移動方向を取得
+	// (サーバーでは ConsumeMovementInputVector() がゼロを返すため HasMovementInput() が常に false になる)
+	if (UGarCharacterMoverComponent* MoverComp = Character->GetMover())
+	{
+		const FMoverInputCmdContext& LastInputCmd = MoverComp->GetLastInputCmd();
+		if (const FCharacterDefaultInputs* CharInputs = LastInputCmd.InputCollection.FindDataByType<FCharacterDefaultInputs>())
+		{
+			const FVector MoveInput = CharInputs->GetMoveInput_WorldSpace();
+			if (MoveInput.SizeSquared2D() > UE_KINDA_SMALL_NUMBER)
+			{
+				return UE_REAL_TO_FLOAT(UGarMath::DirectionToAngleXY(MoveInput));
+			}
+		}
+	}
+
+	return UE_REAL_TO_FLOAT(FRotator::NormalizeAxis(Character->GetActorRotation().Yaw));
 }
 
 void UGarGameplayAbility_Rolling::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
