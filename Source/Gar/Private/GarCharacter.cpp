@@ -170,6 +170,15 @@ void AGarCharacter::PostInitializeComponents()
 		{
 			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
 		}
+
+		// ACharacter と同様に、メッシュのアニメーションティックが Mover の
+		// FinalizeFrame / FinalizeSmoothingFrame より後に実行されるよう依存を設定。
+		// これにより SimProxy の VisualComponentOffset スムージング後の位置を
+		// OffsetRootBone が正しく参照できる。
+		if (Mesh && Mesh->PrimaryComponentTick.bCanEverTick)
+		{
+			Mesh->PrimaryComponentTick.AddPrerequisite(CharacterMover, CharacterMover->PrimaryComponentTick);
+		}
 	}
 
 	if (PhysicalAnimation)

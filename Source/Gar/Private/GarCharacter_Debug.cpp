@@ -37,10 +37,10 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
 	if (!DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
-	    !DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
+		!DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
 	{
 		VerticalLocation = MaxVerticalLocation;
 
@@ -137,7 +137,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 }
 
 void AGarCharacter::DisplayDebugHeader(const UCanvas* Canvas, const FText& HeaderText, const FLinearColor& HeaderColor,
-                                       const float Scale, const float HorizontalLocation, float& VerticalLocation)
+									   const float Scale, const float HorizontalLocation, float& VerticalLocation)
 {
 	FCanvasTextItem Text{
 		{HorizontalLocation, VerticalLocation},
@@ -224,7 +224,7 @@ void AGarCharacter::InitializeCurveNames()
 }
 
 void AGarCharacter::DisplayDebugCurves(const UCanvas* Canvas, const float Scale,
-                                       const float HorizontalLocation, float& VerticalLocation) const
+									   const float HorizontalLocation, float& VerticalLocation) const
 {
 	VerticalLocation += 4.0f * Scale;
 
@@ -277,7 +277,7 @@ void AGarCharacter::DisplayDebugCurves(const UCanvas* Canvas, const float Scale,
 }
 
 void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
-                                       const float HorizontalLocation, float& VerticalLocation) const
+									   const float HorizontalLocation, float& VerticalLocation) const
 {
 	VerticalLocation += 4.0f * Scale;
 
@@ -320,7 +320,7 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 #if ENABLE_DRAW_DEBUG
 	DrawDebugCone(GetWorld(), GetPawnViewLocation(),
 				  ViewRotation.Vector(), 100.0f, FMath::DegreesToRadians(15.0f), FMath::DegreesToRadians(15.0f),
-	              8, Color.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
+				  8, Color.ToFColor(true), false, -1.0f, SDPG_World, 1.0f);
 #endif
 
 	VerticalLocation += RowOffset;
@@ -344,10 +344,10 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 	const auto FeetLocation{GetActorLocation() - FVector{0.0f, 0.0f, Capsule->GetScaledCapsuleHalfHeight()}};
 
 	DrawDebugDirectionalArrow(GetWorld(),
-	                          FeetLocation + FVector{0.0f, 0.0f, 3.0f},
-	                          FeetLocation + FVector{0.0f, 0.0f, 3.0f} +
-	                          UGarMath::AngleToDirectionXY(InputYawAngle) * 50.0f,
-	                          50.0f, Color.ToFColor(true), false, -1.0f, SDPG_World, 3.0f);
+							  FeetLocation + FVector{0.0f, 0.0f, 3.0f},
+							  FeetLocation + FVector{0.0f, 0.0f, 3.0f} +
+							  UGarMath::AngleToDirectionXY(InputYawAngle) * 50.0f,
+							  50.0f, Color.ToFColor(true), false, -1.0f, SDPG_World, 3.0f);
 #endif
 
 	VerticalLocation += RowOffset;
@@ -415,8 +415,8 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 
 #if ENABLE_DRAW_DEBUG
 	DrawDebugCapsule(GetWorld(), Capsule->GetComponentLocation(), Capsule->GetScaledCapsuleHalfHeight(),
-	                 Capsule->GetScaledCapsuleRadius(), Capsule->GetComponentRotation().Quaternion(),
-	                 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
+					 Capsule->GetScaledCapsuleRadius(), Capsule->GetComponentRotation().Quaternion(),
+					 FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 	if (ProneCapsule->IsWelded())
 	{
 		DrawDebugCapsule(GetWorld(), ProneCapsule->GetComponentLocation(), ProneCapsule->GetScaledCapsuleHalfHeight(),
@@ -428,7 +428,7 @@ void AGarCharacter::DisplayDebugShapes(const UCanvas* Canvas, const float Scale,
 }
 
 void AGarCharacter::DisplayDebugTraces(const UCanvas* Canvas, const float Scale,
-                                       const float HorizontalLocation, float& VerticalLocation) const
+									   const float HorizontalLocation, float& VerticalLocation) const
 {
 	VerticalLocation += 4.0f * Scale;
 
