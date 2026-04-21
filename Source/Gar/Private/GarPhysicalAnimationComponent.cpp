@@ -365,6 +365,15 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// SimProxy: Mover の VisualComponentOffset スムージングでメッシュが移動した後、
+	// Super の UpdateTargetActors(None) はキネマティックターゲットを新しいメッシュ位置に
+	// 設定するが、シミュレーション中のボディは物理ソルバが動くまで旧位置に残る。
+	// TeleportPhysics で呼び直すことでボディを即座にターゲット位置にスナップする。
+	if (GetOwner() && GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		UpdateTargetActors(ETeleportType::TeleportPhysics);
+	}
 }
 
 void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& HorizontalLocation, float& VerticalLocation)
