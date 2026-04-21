@@ -45,6 +45,11 @@ void UGarAnimationInstance::NativeBeginPlay()
 
 	Super::NativeBeginPlay();
 
+	if (IsValid(Character->GetMover()))
+	{
+		RefreshCharacterMovementOnGameThread(0.0f);
+	}
+
 	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(CurrentGameplayTags);
 }
 
@@ -55,7 +60,7 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 
 	Super::NativeUpdateAnimation(DeltaTime);
 
-	if (!Character.IsValid() || !Character->GetMotionWarping())
+	if (!Character.IsValid())
 	{
 		return;
 	}
@@ -73,10 +78,13 @@ void UGarAnimationInstance::NativeUpdateAnimation(const float DeltaTime)
 	auto* Mesh{GetSkelMeshComponent()};
 	CharacterTransform = Mesh->GetComponentTransform();
 
-	const auto WarpTarget{Character->GetMotionWarping()->FindWarpTarget(FName(TEXTVIEW("FrontLedge")))};
-	if (WarpTarget)
+	if (UMotionWarpingComponent* MotionWarping = Character->GetMotionWarping())
 	{
-		InteractionTransform = WarpTarget->GetTargetTrasform();
+		const auto WarpTarget{MotionWarping->FindWarpTarget(FName(TEXTVIEW("FrontLedge")))};
+		if (WarpTarget)
+		{
+			InteractionTransform = WarpTarget->GetTargetTrasform();
+		}
 	}
 
 	bIsActionRunning = Character->GetLocomotionAction().IsValid();
@@ -157,14 +165,19 @@ void UGarAnimationInstance::RefreshCharacterMovementOnGameThread(float DeltaTime
 {
 	check(IsInGameThread())
 
-	const auto* Mover{Character->GetMover()};
+	auto* Mover{Character->GetMover()};
+	if (!IsValid(Mover))
+	{
+		CharacterMovement.TrajectoryPredictor.Reset();
+		return;
+	}
 
 	CharacterMovement.VelocityAcceleration = (CharacterMovement.Velocity - Mover->GetVelocity()) / FMath::Max(DeltaTime, 0.001f);
 	CharacterMovement.Velocity = Mover->GetVelocity();
 	CharacterMovement.CurrentMaxSpeed = Mover->CurrentMaxSpeed;
 	CharacterMovement.CurrentAcceleration = Mover->CurrentAcceleration;
 	CharacterMovement.CurrentDeceleration = Mover->CurrentDeceleration;
-	CharacterMovement.bIsGrounded = Character->GetAbilitySystemComponent()->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
+	CharacterMovement.bIsGrounded = Mover->GetLocomotionMode() == GarLocomotionModeTags::Grounded;
 	CharacterMovement.GravityAcceleration = Mover->GetGravityAcceleration();
 	CharacterMovement.ViewRotation = Character->GetViewRotation();
 	CharacterMovement.TrajectoryPredictor = Mover->GetTrajectoryPredictor();
