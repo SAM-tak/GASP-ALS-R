@@ -753,10 +753,10 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 
 	ActionTags = Parameters.ChooserOutput.Tags;
 
-	if (ActorInfo->IsNetAuthority())
-	{
-		auto* Montage{Cast<UAnimMontage>(Parameters.Result.SelectedAnim)};
+	auto* Montage{Cast<UAnimMontage>(Parameters.Result.SelectedAnim)};
 
+	if (ActorInfo->IsNetAuthority() || ActorInfo->IsLocallyControlled())
+	{
 		if(!PlayMontage(ActivationInfo, Montage, Parameters.Result.WantedPlayRate, NAME_None, Parameters.Result.SelectedTime, Handle, ActorInfo))
 		{
 			return;
@@ -766,14 +766,17 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 		{
 			return;
 		}
+	}
 
-		Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-		if (!IsActive())
-		{
-			return;
-		}
+	if (!IsActive())
+	{
+		return;
+	}
 
+	if (ActorInfo->IsNetAuthority())
+	{
 		if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 		{
 			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -815,9 +818,17 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 
 		//UpdateWarpTarget(Parameters);
 	}
-	else
+	else if (ActorInfo->IsLocallyControlled())
 	{
-		Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+		// AP: MotionWarping はサーバーが制御するが、ローカルでもワープターゲットを設定して
+		// 予測再生中の Root Motion を正しく適用する。
+		MotionWarpingComponent = Character->GetMotionWarping();
+		if (MotionWarpingComponent.IsValid())
+		{
+			ChosenMontage = Montage;
+			CurrentTargetPrimitive = Parameters.TargetPrimitive;
+			UpdateWarpTarget(Parameters);
+		}
 	}
 
 	AbilitySystem->AddLooseGameplayTags(ActionTags);
