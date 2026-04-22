@@ -239,7 +239,6 @@ void UGarPhysicalAnimationComponent::OnRegister()
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 	if (IsValid(Character))
 	{
-		Character->OnTick.AddUObject(this, &ThisClass::OnOwnerTick);
 		RagdollingState.Character = Character;
 	}
 }
@@ -254,7 +253,7 @@ void UGarPhysicalAnimationComponent::BeginPlay()
 	}
 }
 
-void UGarPhysicalAnimationComponent::OnOwnerTick(float DeltaTime)
+void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 
@@ -317,10 +316,7 @@ void UGarPhysicalAnimationComponent::OnOwnerTick(float DeltaTime)
 	Character->GetAbilitySystemComponent()->GetOwnedGameplayTags(CurrentGameplayTags);
 
 	CurveValues.Refresh(Character, CurveBoneMappings);
-}
 
-void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
 	// Choose Physical Animation Profile
 
 	if (OverrideProfileNames.Num() > 0)
@@ -546,8 +542,8 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	// Disable movement corrections and reset network smoothing.
 
-	//Mover->NetworkSmoothingMode = ENetworkSmoothingMode::Disabled;
-	//Mover->bIgnoreClientMovementErrorChecksAndCorrection = true;
+	Mover->SmoothingMode = EMoverSmoothingMode::None;
+	Mover->bSyncInputsForSimProxy = false;
 
 	// Disable capsule collision. other physics states will be changed by physical aniamtion process
 
@@ -799,6 +795,9 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 	Character->GetCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 	Character->GetProneCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
+
+	Mover->SmoothingMode = EMoverSmoothingMode::VisualComponentOffset;
+	Mover->bSyncInputsForSimProxy = true;
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
