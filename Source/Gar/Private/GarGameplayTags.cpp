@@ -90,6 +90,7 @@ namespace GarLocomotionActionTags
 	UE_DEFINE_GAMEPLAY_TAG(FreeFalling, "Gar.LocomotionAction.FreeFalling")
 	UE_DEFINE_GAMEPLAY_TAG(Unconsious, "Gar.LocomotionAction.Unconsious")
 	UE_DEFINE_GAMEPLAY_TAG(Dying, "Gar.LocomotionAction.Dying")
+	UE_DEFINE_GAMEPLAY_TAG(Sliding, "Gar.LocomotionAction.Sliding")
 }
 
 namespace GarStateFlagTags

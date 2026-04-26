@@ -366,9 +366,22 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 	// Super の UpdateTargetActors(None) はキネマティックターゲットを新しいメッシュ位置に
 	// 設定するが、シミュレーション中のボディは物理ソルバが動くまで旧位置に残る。
 	// TeleportPhysics で呼び直すことでボディを即座にターゲット位置にスナップする。
-	if (GetOwner() && GetOwner()->GetLocalRole() == ROLE_SimulatedProxy)
+	// ただしラグドール中は PhysicsBlendWeight < 1.0 のブレンド期間にボディを
+	// アニメ+物理ブレンド位置へテレポートして物理シミュレーションと干渉するため除外する。
+	// AutonomousProxy でもトラバーサル中は MotionWarping による高速移動で通常の追従が
+	// 間に合わないため、同様に TeleportPhysics でスナップする。
+	if (Character && !bRagdolling)
 	{
-		UpdateTargetActors(ETeleportType::TeleportPhysics);
+		const ENetRole LocalRole = Character->GetLocalRole();
+		const bool bSimProxy = (LocalRole == ROLE_SimulatedProxy);
+		const bool bApDuringTraversal = (LocalRole == ROLE_AutonomousProxy)
+			&& Character->GetAbilitySystemComponent()
+				->HasMatchingGameplayTag(GarLocomotionActionTags::Traversal);
+
+		if (bSimProxy || bApDuringTraversal)
+		{
+			UpdateTargetActors(ETeleportType::TeleportPhysics);
+		}
 	}
 }
 
@@ -498,16 +511,9 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 {
 	Settings = NewSettings;
 
-	if (!IsValid(RagdollingAnimInstance))
-	{
-		return;
-	}
-
-	// Ensure freeze flag is off.
-
-	RagdollingAnimInstance->UnFreeze();
-
-	RagdollingAnimInstance->SetStartBlendTime(Settings->StartBlendTime);
+	// ---- AnimInstance の有無に関わらず常に実行する初期化 ----
+	// (旧実装では RagdollingAnimInstance が null の場合に early return していたため、
+	//  DedicatedServer 上の NPC でカプセルコリジョン・Mover 設定がスキップされていた)
 
 	PullForce = 0.0f;
 	ElapsedTime = 0.0f;
@@ -515,6 +521,7 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	bFacingUpward = bGrounded = false;
 	bPreviousGrounded = true;
 	bFreezing = false;
+	bPendingInitialVelocity = false;
 	PrevActorLocation = Character->GetActorLocation();
 
 	auto* Mover{Character->GetMover()};
@@ -535,10 +542,13 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 		LyingDownYawAngleDelta = 0.0;
 	}
 
-	// Stop any active montages.
+	// Stop any active montages (AnimInstance が存在する場合のみ).
 
 	auto* AnimInstance{Character->GetGarAnimationInstace()};
-	AnimInstance->Montage_Stop(Settings->StartBlendTime);
+	if (IsValid(AnimInstance))
+	{
+		AnimInstance->Montage_Stop(Settings->StartBlendTime);
+	}
 
 	// Disable movement corrections and reset network smoothing.
 
@@ -570,6 +580,28 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	//Mover->SetMovementMode(MOVE_Custom);
 	//Mover->SetMovementModeLocked(true);
+
+	// SimProxy: Mover のレプリケート済み速度を初速として記録。
+	// 物理シミュレーション開始後の最初の Tick で TopBone ボディに注入する。
+	// CMC 時代の ACharacter::PostNetReceivePhysicState() に相当する処理。
+	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		InitialRagdollVelocity = Mover->GetVelocity();
+		bPendingInitialVelocity = !InitialRagdollVelocity.IsNearlyZero();
+	}
+
+	// ---- AnimInstance 依存の初期化 ----
+
+	if (!IsValid(RagdollingAnimInstance))
+	{
+		return;
+	}
+
+	// Ensure freeze flag is off.
+
+	RagdollingAnimInstance->UnFreeze();
+
+	RagdollingAnimInstance->SetStartBlendTime(Settings->StartBlendTime);
 
 	RagdollingAnimInstance->Refresh(*this, true);
 }
@@ -632,6 +664,20 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	bGrounded = Character->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 
+	// SimProxy: 初速注入 - 物理シミュレーション開始後の最初の Tick で TopBone に適用
+	// CMC の PostNetReceivePhysicState() に相当。Mover はレプリケーション経路が別なため手動注入が必要。
+	if (bPendingInitialVelocity)
+	{
+		if (FBodyInstance* TopBody = Character->GetMesh()->GetBodyInstance(PhysicalAnimation->GetTopBoneName()))
+		{
+			if (TopBody->IsInstanceSimulatingPhysics())
+			{
+				TopBody->SetLinearVelocity(InitialRagdollVelocity, false);
+				bPendingInitialVelocity = false;
+			}
+		}
+	}
+
 	// Clip velocity each body
 
 	if (Settings->MaxBodySpeed > 0.0f)
@@ -688,13 +734,19 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		//const FRotator RDiff{(TargetDirection.GetSafeNormal2D().Rotation() - CurrentRotation).GetNormalized()};
 	}
 
-	RagdollingAnimInstance->Refresh(*this, true);
+	if (IsValid(RagdollingAnimInstance))
+	{
+		RagdollingAnimInstance->Refresh(*this, true);
+	}
 
 	if (Settings->bAllowFreeze)
 	{
 		RootBoneSpeed = Mover->GetVelocity().Size();
 
-		RagdollingAnimInstance->UnFreeze();
+		if (IsValid(RagdollingAnimInstance))
+		{
+			RagdollingAnimInstance->UnFreeze();
+		}
 
 		if (bGrounded)
 		{
@@ -740,7 +792,10 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 			if (bFreezing)
 			{
-				RagdollingAnimInstance->Freeze();
+				if (IsValid(RagdollingAnimInstance))
+				{
+					RagdollingAnimInstance->Freeze();
+				}
 				Character->GetMesh()->SetAllBodiesSimulatePhysics(false);
 			}
 		}

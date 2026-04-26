@@ -34,7 +34,19 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 	check(StartingSyncState);
 
 	const AGarCharacter* Character{Cast<AGarCharacter>(MoverComp->GetOwner())};
-	auto TargetTransform{Character->GetMesh()->GetBoneTransform(TopBoneName)};
+	// GetBoneTransform は ComponentSpaceTransforms に依存するが、DedicatedServer では
+	// VisibilityBasedAnimTickOption により物理シミュレーション結果が骨トランスフォームに
+	// コピーされないことがある。GetBodyInstance の物理ボディを直接参照することで
+	// サーバーでも正確なラグドール骨位置を取得する。
+	FTransform TargetTransform;
+	if (FBodyInstance* TopBoneBodyForTransform = Character->GetMesh()->GetBodyInstance(TopBoneName))
+	{
+		TargetTransform = TopBoneBodyForTransform->GetUnrealWorldTransform();
+	}
+	else
+	{
+		TargetTransform = Character->GetMesh()->GetBoneTransform(TopBoneName);
+	}
 	auto TargetLocation{TargetTransform.GetLocation()};
 
 #if ENABLE_DRAW_DEBUG
@@ -49,17 +61,27 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 		return;
 	}
 
+	// IsGroundedAndAged 後は GetUp アニメーションで pelvis が浮き上がり capsule を引き上げないよう追従を停止する。
+	// bFreezing はタイミング依存だが IsGroundedAndAged は GetUp montage 開始の条件なので確実に捕捉できる。
+	if (Character->GetPhysicalAnimation()->GetRagdollingState().IsGroundedAndAged())
+	{
+		return;
+	}
+
 	const float DeltaSeconds = TimeStep.StepMs * 0.001f;
 
 	const FVector CurrentLocation = Character->GetActorLocation();
 
 	auto TopBoneBody{Character->GetMesh()->GetBodyInstance(TopBoneName)};
 
-	float TopBoneSpeed = 0;
+	float TopBoneSpeed2D = 0;
+	float TopBoneSpeed3D = 0;
 	
 	if (TopBoneBody)
 	{
-		TopBoneSpeed = TopBoneBody->GetUnrealWorldVelocity().Size2D();
+		const FVector TopBoneVelocity = TopBoneBody->GetUnrealWorldVelocity();
+		TopBoneSpeed2D = TopBoneVelocity.Size2D();
+		TopBoneSpeed3D = TopBoneVelocity.Size();
 	}
 
 	FVector Velocity{ForceInit};
@@ -70,7 +92,7 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 		if (DeltaSeconds > 0 && Len > 0.1f)
 		{
 			auto Dir{Diff.GetSafeNormal2D()};
-			Velocity = (Dir * (Len / DeltaSeconds)).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
+			Velocity = (Dir * (Len / DeltaSeconds)).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed2D, MinSpeed, MaxSpeed));
 		}
 	}
 	else
@@ -78,7 +100,7 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 		auto Len = Diff.Size();
 		if (DeltaSeconds > 0 && Len > 0.1f)
 		{
-			Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed, MinSpeed, MaxSpeed));
+			Velocity = ((TargetLocation - CurrentLocation) / DeltaSeconds).GetClampedToMaxSize(FMath::Clamp(TopBoneSpeed3D, MinSpeed, MaxSpeed));
 		}
 	}
 
@@ -122,7 +144,11 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
 	check(StartingSyncState);
 
-	FMoverDefaultSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FMoverDefaultSyncState>();
+	// FMoverDefaultSyncState を FGarMoverRagdollingSyncState で置換して Reconciliation を抑制
+	// (ShouldReconcile → false: Chaos 物理の非決定論的な結果による毎フレーム reconcile を防ぐ)
+	OutputState.SyncState.SyncStateCollection.RemoveDataByType(FMoverDefaultSyncState::StaticStruct());
+	FGarMoverRagdollingSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FGarMoverRagdollingSyncState>();
+	static_cast<FMoverDefaultSyncState&>(OutputSyncState) = *StartingSyncState; // 前フレームの状態を引き継ぐ
 
 	const float DeltaSeconds = Params.TimeStep.StepMs * 0.001f;
 
@@ -180,7 +206,6 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 		if (HasGameplayTag(GarLocomotionModeTags::InAir, true))
 		{
 			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling");
-			UE_LOG(LogTemp, Log, TEXT("Grounded"));
 		}
 	}
 	else
@@ -188,7 +213,6 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 		if (HasGameplayTag(GarLocomotionModeTags::Grounded, true))
 		{
 			OutputState.MovementEndState.NextModeName = TEXT("Ragdolling In Air");
-			UE_LOG(LogTemp, Log, TEXT("InAIr"));
 		}
 	}
 

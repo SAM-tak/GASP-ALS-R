@@ -815,8 +815,6 @@ void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHa
 		BackLedgeOffset = PrimitiveTransform.InverseTransformPosition(Parameters.BackLedgeLocation);
 		BackFloorOffset = PrimitiveTransform.InverseTransformPosition(Parameters.BackFloorLocation);
 		UpdateWarpTarget();
-
-		//UpdateWarpTarget(Parameters);
 	}
 	else if (ActorInfo->IsLocallyControlled())
 	{

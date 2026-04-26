@@ -16,6 +16,7 @@
 #include "Curves/CurveFloat.h"
 #include "Settings/GarMovementSettings.h"
 #include "State/GarCharacterMoverInputs.h"
+#include "MoverModes/GarMoverRagdollingMode.h"
 #include "GarCharacterMoverComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarMoverWalkingMode)
@@ -139,7 +140,11 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
 	check(StartingSyncState);
 
-	FMoverDefaultSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FMoverDefaultSyncState>();
+	// ラグドール終了後の非決定論的 Chaos 物理による位置乖離で reconcile スナップが発生しないよう、
+	// grace period 中は FGarMoverRagdollingSyncState (ShouldReconcile=false) を出力する。
+	FMoverDefaultSyncState& OutputSyncState = (CharacterInputs && CharacterInputs->PostRagdollSuppressFrames > 0)
+		? static_cast<FMoverDefaultSyncState&>(OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FGarMoverRagdollingSyncState>())
+		: OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FMoverDefaultSyncState>();
 
 	const float DeltaSeconds = Params.TimeStep.StepMs * 0.001f;
 

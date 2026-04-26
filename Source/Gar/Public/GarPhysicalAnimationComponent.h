@@ -101,6 +101,13 @@ struct GAR_API FGarRagdollingState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	uint8 bPreviousGrounded : 1{false};
 
+	// SimProxy: Start() で記録した初速。初回物理 Tick で TopBone に注入する (CMC の PostNetReceivePhysicState 相当)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	FVector InitialRagdollVelocity{ForceInit};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bPendingInitialVelocity : 1{false};
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UGarRagdollingAnimInstance* RagdollingAnimInstance{nullptr};
 
