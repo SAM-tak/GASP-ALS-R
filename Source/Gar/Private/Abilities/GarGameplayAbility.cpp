@@ -117,7 +117,7 @@ void UGarGameplayAbility::SetInputBlocked(bool bBlocked) const
 {
 	auto* Character{GetGarCharacterFromActorInfo()};
 	auto* PlayerController{Cast<APlayerController>(Character->GetController())};
-	if (PlayerController && Character->GetLocalRole() < ROLE_Authority)
+	if (PlayerController && Character->IsLocallyControlled())
 	{
 		if(bBlocked)
 		{

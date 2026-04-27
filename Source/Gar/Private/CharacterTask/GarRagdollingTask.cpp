@@ -87,6 +87,12 @@ void UGarRagdollingTask::Tick(float DeltaTime)
 
 bool UGarRagdollingTask::IsEpilogRunning_Implementation() const
 {
+	// Server-side remote pawns don't evaluate animations, so ObservingFinalBlendWeight never reaches 1.0.
+	if (Character.IsValid() && Character->HasAuthority() && !Character->IsLocallyControlled())
+	{
+		return false;
+	}
+
 	if (OverrideAnimInstance.IsValid())
 	{
 		auto RagdollingOverrideAnimInstance{Cast<UGarRagdollingOverrideAnimInstance>(OverrideAnimInstance.Get())};
