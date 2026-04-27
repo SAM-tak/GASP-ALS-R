@@ -61,13 +61,6 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 		return;
 	}
 
-	// IsGroundedAndAged 後は GetUp アニメーションで pelvis が浮き上がり capsule を引き上げないよう追従を停止する。
-	// bFreezing はタイミング依存だが IsGroundedAndAged は GetUp montage 開始の条件なので確実に捕捉できる。
-	if (Character->GetPhysicalAnimation()->GetRagdollingState().IsGroundedAndAged())
-	{
-		return;
-	}
-
 	const float DeltaSeconds = TimeStep.StepMs * 0.001f;
 
 	const FVector CurrentLocation = Character->GetActorLocation();

@@ -24,8 +24,8 @@ void UGarGameplayCameraStateComponent::DisplayDebug(UCanvas* Canvas, const FDebu
 	auto MaxVerticalLocation{VerticalLocation};
 	auto HorizontalLocation{5.0f * Scale};
 
-	static const auto StateHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraState (Shift + 6)")})};
-	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraTraces (Shift + 7)")})};
+	static const auto StateHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraState (Shift + 7)")})};
+	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.CameraTraces (Shift + 8)")})};
 
 	if (!DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraCurvesDebugDisplayName()) &&
 	    !DisplayInfo.IsDisplayOn(UGarCameraConstants::CameraTracesDebugDisplayName()))

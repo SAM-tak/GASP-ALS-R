@@ -72,7 +72,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto ShapesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Shapes (Shift + 2)")})};
+	static const auto ShapesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Shapes (Shift + 3)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()))
 	{
@@ -87,7 +87,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traces (Shift + 3)")})};
+	static const auto TracesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traces (Shift + 4)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()))
 	{
@@ -102,7 +102,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traversal (Shift + 4)")})};
+	static const auto MantlingHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Traversal (Shift + 5)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()))
 	{
@@ -114,7 +114,7 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 		DisplayDebugHeader(Canvas, MantlingHeaderText, {0.0f, 0.333333f, 0.0f}, Scale, HorizontalLocation, VerticalLocation);
 	}
 
-	static const auto PAHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.PhysicalAnimation (Shift + 5)")})};
+	static const auto PAHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.PhysicalAnimation (Shift + 6)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
 	{
