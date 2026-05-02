@@ -21,13 +21,32 @@
 #if !UE_BUILD_SHIPPING
 void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& Unused, float& VerticalLocation)
 {
+	// GARカテゴリが一つも有効でない場合はGAR固有の描画をスキップして即委譲する。
+	// これにより AbilitySystem 等の他のShowDebug表示とオーバーラップしない。
+	if (!DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
+		!DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
+	{
+		OnDisplayDebug.Broadcast(Canvas, DisplayInfo, Unused, VerticalLocation);
+		Super::DisplayDebug(Canvas, DisplayInfo, Unused, VerticalLocation);
+		return;
+	}
+
 	const auto Scale{FMath::Min(Canvas->SizeX / (1280.0f * Canvas->GetDPIScale()), Canvas->SizeY / (720.0f * Canvas->GetDPIScale()))};
 
 	const auto RowOffset{12.0f * Scale};
 	const auto ColumnOffset{200.0f * Scale};
 
+	// AbilitySystemが同時に有効な場合はGARを右半分に描画し、VerticalLocationを保持する。
+	// AbilitySystemのDisplayDebugはDisplayDebug()の後にOnShowDebugInfo経由で呼ばれ、
+	// このとき渡されるYPosが描画開始位置になるため、GARで押し下げないようにする。
+	const bool bAbilitySystemActive{DisplayInfo.IsDisplayOn(FName(TEXT("AbilitySystem")))};
+	const float SavedVerticalLocation{VerticalLocation};
+
 	auto MaxVerticalLocation{VerticalLocation};
-	auto HorizontalLocation{5.0f * Scale};
+	auto HorizontalLocation{bAbilitySystemActive ? Canvas->SizeX * 0.5f : 5.0f * Scale};
 
 	static const auto DebugModeHeaderText{LOCTEXT("DebugModeHeader", "Debug mode is enabled! Press (Shift + 0) to disable.")};
 
@@ -36,23 +55,9 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	if (!DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()) &&
-		!DisplayInfo.IsDisplayOn(UGarConstants::ShapesDebugDisplayName()) &&
-		!DisplayInfo.IsDisplayOn(UGarConstants::TracesDebugDisplayName()) &&
-		!DisplayInfo.IsDisplayOn(UGarConstants::TraversalDebugDisplayName()) &&
-		!DisplayInfo.IsDisplayOn(UGarConstants::PADebugDisplayName()))
-	{
-		VerticalLocation = MaxVerticalLocation;
-
-		OnDisplayDebug.Broadcast(Canvas, DisplayInfo, Unused, VerticalLocation);
-
-		Super::DisplayDebug(Canvas, DisplayInfo, Unused, VerticalLocation);
-		return;
-	}
-
 	const auto InitialVerticalLocation{VerticalLocation};
 
-	static const auto CurvesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Curves (Shift + 1)")})};
+	static const auto CurvesHeaderText{FText::AsCultureInvariant(FString{TEXTVIEW("Gar.Curves (Shift + 2)")})};
 
 	if (DisplayInfo.IsDisplayOn(UGarConstants::CurvesDebugDisplayName()))
 	{
@@ -129,7 +134,8 @@ void AGarCharacter::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& Displ
 	VerticalLocation += RowOffset;
 	MaxVerticalLocation = FMath::Max(MaxVerticalLocation, VerticalLocation);
 
-	VerticalLocation = MaxVerticalLocation;
+	// AbilitySystem有効時はVerticalLocationを保持してAbilitySystemが同じY位置から描画できるようにする
+	VerticalLocation = bAbilitySystemActive ? SavedVerticalLocation : MaxVerticalLocation;
 
 	OnDisplayDebug.Broadcast(Canvas, DisplayInfo, Unused, VerticalLocation);
 

@@ -70,11 +70,6 @@ bool UGarPhysicalAnimationComponent::NeedsProfileChange()
 {
 	bool bRetVal = CurrentGameplayTags != PreviousGameplayTags;
 	PreviousGameplayTags = CurrentGameplayTags;
-	if (CurrentMultiplyProfileNames != MultiplyProfileNames)
-	{
-		CurrentMultiplyProfileNames = MultiplyProfileNames;
-		bRetVal = true;
-	}
 	return bRetVal;
 }
 
@@ -213,7 +208,7 @@ void UGarPhysicalAnimationComponent::SelectProfile()
 	FGarPAProfileChooserResult Choosen;
 	ChooseProfile(Choosen);
 
-	if (Choosen.ProfileNames != CurrentProfileNames || Choosen.MultiplyProfileNames != CurrentMultiplyProfileNames)
+	if (Choosen.ProfileNames != CurrentProfileNames)
 	{
 		bool bFirst = true;
 		for (const auto& NextProfileName : Choosen.ProfileNames)
@@ -223,13 +218,6 @@ void UGarPhysicalAnimationComponent::SelectProfile()
 			bFirst = false;
 		}
 		CurrentProfileNames = Choosen.ProfileNames;
-
-		for (const auto& NextMultiplyProfileName : Choosen.MultiplyProfileNames)
-		{
-			ApplyPhysicalAnimationProfileBelow(NAME_None, NextMultiplyProfileName);
-			GetSkeletalMesh()->SetConstraintProfileForAll(NextMultiplyProfileName);
-		}
-		CurrentMultiplyProfileNames = Choosen.MultiplyProfileNames;
 	}
 }
 
@@ -298,7 +286,6 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 			RagdollingState.End(this);
 
 			CurrentProfileNames.Reset();
-			CurrentMultiplyProfileNames.Reset();
 			ClearGameplayTags();
 			//GetSkeletalMesh()->SetAllBodiesSimulatePhysics(false);
 			//GetSkeletalMesh()->SetAllBodiesPhysicsBlendWeight(0.0f);
@@ -319,29 +306,7 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 
 	// Choose Physical Animation Profile
 
-	if (OverrideProfileNames.Num() > 0)
-	{
-		if (CurrentProfileNames != OverrideProfileNames || CurrentMultiplyProfileNames != MultiplyProfileNames)
-		{
-			bool bFirst = true;
-			for (const auto& CurrentProfileName : OverrideProfileNames)
-			{
-				ApplyPhysicalAnimationProfileBelow(NAME_None, CurrentProfileName);
-				GetSkeletalMesh()->SetConstraintProfileForAll(CurrentProfileName, bFirst);
-				bFirst = false;
-			}
-			CurrentProfileNames = OverrideProfileNames;
-			ClearGameplayTags();
-
-			for (const auto& MultiplyProfileName : MultiplyProfileNames)
-			{
-				ApplyPhysicalAnimationProfileBelow(NAME_None, MultiplyProfileName);
-				GetSkeletalMesh()->SetConstraintProfileForAll(MultiplyProfileName);
-			}
-			CurrentMultiplyProfileNames = MultiplyProfileNames;
-		}
-	}
-	else if(NeedsProfileChange())
+	if (NeedsProfileChange())
 	{
 		SelectProfile();
 	}
@@ -411,11 +376,6 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 		DebugStringBuilder.Appendf(TEXT("%s "), *ProfileName.ToString());
 	}
 
-	for (const auto& ProfileName : CurrentMultiplyProfileNames)
-	{
-		DebugStringBuilder.Appendf(TEXT("%s "), *ProfileName.ToString());
-	}
-
 	Text.Text = FText::AsCultureInvariant(DebugStringBuilder.ToString());
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
@@ -442,6 +402,19 @@ bool UGarPhysicalAnimationComponent::HasRagdollingSettings(const FGameplayTag& T
 bool UGarPhysicalAnimationComponent::IsRagdolling() const
 {
 	return CurrentRagdolling.IsValid();
+}
+
+void UGarPhysicalAnimationComponent::TeleportPhysics()
+{
+	// UpdateKinematicBonesToAnim(TeleportPhysics) はシミュレーション中ボディにも
+	// SetGlobalPose を呼び、アニメーションポーズ位置へ即座にスナップする。
+	auto* Mesh{GetSkeletalMesh()};
+	if (IsValid(Mesh))
+	{
+		Mesh->UpdateKinematicBonesToAnim(Mesh->GetComponentSpaceTransforms(), ETeleportType::TeleportPhysics, false);
+	}
+	// PAC の TargetActors（キネマティックゴールアクター）も新位置に同期。
+	UpdateTargetActors(ETeleportType::TeleportPhysics);
 }
 
 bool UGarPhysicalAnimationComponent::IsRagdollingAndGroundedAndAged() const

@@ -21,9 +21,6 @@ struct GAR_API FGarPAProfileChooserResult
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
 	TArray<FName> ProfileNames;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	TArray<FName> MultiplyProfileNames;
 };
 
 USTRUCT(BlueprintType)
@@ -171,21 +168,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
 	TMap<FGameplayTag, TObjectPtr<UGarRagdollingSettings>> RagdollingSettingsMap;
 
-	// Name list of PhysicalAnimationProfile Name for override.
-	// Only bodies with physical animation parameters set in any of the profiles in the list will be subject to physical simulation,
-	// and the simulation for other bodies will be turned off.
-	// Physical animation parameters are applied in order from the beginning of the list,
-	// and if multiple parameters are set for the same body in different profiles,
-	// they are overwritten by the later parameters in the list.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PhysicalAnimation)
-	TArray<FName> OverrideProfileNames;
-
-	// Name list of PhysicalAnimationProfile Name for multiply.
-	// 'Multiply' means only overwriting the physical animation parameters,
-	// without affecting the on/off state of the physical simulation.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PhysicalAnimation)
-	TArray<FName> MultiplyProfileNames;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|State", Transient)
 	TEnumAsByte<ECollisionChannel> PrevCollisionObjectType{ECC_Pawn};
 
@@ -197,9 +179,6 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
 	TArray<FName> CurrentProfileNames;
-
-	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
-	TArray<FName> CurrentMultiplyProfileNames;
 
 	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
 	FGameplayTagContainer CurrentGameplayTags;
@@ -250,6 +229,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool IsRagdolling() const;
+
+	// テレポート後にシミュレーション中の物理ボディと PAC の TargetActors を
+	// 現在のアニメーションポーズ位置へ即座にスナップする。
+	void TeleportPhysics();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool IsRagdollingAndGroundedAndAged() const;

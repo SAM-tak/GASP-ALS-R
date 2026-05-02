@@ -50,6 +50,11 @@ void FGarModule::Console_OnRegisterAutoCompleteEntries(TArray<FAutoCompleteComma
 	const auto CommandColor{GetDefault<UConsoleSettings>()->AutoCompleteCommandColor};
 
 	auto* Command{&AutoCompleteCommands.AddDefaulted_GetRef()};
+	Command->Command = FString{TEXTVIEW("ShowDebug AbilitySystem")};
+	Command->Desc = FString{TEXTVIEW("Displays Gameplay Ability System Info.")};
+	Command->Color = CommandColor;
+
+	Command = &AutoCompleteCommands.AddDefaulted_GetRef();
 	Command->Command = FString{TEXTVIEW("Stat GAR")};
 	Command->Desc = FString{TEXTVIEW("Displays GAR performance statistics.")};
 	Command->Color = CommandColor;

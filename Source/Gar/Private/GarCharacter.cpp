@@ -207,6 +207,35 @@ void AGarCharacter::PostInitializeComponents()
 	SetPerspective(InitialPerspective);
 }
 
+bool AGarCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
+{
+	// PAC は常にオンのためメッシュボディが常に QueryAndPhysics + WorldStatic Block 状態にある。
+	// そのため FindTeleportSpot の EncroachingBlockingGeometry がメッシュボディを拾い、
+	// 通常のテレポート先でも常に失敗する。
+	// bIsATest=false（実テレポート）では bNoCheck=true を強制して FindTeleportSpot をスキップし、
+	// SetWorldLocationAndRotation（常に成功）で移動させる。
+	// bIsATest=true（スポット探索の仮チェック）は元の bNoCheck を維持する。
+	if (!bIsATest)
+	{
+		bNoCheck = true;
+	}
+	return Super::TeleportTo(DestLocation, DestRotation, bIsATest, bNoCheck);
+}
+
+void AGarCharacter::TeleportSucceeded(bool bIsATest)
+{
+	Super::TeleportSucceeded(bIsATest);
+
+	// Actor.TeleportTo(bNoCheck=true) は SetWorldLocationAndRotation(ETeleportType::None) を使うため、
+	// メッシュの OnUpdateTransform が None で呼ばれ、シミュレーション中ボディはスキップされる。
+	// → PAC コンストレイントがスプリングで引っ張り、遅れてついてくる挙動が発生。
+	// TeleportPhysics() でシミュレーション中ボディと TargetActors を即座にスナップして解決する。
+	if (!bIsATest && IsValid(PhysicalAnimation))
+	{
+		PhysicalAnimation->TeleportPhysics();
+	}
+}
+
 void AGarCharacter::BeginPlay()
 {
 	if(!ensure(IsValid(Settings))) return;
@@ -303,6 +332,10 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	CharacterInputs.Stance = InputStance;
 	CharacterInputs.Gait = InputGait;
 
+	// ラグドール終了後の reconcile 抑制カウンターをデクリメントし InputCmd に伝播
+	if (PostRagdollSuppressFrames > 0) --PostRagdollSuppressFrames;
+	CharacterInputs.PostRagdollSuppressFrames = PostRagdollSuppressFrames;
+
 	// Clear/consume temporal movement inputs. We are not consuming others in the event that the game world is ticking at a lower rate than the Mover simulation. 
 	// In that case, we want most input to carry over between simulation frames.
 	bIsJumpJustPressed = false;
@@ -323,6 +356,12 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 				&& !TempTagContainer.HasTagExact(KeyValue.Key) && PrevTagContainer.HasTagExact(KeyValue.Key))
 			{
 				CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
+				// ラグドールタグ除去時: reconcile 抑制フレームを設定（約 1 秒）
+				if (KeyValue.Value == FName(TEXT("Ragdolling")))
+				{
+					PostRagdollSuppressFrames = 30;
+					CharacterInputs.PostRagdollSuppressFrames = PostRagdollSuppressFrames;
+				}
 			}
 		}
 

@@ -240,6 +240,10 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	virtual bool TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest = false, bool bNoCheck = false) override;
+
+	virtual void TeleportSucceeded(bool bIsATest) override;
+
 	virtual void PossessedBy(AController* NewController) override;
 
 	virtual void UnPossessed() override;
@@ -460,6 +464,8 @@ public:
 private:
 	bool bIsJumpJustPressed = false;
 	bool bIsJumpPressed = false;
+	// ラグドール終了後に InputCmd 経由で reconcile を抑制するフレームカウンター
+	uint8 PostRagdollSuppressFrames = 0;
 
 	// ADS
 
