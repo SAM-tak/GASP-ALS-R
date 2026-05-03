@@ -36,6 +36,7 @@ void UGarOverlayModeComponent::ChangeOverlayTask(const FGameplayTag& NewOverlayM
 		if (CurrentOverlayTask->HasFinished())
 		{
 			CurrentOverlayTask.Reset();
+			CurrentOverlayTag = FGameplayTag::EmptyTag;
 		}
 		else
 		{

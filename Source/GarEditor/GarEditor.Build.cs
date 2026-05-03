@@ -11,7 +11,7 @@ public class GAREditor : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(
 		[
-			"Core", "CoreUObject", "Engine", "AnimationModifiers", "AnimationBlueprintLibrary", "GAR"
+			"Core", "CoreUObject", "Engine", "AnimationModifiers", "AnimationBlueprintLibrary", "GAR", "PoseSearch"
 		]);
 
 		if (Target.bBuildEditor)

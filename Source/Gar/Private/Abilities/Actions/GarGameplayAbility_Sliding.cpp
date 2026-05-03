@@ -1,0 +1,127 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "Abilities/Actions/GarGameplayAbility_Sliding.h"
+
+#include "Abilities/Tasks/GarAbilityTask_Tick.h"
+#include "GarCharacter.h"
+#include "GarCharacterMoverComponent.h"
+#include "GarGameplayTags.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_Sliding)
+
+UGarGameplayAbility_Sliding::UGarGameplayAbility_Sliding(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	SetAssetTags(FGameplayTagContainer(GarLocomotionActionTags::Sliding));
+	ActivationOwnedTags.AddTag(GarLocomotionActionTags::Sliding);
+	CancelAbilitiesWithTag.AddTag(GarLocomotionActionTags::Root);
+	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Sliding);
+}
+
+void UGarGameplayAbility_Sliding::SetSlidingInput(FVector2D Input)
+{
+	SlidingInput = Input;
+}
+
+void UGarGameplayAbility_Sliding::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+												  const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	SlidingInput = FVector2D::ZeroVector;
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	if (!IsActive())
+	{
+		return;
+	}
+
+	auto* Character{GetGarCharacterFromActorInfo()};
+
+	if (bCrouchOnStart)
+	{
+		Character->SetInputStance(GarStanceTags::Crouching);
+	}
+
+	// カメラ方向に対して横移動中かを判定し、横移動なら KneesOut タグを付与
+	bKneesOut = false;
+	if (IsValid(Character))
+	{
+		const FVector VelDir = Character->GetVelocity().GetSafeNormal2D();
+		if (!VelDir.IsNearlyZero())
+		{
+			const FRotator CamYaw(0.0, Character->GetViewRotation().Yaw, 0.0);
+			const FVector CamForward = CamYaw.Vector();
+			const FVector CamRight = FRotationMatrix(CamYaw).GetScaledAxis(EAxis::Y);
+			const float ForwardDot = FMath::Abs(FVector::DotProduct(VelDir, CamForward));
+			const float RightDot   = FMath::Abs(FVector::DotProduct(VelDir, CamRight));
+			bKneesOut = RightDot > ForwardDot;
+		}
+	}
+
+	if (bKneesOut)
+	{
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			ASC->AddLooseGameplayTag(GarSlidingActionTags::KneesOut);
+		}
+	}
+
+	TickTask = UGarAbilityTask_Tick::New(this, FName(TEXT("UGarGameplayAbility_Sliding")));
+	if (TickTask.IsValid())
+	{
+		TickTask->OnTick.AddDynamic(this, &ThisClass::Tick);
+		TickTask->ReadyForActivation();
+	}
+}
+
+void UGarGameplayAbility_Sliding::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+											 const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if (bKneesOut)
+	{
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			ASC->RemoveLooseGameplayTag(GarSlidingActionTags::KneesOut);
+		}
+		bKneesOut = false;
+	}
+
+	if (bStandUpOnEnd)
+	{
+		if (auto* Character = GetGarCharacterFromActorInfo())
+		{
+			Character->SetInputStance(GarStanceTags::Standing);
+		}
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGarGameplayAbility_Sliding::Tick_Implementation(const float DeltaTime)
+{
+	auto* Character{GetGarCharacterFromActorInfo()};
+	if (!IsValid(Character))
+	{
+		EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+		return;
+	}
+
+	UGarCharacterMoverComponent* MoverComp = Character->GetMover();
+	if (!IsValid(MoverComp))
+	{
+		EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+		return;
+	}
+
+	// Mover が Sliding モードに入ったら、exit 条件を毎 Tick 評価
+	if (MoverComp->GetMovementModeName() == TEXT("Sliding"))
+	{
+		// exit 条件: 速度低下 または スタンスがクラウチ以外
+		const float SpeedXY = MoverComp->GetVelocity().Size2D();
+		const bool bTooSlow = SpeedXY <= ExitSpeedThreshold;
+		const bool bNotCrouching = MoverComp->GetStance() != GarStanceTags::Crouching;
+		if (bTooSlow || bNotCrouching)
+		{
+			EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+		}
+	}
+}

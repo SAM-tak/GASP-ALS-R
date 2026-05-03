@@ -1,0 +1,136 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "MoverModes/GarMoverSlidingMode.h"
+
+#include "GarGameplayTags.h"
+#include "MoverComponent.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(GarMoverSlidingMode)
+
+UGarMoverSlidingMode::UGarMoverSlidingMode()
+{
+	GameplayTags.Reset();
+	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
+	GameplayTags.AddTag(GarLocomotionActionTags::Sliding);
+}
+
+void UGarMoverSlidingMode::OnRegistered(const FName ModeName)
+{
+	Super::OnRegistered(ModeName);
+}
+
+void UGarMoverSlidingMode::OnUnregistered()
+{
+	Super::OnUnregistered();
+}
+
+void UGarMoverSlidingMode::Activate()
+{
+	bInitialBoost = true;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			InitialBoostTimerHandle,
+			this, &UGarMoverSlidingMode::OnInitialBoostExpired,
+			static_cast<float>(InitialBoostTime),
+			false);
+	}
+
+	Super::Activate();
+}
+
+void UGarMoverSlidingMode::Deactivate()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(InitialBoostTimerHandle);
+	}
+	bInitialBoost = false;
+
+	Super::Deactivate();
+}
+
+void UGarMoverSlidingMode::OnInitialBoostExpired()
+{
+	bInitialBoost = false;
+}
+
+void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
+	FMoverTickStartData& StartState,
+	float DeltaSeconds,
+	const FVector& DesiredVelocity,
+	const FQuat& DesiredFacing,
+	const FQuat& CurrentFacing,
+	FVector& InOutAngularVelocityDegrees,
+	FVector& InOutVelocity)
+{
+	// スロープ角を先に計算し、今フレームの Super 計算に反映させる
+
+	FHitResult FloorHit;
+	const bool bHasFloor = GetMoverComponent()->TryGetFloorCheckHitResult(FloorHit);
+
+	float SlopeAngle = 0.0f;
+	if (bHasFloor)
+	{
+		const FVector UpDir = GetMoverComponent()->GetUpDirection();
+		const float DotVal = FMath::Clamp(
+			FVector::DotProduct(FloorHit.ImpactNormal.GetSafeNormal(), UpDir),
+			-1.0f, 1.0f);
+		SlopeAngle = FMath::RadiansToDegrees(FMath::Acos(DotVal));
+	}
+
+	// InitialBoost フェーズ
+	if (bInitialBoost)
+	{
+		MaxSpeedOverride = static_cast<float>(InitialBoostSpeed);
+		Acceleration     = static_cast<float>(InitialBoostAcceleration);
+	}
+	else
+	{
+		// SlopeAngle < ShallowSlopeAngle は平地扱い
+		if (SlopeAngle < static_cast<float>(ShallowSlopeAngle))
+		{
+			MaxSpeedOverride = static_cast<float>(FlatGroundSpeed);
+		}
+		else
+		{
+			MaxSpeedOverride = static_cast<float>(FMath::GetMappedRangeValueClamped(
+				FVector2D(ShallowSlopeAngle, SteepSlopeAngle),
+				FVector2D(ShallowSlopeSpeed, SteepSlopeSpeed),
+				static_cast<double>(SlopeAngle)));
+		}
+		Acceleration = static_cast<float>(AfterBoostAcceleration);
+	}
+
+	// 傾斜によるDeceleration (急傾斜ほど制動が弱い)
+	Deceleration = static_cast<float>(FMath::GetMappedRangeValueClamped(
+		FVector2D(ShallowSlopeAngle, SteepSlopeAngle),
+		FVector2D(FlatGroundDeceleration, SteepSlopeDeceleration),
+		static_cast<double>(SlopeAngle)));
+
+	// 曲げ処理: 入力の直交成分のみで DesiredVelocity の方向を調整（速さは維持）
+	// 平行成分は無視 → スライディング中に前後入力で加速/減速しない
+	FVector ModifiedDesiredVelocity = DesiredVelocity;
+	const FVector CurrentVel2D(InOutVelocity.X, InOutVelocity.Y, 0.0f);
+	const float CurrentSpeed2D = CurrentVel2D.Size();
+	const float DesiredSpeed2D = FVector(DesiredVelocity.X, DesiredVelocity.Y, 0.0f).Size();
+	if (CurrentSpeed2D > UE_KINDA_SMALL_NUMBER && DesiredSpeed2D > UE_KINDA_SMALL_NUMBER)
+	{
+		const FVector CurrentDir = CurrentVel2D / CurrentSpeed2D;
+		const FVector InputDir2D = FVector(DesiredVelocity.X, DesiredVelocity.Y, 0.0f) / DesiredSpeed2D;
+		// InputDir の CurrentDir に対する直交成分
+		const FVector PerpInput = InputDir2D - FVector::DotProduct(InputDir2D, CurrentDir) * CurrentDir;
+		// 現在方向 + 直交成分 → 新しい方向（速さはそのまま）
+		const FVector SteerDir = (CurrentDir + PerpInput * static_cast<float>(SteeringStrength)).GetSafeNormal2D();
+		if (!SteerDir.IsNearlyZero(UE_KINDA_SMALL_NUMBER))
+		{
+			ModifiedDesiredVelocity = FVector(SteerDir.X * DesiredSpeed2D, SteerDir.Y * DesiredSpeed2D, DesiredVelocity.Z);
+		}
+	}
+
+	Super::GenerateWalkMove_Implementation(
+		StartState, DeltaSeconds,
+		ModifiedDesiredVelocity, DesiredFacing, CurrentFacing,
+		InOutAngularVelocityDegrees, InOutVelocity);
+}

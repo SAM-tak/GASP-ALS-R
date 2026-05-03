@@ -105,6 +105,12 @@ namespace GarTraversalActionTags
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Mantle)
 }
 
+namespace GarSlidingActionTags
+{
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)
+	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(KneesOut)
+}
+
 namespace GarStateFlagTags
 {
 	GAR_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Root)

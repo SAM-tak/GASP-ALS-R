@@ -93,18 +93,25 @@ namespace GarLocomotionActionTags
 	UE_DEFINE_GAMEPLAY_TAG(Sliding, "Gar.LocomotionAction.Sliding")
 }
 
-namespace GarStateFlagTags
-{
-	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.StateFlag")
-	UE_DEFINE_GAMEPLAY_TAG(RotationLocked, "Gar.StateFlag.RotationLocked")
-	UE_DEFINE_GAMEPLAY_TAG(BlockUpdateCapsuleSize, "Gar.StateFlag.BlockUpdateCapsuleSize")
-	UE_DEFINE_GAMEPLAY_TAG(FacingUpward, "Gar.StateFlag.FacingUpward")
-}
-
 namespace GarTraversalActionTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.TraversalAction")
 	UE_DEFINE_GAMEPLAY_TAG(Vault, "Gar.TraversalAction.Vault")
 	UE_DEFINE_GAMEPLAY_TAG(Hurdle, "Gar.TraversalAction.Hurdle")
 	UE_DEFINE_GAMEPLAY_TAG(Mantle, "Gar.TraversalAction.Mantle")
+}
+
+namespace GarSlidingActionTags
+{
+	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.SlidingAction")
+	UE_DEFINE_GAMEPLAY_TAG(KneesOut, "Gar.SlidingAction.KneedsOut")
+}
+
+namespace GarStateFlagTags
+{
+	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.StateFlag")
+	UE_DEFINE_GAMEPLAY_TAG(RotationLocked, "Gar.StateFlag.RotationLocked")
+	UE_DEFINE_GAMEPLAY_TAG(BlockUpdateCapsuleSize, "Gar.StateFlag.BlockUpdateCapsuleSize")
+	UE_DEFINE_GAMEPLAY_TAG(FacingUpward, "Gar.StateFlag.FacingUpward")
+	UE_DEFINE_GAMEPLAY_TAG(KneesOut, "Gar.StateFlag.KneesOut")
 }

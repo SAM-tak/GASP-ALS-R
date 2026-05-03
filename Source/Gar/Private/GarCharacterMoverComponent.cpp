@@ -19,6 +19,7 @@
 #include "MoverModes/GarMoverWalkingMode.h"
 #include "MoverModes/GarMoverRagdollingMode.h"
 #include "MoverModes/GarMoverTraversalMode.h"
+#include "MoverModes/GarMoverSlidingMode.h"
 #if GAR_USE_GE_FOR_MOVEMENTSTATE
 #include "MoverModifiers/GarMoverRotationModifier.h"
 #include "MoverModifiers/GarMoverStanceModifier.h"
@@ -64,6 +65,10 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 	auto FlyingMode{MovementModes[DefaultModeNames::Flying]};
 	FlyingMode->GameplayTags.Reset();
 	FlyingMode->GameplayTags.AddTag(GarLocomotionModeTags::InAir);
+
+	// Sliding mode
+	auto* SlidingMode = CreateDefaultSubobject<UGarMoverSlidingMode>(TEXT("DefaultSlidingMode"));
+	MovementModes.Add(TEXT("Sliding"), SlidingMode);
 
 	StartingMovementMode = DefaultModeNames::Walking;
 }
