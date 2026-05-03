@@ -17,6 +17,8 @@ class GAR_API UGarMoverSlidingMode : public USmoothWalkingMode
 public:
 	UGarMoverSlidingMode();
 
+	virtual void SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState) override;
+
 	virtual void GenerateWalkMove_Implementation(
 		FMoverTickStartData& StartState,
 		float DeltaSeconds,
@@ -92,6 +94,10 @@ protected:
 	/** スライディング中の曲げ強度。1.0 = 入力が完全横向きのとき DesiredDir が 45° 曲がる */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mover|Sliding|Steering", meta = (ClampMin = "0"))
 	double SteeringStrength = 1.0;
+
+	/** XY速度がこの値以下なら Walking へ遷移 (cm/s) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mover|Sliding|Transition", meta = (ClampMin = "0", ForceUnits = "cm/s"))
+	float ExitToWalkingSpeedThreshold = 200.0f;
 
 private:
 	void OnInitialBoostExpired();

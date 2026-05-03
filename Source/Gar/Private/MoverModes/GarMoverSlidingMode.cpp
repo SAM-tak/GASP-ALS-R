@@ -2,6 +2,7 @@
 
 #include "MoverModes/GarMoverSlidingMode.h"
 
+#include "GarCharacterMoverComponent.h"
 #include "GarGameplayTags.h"
 #include "MoverComponent.h"
 
@@ -54,6 +55,34 @@ void UGarMoverSlidingMode::Deactivate()
 void UGarMoverSlidingMode::OnInitialBoostExpired()
 {
 	bInitialBoost = false;
+}
+
+void UGarMoverSlidingMode::SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState)
+{
+	Super::SimulationTick_Implementation(Params, OutputState);
+
+	if (OutputState.MovementEndState.NextModeName != NAME_None)
+	{
+		return;
+	}
+
+	const UMoverComponent* MoverComp = GetMoverComponent();
+	const UGarCharacterMoverComponent* GarMoverComp = Cast<UGarCharacterMoverComponent>(MoverComp);
+
+	FHitResult FloorHit;
+	const bool bHasFloor = IsValid(MoverComp) && MoverComp->TryGetFloorCheckHitResult(FloorHit);
+	const bool bIsGrounded = bHasFloor && (!IsValid(GarMoverComp) || GarMoverComp->IsWalkable(FloorHit));
+	if (!bIsGrounded)
+	{
+		OutputState.MovementEndState.NextModeName = TEXT("Falling");
+		return;
+	}
+
+	const FVector LinearVelocity2D(Params.ProposedMove.LinearVelocity.X, Params.ProposedMove.LinearVelocity.Y, 0.0f);
+	if (LinearVelocity2D.Size() <= ExitToWalkingSpeedThreshold)
+	{
+		OutputState.MovementEndState.NextModeName = TEXT("Walking");
+	}
 }
 
 void UGarMoverSlidingMode::GenerateWalkMove_Implementation(

@@ -20,6 +20,7 @@
 #include "GarCharacterMoverComponent.h"
 #include "GarPhysicalAnimationComponent.h"
 #include "GarAbilitySystemComponent.h"
+#include "GarGameplayTags.h"
 #include "GarConstants.h"
 #include "Utility/GarUtility.h"
 #include "Utility/GarMath.h"

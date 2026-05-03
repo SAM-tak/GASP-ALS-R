@@ -5,6 +5,7 @@
 #include "Abilities/Tasks/GarAbilityTask_Tick.h"
 #include "GarCharacter.h"
 #include "GarCharacterMoverComponent.h"
+#include "GarAbilitySystemComponent.h"
 #include "GarGameplayTags.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarGameplayAbility_Sliding)
@@ -18,15 +19,10 @@ UGarGameplayAbility_Sliding::UGarGameplayAbility_Sliding(const FObjectInitialize
 	BlockAbilitiesWithTag.AddTag(GarLocomotionActionTags::Sliding);
 }
 
-void UGarGameplayAbility_Sliding::SetSlidingInput(FVector2D Input)
-{
-	SlidingInput = Input;
-}
-
 void UGarGameplayAbility_Sliding::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 												  const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
-	SlidingInput = FVector2D::ZeroVector;
+	RemainingSlidingModeCheckDelayTicks = FMath::Max(0, SlidingModeCheckDelayTicks);
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
 	if (!IsActive())
@@ -59,7 +55,7 @@ void UGarGameplayAbility_Sliding::ActivateAbility(const FGameplayAbilitySpecHand
 
 	if (bKneesOut)
 	{
-		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		if (auto* ASC = GetGarAbilitySystemComponentFromActorInfo())
 		{
 			ASC->AddLooseGameplayTag(GarSlidingActionTags::KneesOut);
 		}
@@ -78,7 +74,7 @@ void UGarGameplayAbility_Sliding::EndAbility(const FGameplayAbilitySpecHandle Ha
 {
 	if (bKneesOut)
 	{
-		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		if (auto* ASC = GetGarAbilitySystemComponentFromActorInfo())
 		{
 			ASC->RemoveLooseGameplayTag(GarSlidingActionTags::KneesOut);
 		}
@@ -112,16 +108,23 @@ void UGarGameplayAbility_Sliding::Tick_Implementation(const float DeltaTime)
 		return;
 	}
 
-	// Mover が Sliding モードに入ったら、exit 条件を毎 Tick 評価
-	if (MoverComp->GetMovementModeName() == TEXT("Sliding"))
+	const FName CurrentMovementMode = MoverComp->GetMovementModeName();
+	if (CurrentMovementMode == TEXT("Sliding"))
 	{
-		// exit 条件: 速度低下 または スタンスがクラウチ以外
-		const float SpeedXY = MoverComp->GetVelocity().Size2D();
-		const bool bTooSlow = SpeedXY <= ExitSpeedThreshold;
-		const bool bNotCrouching = MoverComp->GetStance() != GarStanceTags::Crouching;
-		if (bTooSlow || bNotCrouching)
-		{
-			EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
-		}
+		RemainingSlidingModeCheckDelayTicks = 0;
+		return;
+	}
+
+	// 起動直後はモード反映遅延を許容
+	if (RemainingSlidingModeCheckDelayTicks > 0)
+	{
+		--RemainingSlidingModeCheckDelayTicks;
+		return;
+	}
+
+	// Sliding モードを抜けたら終了（空中遷移含む）
+	if (CurrentMovementMode != TEXT("Sliding"))
+	{
+		EndAbility(CurrentSpecHandle, GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 	}
 }

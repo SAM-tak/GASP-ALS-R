@@ -16,14 +16,6 @@ class GAR_API UGarGameplayAbility_Sliding : public UGarGameplayAbility
 {
 	GENERATED_UCLASS_BODY()
 
-public:
-	/** Blueprint の InputAction バインドから呼び出す。スライディング中の移動入力を設定する */
-	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|Sliding")
-	void SetSlidingInput(FVector2D Input);
-
-	/** Blueprint バインドから受け取ったスライディング移動入力 */
-	FVector2D SlidingInput = FVector2D::ZeroVector;
-
 protected:
 	/** アクティブ化時にしゃがみスタンスを強制するか */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Sliding")
@@ -33,9 +25,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Sliding")
 	uint8 bStandUpOnEnd : 1{true};
 
-    /** この XY 速度以下になったらスライド終了 (cm/s) */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Sliding", meta = (ForceUnits = "cm/s"))
-    float ExitSpeedThreshold = 200.0f;
+	/** 起動直後に MovementMode が反映されるまで待つ猶予 Tick 数 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Sliding", meta = (ClampMin = "0"))
+	int32 SlidingModeCheckDelayTicks = 3;
 
 	UFUNCTION(BlueprintNativeEvent, Category = "GAR|Ability|Sliding")
 	void Tick(const float DeltaTime);
@@ -49,6 +41,7 @@ protected:
 
 private:
 	TWeakObjectPtr<class UGarAbilityTask_Tick> TickTask;
+	int32 RemainingSlidingModeCheckDelayTicks = 0;
 
 	/** ActivateAbility 時に横移動と判定されたか（EndAbility で KneesOut タグ削除に使用） */
 	uint8 bKneesOut : 1{false};
