@@ -16,8 +16,7 @@ public:
 
 	bool operator==(const FGarCharacterMoverInputs& Other) const
 	{
-		return Super::operator==(Other) && RotationMode == Other.RotationMode && Stance == Other.Stance && Gait == Other.Gait
-			&& PostRagdollSuppressFrames == Other.PostRagdollSuppressFrames;
+		return Super::operator==(Other) && RotationMode == Other.RotationMode && Stance == Other.Stance && Gait == Other.Gait;
 	}
 
 	bool operator!=(const FGarCharacterMoverInputs& Other) const { return !operator==(Other); }
@@ -34,7 +33,6 @@ public:
 		Ar << RotationMode;
 		Ar << Stance;
 		Ar << Gait;
-		Ar << PostRagdollSuppressFrames;
 		bOutSuccess = true;
 		return true;
 	}
@@ -61,7 +59,6 @@ public:
 		if(ClosestInputs->RotationMode.IsValid()) RotationMode = ClosestInputs->RotationMode;
 		if(ClosestInputs->Stance.IsValid()) Stance = ClosestInputs->Stance;
 		if(ClosestInputs->Gait.IsValid()) Gait = ClosestInputs->Gait;
-		PostRagdollSuppressFrames = ClosestInputs->PostRagdollSuppressFrames;
 	}
 	virtual void Merge(const FMoverDataStructBase& From) override
 	{
@@ -70,7 +67,6 @@ public:
 		if(TypedFrom.RotationMode.IsValid()) RotationMode = TypedFrom.RotationMode;
 		if(TypedFrom.Stance.IsValid()) Stance = TypedFrom.Stance;
 		if(TypedFrom.Gait.IsValid()) Gait = TypedFrom.Gait;
-		if(TypedFrom.PostRagdollSuppressFrames > 0) PostRagdollSuppressFrames = TypedFrom.PostRagdollSuppressFrames;
 	}
 	//virtual void Decay(float DecayAmount) override { Super::Decay(DecayAmount); }
 
@@ -82,11 +78,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Mover)
 	FGameplayTag Gait;
-
-	// ラグドール終了後の reconcile 抑制フレーム数。Walking/Falling モードで FGarMoverRagdollingSyncState を出力し続ける。
-	// AP とサーバーが同一の InputCmd を処理するため両者が同フレームで reconcile 再開する。
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Mover)
-	uint8 PostRagdollSuppressFrames = 0;
 };
 
 template<>

@@ -464,8 +464,6 @@ public:
 private:
 	bool bIsJumpJustPressed = false;
 	bool bIsJumpPressed = false;
-	// ラグドール終了後に InputCmd 経由で reconcile を抑制するフレームカウンター
-	uint8 PostRagdollSuppressFrames = 0;
 
 	// ADS
 

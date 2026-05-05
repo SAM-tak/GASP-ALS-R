@@ -333,10 +333,6 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	CharacterInputs.Stance = InputStance;
 	CharacterInputs.Gait = InputGait;
 
-	// ラグドール終了後の reconcile 抑制カウンターをデクリメントし InputCmd に伝播
-	if (PostRagdollSuppressFrames > 0) --PostRagdollSuppressFrames;
-	CharacterInputs.PostRagdollSuppressFrames = PostRagdollSuppressFrames;
-
 	// Clear/consume temporal movement inputs. We are not consuming others in the event that the game world is ticking at a lower rate than the Mover simulation. 
 	// In that case, we want most input to carry over between simulation frames.
 	bIsJumpJustPressed = false;
@@ -357,12 +353,6 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 				&& !TempTagContainer.HasTagExact(KeyValue.Key) && PrevTagContainer.HasTagExact(KeyValue.Key))
 			{
 				CharacterInputs.SuggestedMovementMode = CharacterMover->StartingMovementMode;
-				// ラグドールタグ除去時: reconcile 抑制フレームを設定（約 1 秒）
-				if (KeyValue.Value == FName(TEXT("Ragdolling")))
-				{
-					PostRagdollSuppressFrames = 30;
-					CharacterInputs.PostRagdollSuppressFrames = PostRagdollSuppressFrames;
-				}
 			}
 		}
 

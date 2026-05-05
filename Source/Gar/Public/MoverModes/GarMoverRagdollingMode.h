@@ -25,10 +25,6 @@ struct FGarMoverRagdollingSyncState : public FMoverDefaultSyncState
 	// ラグドール中は Chaos 物理が非決定論的なため AP とサーバーの位置は常に乖離する。
 	// Reconciliation を抑制し、AP のローカル物理ボディ追従を妨げない。
 	virtual bool ShouldReconcile(const FMoverDataStructBase& AuthorityState) const override { return false; }
-	// FMoverSyncState::ShouldReconcile の MovementMode 比較も含めた全 reconcile を抑制する。
-	// AP が "Ragdolling In Air"、サーバーが "Ragdolling" に先行遷移した場合の MovementMode
-	// 不一致による reconcile (1m 釣り上げ) を防ぐ。
-	virtual bool ShouldContainerReconcile() const override { return false; }
 };
 
 template<>
