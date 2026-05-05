@@ -5,34 +5,6 @@
 #include "MoverDataModelTypes.h"
 #include "GarMoverRagdollingMode.generated.h"
 
-/**
- * ラグドール中は Chaos 物理の非決定論的な結果により AP とサーバーのカプセル位置が常に 5cm 以上乖離する。
- * FMoverDefaultSyncState::ShouldReconcile の固定閾値 5cm による毎フレーム reconciliation を防ぐため、
- * ShouldReconcile を常に false にオーバーライドした派生型を使用する。
- * FindDataByType は GetSuperStruct() を辿るため Mover 内部の FindDataByType<FMoverDefaultSyncState>() との互換性は維持される。
- */
-USTRUCT()
-struct FGarMoverRagdollingSyncState : public FMoverDefaultSyncState
-{
-	GENERATED_BODY()
-
-	virtual FMoverDataStructBase* Clone() const override { return new FGarMoverRagdollingSyncState(*this); }
-	virtual UScriptStruct* GetScriptStruct() const override { return StaticStruct(); }
-	virtual bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess) override
-	{
-		return FMoverDefaultSyncState::NetSerialize(Ar, Map, bOutSuccess);
-	}
-	// ラグドール中は Chaos 物理が非決定論的なため AP とサーバーの位置は常に乖離する。
-	// Reconciliation を抑制し、AP のローカル物理ボディ追従を妨げない。
-	virtual bool ShouldReconcile(const FMoverDataStructBase& AuthorityState) const override { return false; }
-};
-
-template<>
-struct TStructOpsTypeTraits<FGarMoverRagdollingSyncState> : public TStructOpsTypeTraitsBase2<FGarMoverRagdollingSyncState>
-{
-	enum { WithNetSerializer = true };
-};
-
 class UGarMovementSettings;
 
 /**

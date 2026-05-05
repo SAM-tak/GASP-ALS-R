@@ -38,14 +38,10 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 	// VisibilityBasedAnimTickOption により物理シミュレーション結果が骨トランスフォームに
 	// コピーされないことがある。GetBodyInstance の物理ボディを直接参照することで
 	// サーバーでも正確なラグドール骨位置を取得する。
-	FTransform TargetTransform;
+	FTransform TargetTransform(StartingSyncState->GetOrientation_WorldSpace(), StartingSyncState->GetLocation_WorldSpace());
 	if (FBodyInstance* TopBoneBodyForTransform = Character->GetMesh()->GetBodyInstance(TopBoneName))
 	{
 		TargetTransform = TopBoneBodyForTransform->GetUnrealWorldTransform();
-	}
-	else
-	{
-		TargetTransform = Character->GetMesh()->GetBoneTransform(TopBoneName);
 	}
 	auto TargetLocation{TargetTransform.GetLocation()};
 
@@ -137,11 +133,7 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
 	check(StartingSyncState);
 
-	// FMoverDefaultSyncState を FGarMoverRagdollingSyncState で置換して Reconciliation を抑制
-	// (ShouldReconcile → false: Chaos 物理の非決定論的な結果による毎フレーム reconcile を防ぐ)
-	OutputState.SyncState.SyncStateCollection.RemoveDataByType(FMoverDefaultSyncState::StaticStruct());
-	FGarMoverRagdollingSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FGarMoverRagdollingSyncState>();
-	static_cast<FMoverDefaultSyncState&>(OutputSyncState) = *StartingSyncState; // 前フレームの状態を引き継ぐ
+	FMoverDefaultSyncState& OutputSyncState = OutputState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FMoverDefaultSyncState>();
 
 	const float DeltaSeconds = Params.TimeStep.StepMs * 0.001f;
 

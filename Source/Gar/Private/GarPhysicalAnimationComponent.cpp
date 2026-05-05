@@ -495,9 +495,11 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	bPreviousGrounded = true;
 	bFreezing = false;
 	bPendingInitialVelocity = false;
+	bOverrodeVisibilityBasedAnimTickOption = false;
 	PrevActorLocation = Character->GetActorLocation();
 
 	auto* Mover{Character->GetMover()};
+	auto* Mesh{Character->GetMesh()};
 
 	// Initialize bFacingUpward flag by current movement direction. If Velocity is Zero, it is chosen bFacingUpward is true.
 	// And determine target yaw angle of the character.
@@ -561,6 +563,13 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	{
 		InitialRagdollVelocity = Mover->GetVelocity();
 		bPendingInitialVelocity = !InitialRagdollVelocity.IsNearlyZero();
+	}
+
+	if (Mesh && Character->HasAuthority() && !Character->IsLocallyControlled())
+	{
+		PreviousVisibilityBasedAnimTickOption = static_cast<uint8>(Mesh->VisibilityBasedAnimTickOption);
+		Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+		bOverrodeVisibilityBasedAnimTickOption = true;
 	}
 
 	// ---- AnimInstance 依存の初期化 ----
@@ -651,6 +660,14 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		}
 	}
 
+	FTransform TopBodyTransform = FTransform::Identity;
+	bool bHasTopBodyTransform = false;
+	if (FBodyInstance* TopBodyForTransform = Character->GetMesh()->GetBodyInstance(PhysicalAnimation->GetTopBoneName()))
+	{
+		TopBodyTransform = TopBodyForTransform->GetUnrealWorldTransform();
+		bHasTopBodyTransform = true;
+	}
+
 	// Clip velocity each body
 
 	if (Settings->MaxBodySpeed > 0.0f)
@@ -662,11 +679,11 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		}
 	}
 
-	if (IsGroundedAndAged())
+	if (IsGroundedAndAged() && bHasTopBodyTransform)
 	{
 		// Determine whether the ragdoll is facing upward or downward.
 
-		const auto TopRotation{Character->GetMesh()->GetBoneTransform(PhysicalAnimation->GetTopBoneName()).Rotator()};
+		const auto TopRotation{TopBodyTransform.Rotator()};
 
 		const auto TopDirDotUp{TopRotation.RotateVector(FVector::RightVector).Dot(FVector::UpVector)};
 
@@ -686,9 +703,9 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		}
 	}
 
+	if (bHasTopBodyTransform)
 	{
-		auto TargetTransform{Character->GetMesh()->GetBoneTransform(PhysicalAnimation->GetTopBoneName())};
-		auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
+		auto TargetDirection{TopBodyTransform.GetRotation().RotateVector(FVector::RightVector)};
 		auto DotY{FVector::UpVector.Dot(TargetDirection)};
 		if (FMath::Abs(DotY) > 0.7)
 		{
@@ -803,9 +820,16 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnimation)
 {
 	auto Mover{Character->GetMover()};
+	auto* Mesh{Character->GetMesh()};
 
 	RagdollingAnimInstance->Freeze();
 	RagdollingAnimInstance->Refresh(*this, false);
+
+	if (Mesh && bOverrodeVisibilityBasedAnimTickOption)
+	{
+		Mesh->VisibilityBasedAnimTickOption = static_cast<EVisibilityBasedAnimTickOption>(PreviousVisibilityBasedAnimTickOption);
+		bOverrodeVisibilityBasedAnimTickOption = false;
+	}
 
 	// Re-enable capsule collision.
 
@@ -829,7 +853,11 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
-		const auto TopTransform{Character->GetMesh()->GetBoneTransform(PhysicalAnimation->GetTopBoneName())};
+		FTransform TopTransform{Mover->GetUpdatedComponentTransform()};
+		if (FBodyInstance* TopBodyForTransform = Character->GetMesh()->GetBodyInstance(PhysicalAnimation->GetTopBoneName()))
+		{
+			TopTransform = TopBodyForTransform->GetUnrealWorldTransform();
+		}
 		const auto TopRotation{TopTransform.Rotator()};
 
 		// Determine yaw angle of the character.

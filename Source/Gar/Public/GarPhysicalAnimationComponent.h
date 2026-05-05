@@ -105,6 +105,13 @@ struct GAR_API FGarRagdollingState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	uint8 bPendingInitialVelocity : 1{false};
 
+	// サーバー非ローカルキャラだけ、ラグドール中に一時的に AlwaysTickPoseAndRefreshBones へ切替する。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 bOverrodeVisibilityBasedAnimTickOption : 1{false};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	uint8 PreviousVisibilityBasedAnimTickOption{0};
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UGarRagdollingAnimInstance* RagdollingAnimInstance{nullptr};
 
