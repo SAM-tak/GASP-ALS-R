@@ -125,10 +125,13 @@ void UGarCharacterMoverComponent::BeginPlay()
 	Super::BeginPlay();
 
 	OnPreSimulationTick.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPreSimulationTick);
-	//OnPostMovement.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPostMovement);
 	if (GetOwnerRole() == ROLE_SimulatedProxy)
 	{
-		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::OnMoverPostFinalize);
+		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::UpdateStatusesOfSimulatedProxy);
+	}
+	if (GetOwnerRole() == ROLE_SimulatedProxy || GetOwnerRole() == ROLE_AutonomousProxy)
+	{
+		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::UpdatePacOfProxy);
 	}
 }
 
@@ -228,18 +231,7 @@ void UGarCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep&
 	}
 }
 
-void UGarCharacterMoverComponent::OnMoverPostMovement(const FMoverTimeStep& TimeStep, FMoverSyncState& SyncState, FMoverAuxStateContext& AuxState)
-{
-	auto MySyncState = SyncState.SyncStateCollection.FindMutableDataByType<FGarCharacterMoverSyncState>();
-	if (MySyncState)
-	{
-		MySyncState->RotationMode = RotationMode;
-		MySyncState->Stance = Stance;
-		MySyncState->Gait = Gait;
-	}
-}
-
-void UGarCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+void UGarCharacterMoverComponent::UpdateStatusesOfSimulatedProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
 {
 	auto MySyncState = SyncState.SyncStateCollection.FindMutableDataByType<FGarCharacterMoverSyncState>();
 	if (MySyncState)
@@ -247,6 +239,18 @@ void UGarCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& Syn
 		RotationMode = MySyncState->RotationMode;
 		Stance = MySyncState->Stance;
 		Gait = MySyncState->Gait;
+	}
+}
+
+void UGarCharacterMoverComponent::UpdatePacOfProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+{
+	if (Character.IsValid())
+	{
+		auto Pac = Character->GetPhysicalAnimation();
+		if(Pac && Pac->IsActive())
+		{
+			Pac->TeleportPhysics();
+		}
 	}
 }
 

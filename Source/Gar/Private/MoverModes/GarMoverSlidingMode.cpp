@@ -95,6 +95,7 @@ void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
 	FVector& InOutVelocity)
 {
 	// スロープ角を先に計算し、今フレームの Super 計算に反映させる
+	// BPと同様に移動方向に対する符号付き角度: 上り坂=負、下り坂=正、平地=0
 
 	FHitResult FloorHit;
 	const bool bHasFloor = GetMoverComponent()->TryGetFloorCheckHitResult(FloorHit);
@@ -102,11 +103,12 @@ void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
 	float SlopeAngle = 0.0f;
 	if (bHasFloor)
 	{
-		const FVector UpDir = GetMoverComponent()->GetUpDirection();
-		const float DotVal = FMath::Clamp(
-			FVector::DotProduct(FloorHit.ImpactNormal.GetSafeNormal(), UpDir),
-			-1.0f, 1.0f);
-		SlopeAngle = FMath::RadiansToDegrees(FMath::Acos(DotVal));
+		const FVector VelDir = DesiredVelocity.GetSafeNormal();
+		if (!VelDir.IsNearlyZero(UE_KINDA_SMALL_NUMBER))
+		{
+			const float DotVal = FVector::DotProduct(FloorHit.Normal.GetSafeNormal(), VelDir);
+			SlopeAngle = FMath::RadiansToDegrees(FMath::Acos(DotVal)) - 90.0f;
+		}
 	}
 
 	// InitialBoost フェーズ
@@ -117,22 +119,22 @@ void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
 	}
 	else
 	{
-		// SlopeAngle < ShallowSlopeAngle は平地扱い
-		if (SlopeAngle < static_cast<float>(ShallowSlopeAngle))
+		// SlopeAngle > -ShallowSlopeAngle は平地扱い
+		if (SlopeAngle > static_cast<float>(-ShallowSlopeAngle))
 		{
 			MaxSpeedOverride = static_cast<float>(FlatGroundSpeed);
 		}
 		else
 		{
 			MaxSpeedOverride = static_cast<float>(FMath::GetMappedRangeValueClamped(
-				FVector2D(ShallowSlopeAngle, SteepSlopeAngle),
+				FVector2D(-ShallowSlopeAngle, -SteepSlopeAngle),
 				FVector2D(ShallowSlopeSpeed, SteepSlopeSpeed),
 				static_cast<double>(SlopeAngle)));
 		}
 		Acceleration = static_cast<float>(AfterBoostAcceleration);
 	}
 
-	// 傾斜によるDeceleration (急傾斜ほど制動が弱い)
+	// 傾斜によるDeceleration (上り坂ほど制動が強い: SteepSlopeDecel、下り坂は FlatGroundDecel)
 	Deceleration = static_cast<float>(FMath::GetMappedRangeValueClamped(
 		FVector2D(ShallowSlopeAngle, SteepSlopeAngle),
 		FVector2D(FlatGroundDeceleration, SteepSlopeDeceleration),

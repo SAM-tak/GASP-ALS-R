@@ -267,15 +267,6 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 		}
 
 		RagdollingState.Tick(DeltaTime, this);
-
-		if (RagdollingState.bGrounded)
-		{
-			//Character->SetLocomotionMode(GarLocomotionModeTags::Grounded);
-		}
-		else
-		{
-			//Character->SetLocomotionMode(GarLocomotionModeTags::InAir);
-		}
 	}
 	else
 	{
@@ -287,14 +278,9 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 
 			CurrentProfileNames.Reset();
 			ClearGameplayTags();
-			//GetSkeletalMesh()->SetAllBodiesSimulatePhysics(false);
-			//GetSkeletalMesh()->SetAllBodiesPhysicsBlendWeight(0.0f);
-			//GetSkeletalMesh()->SetConstraintProfileForAll(NAME_None, true);
 
 			if (bActive)
 			{
-				//GetSkeletalMesh()->SetCollisionObjectType(PrevCollisionObjectType);
-				//GetSkeletalMesh()->SetCollisionEnabled(PrevCollisionEnabled);
 				bActive = false;
 			}
 		}
@@ -326,28 +312,6 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// SimProxy: Mover の VisualComponentOffset スムージングでメッシュが移動した後、
-	// Super の UpdateTargetActors(None) はキネマティックターゲットを新しいメッシュ位置に
-	// 設定するが、シミュレーション中のボディは物理ソルバが動くまで旧位置に残る。
-	// TeleportPhysics で呼び直すことでボディを即座にターゲット位置にスナップする。
-	// ただしラグドール中は PhysicsBlendWeight < 1.0 のブレンド期間にボディを
-	// アニメ+物理ブレンド位置へテレポートして物理シミュレーションと干渉するため除外する。
-	// AutonomousProxy でもトラバーサル中は MotionWarping による高速移動で通常の追従が
-	// 間に合わないため、同様に TeleportPhysics でスナップする。
-	if (Character && !bRagdolling)
-	{
-		const ENetRole LocalRole = Character->GetLocalRole();
-		const bool bSimProxy = (LocalRole == ROLE_SimulatedProxy);
-		const bool bApDuringTraversal = (LocalRole == ROLE_AutonomousProxy)
-			&& Character->GetAbilitySystemComponent()
-				->HasMatchingGameplayTag(GarLocomotionActionTags::Traversal);
-
-		if (bSimProxy || bApDuringTraversal)
-		{
-			UpdateTargetActors(ETeleportType::TeleportPhysics);
-		}
-	}
 }
 
 void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugDisplayInfo& DisplayInfo, float& HorizontalLocation, float& VerticalLocation)
@@ -381,6 +345,30 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 
 	VerticalLocation += RowOffset;
 
+	{
+		const AGarCharacter* Character{Cast<AGarCharacter>(GetOwner())};
+		auto TopBoneBody{Character->GetMesh()->GetBodyInstance(TopBoneName)};
+		if (TopBoneBody)
+		{
+			auto TargetTransform{TopBoneBody->GetUnrealWorldTransform()};
+			auto TargetLocation{TargetTransform.GetLocation()};
+			auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
+			auto TopBoneDirection{TargetTransform.GetRotation().RotateVector(FVector::ForwardVector)};
+			if (TopBoneDirection.Z < 0.7f && TopBoneDirection.Z > -0.7f)
+			{
+				if (Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward)
+				{
+					TargetDirection = -TopBoneDirection;
+				}
+				else
+				{
+					TargetDirection = TopBoneDirection;
+				}
+			}
+			DrawDebugDirectionalArrow(Character->GetWorld(), TargetLocation, TargetLocation + TargetDirection * 150, 150, FColor::Emerald);
+		}
+	}
+
 	for (auto Body : GetSkeletalMesh()->Bodies)
 	{
 		Text.SetColor(FMath::Lerp(FLinearColor::Gray, FLinearColor::Red, UGarMath::Clamp01(Body->PhysicsBlendWeight)));
@@ -394,6 +382,19 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 	}
 }
 
+void UGarPhysicalAnimationComponent::TeleportPhysics(bool bUpdateKinematicBones)
+{
+	if (bUpdateKinematicBones)
+	{
+		auto* Mesh{GetSkeletalMesh()};
+		if (IsValid(Mesh))
+		{
+			Mesh->UpdateKinematicBonesToAnim(Mesh->GetComponentSpaceTransforms(), ETeleportType::TeleportPhysics, false);
+		}
+	}
+	UpdateTargetActors(ETeleportType::TeleportPhysics);
+}
+
 bool UGarPhysicalAnimationComponent::HasRagdollingSettings(const FGameplayTag& Tag) const
 {
 	return RagdollingSettingsMap.Contains(Tag);
@@ -402,19 +403,6 @@ bool UGarPhysicalAnimationComponent::HasRagdollingSettings(const FGameplayTag& T
 bool UGarPhysicalAnimationComponent::IsRagdolling() const
 {
 	return CurrentRagdolling.IsValid();
-}
-
-void UGarPhysicalAnimationComponent::TeleportPhysics()
-{
-	// UpdateKinematicBonesToAnim(TeleportPhysics) はシミュレーション中ボディにも
-	// SetGlobalPose を呼び、アニメーションポーズ位置へ即座にスナップする。
-	auto* Mesh{GetSkeletalMesh()};
-	if (IsValid(Mesh))
-	{
-		Mesh->UpdateKinematicBonesToAnim(Mesh->GetComponentSpaceTransforms(), ETeleportType::TeleportPhysics, false);
-	}
-	// PAC の TargetActors（キネマティックゴールアクター）も新位置に同期。
-	UpdateTargetActors(ETeleportType::TeleportPhysics);
 }
 
 bool UGarPhysicalAnimationComponent::IsRagdollingAndGroundedAndAged() const
@@ -494,7 +482,6 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	bFacingUpward = bGrounded = false;
 	bPreviousGrounded = true;
 	bFreezing = false;
-	bPendingInitialVelocity = false;
 	bOverrodeVisibilityBasedAnimTickOption = false;
 	PrevActorLocation = Character->GetActorLocation();
 
@@ -525,14 +512,8 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 		AnimInstance->Montage_Stop(Settings->StartBlendTime);
 	}
 
-	// Disable movement corrections and reset network smoothing.
-
-	Mover->SmoothingMode = EMoverSmoothingMode::None;
-	Mover->bSyncInputsForSimProxy = false;
-
 	// Disable capsule collision. other physics states will be changed by physical aniamtion process
 
-	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // TODO: Change
 	auto Capsule{Character->GetCapsule()};
 	// オブジェクトタイプをPawnに設定（必要に応じてWorldDynamicでも可）
 	Capsule->SetCollisionObjectType(ECC_Pawn);
@@ -550,20 +531,6 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 	// 必要に応じて Visibility や Camera も Ignore
 	Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
-
-	// Clear the character movement mode and set the locomotion action to ragdolling.
-
-	//Mover->SetMovementMode(MOVE_Custom);
-	//Mover->SetMovementModeLocked(true);
-
-	// SimProxy: Mover のレプリケート済み速度を初速として記録。
-	// 物理シミュレーション開始後の最初の Tick で TopBone ボディに注入する。
-	// CMC 時代の ACharacter::PostNetReceivePhysicState() に相当する処理。
-	if (Character->GetLocalRole() == ROLE_SimulatedProxy)
-	{
-		InitialRagdollVelocity = Mover->GetVelocity();
-		bPendingInitialVelocity = !InitialRagdollVelocity.IsNearlyZero();
-	}
 
 	if (Mesh && Character->HasAuthority() && !Character->IsLocallyControlled())
 	{
@@ -646,20 +613,6 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	bGrounded = Character->HasMatchingGameplayTag(GarLocomotionModeTags::Grounded);
 
-	// SimProxy: 初速注入 - 物理シミュレーション開始後の最初の Tick で TopBone に適用
-	// CMC の PostNetReceivePhysicState() に相当。Mover はレプリケーション経路が別なため手動注入が必要。
-	if (bPendingInitialVelocity)
-	{
-		if (FBodyInstance* TopBody = Character->GetMesh()->GetBodyInstance(PhysicalAnimation->GetTopBoneName()))
-		{
-			if (TopBody->IsInstanceSimulatingPhysics())
-			{
-				TopBody->SetLinearVelocity(InitialRagdollVelocity, false);
-				bPendingInitialVelocity = false;
-			}
-		}
-	}
-
 	FTransform TopBodyTransform = FTransform::Identity;
 	bool bHasTopBodyTransform = false;
 	if (FBodyInstance* TopBodyForTransform = Character->GetMesh()->GetBodyInstance(PhysicalAnimation->GetTopBoneName()))
@@ -709,19 +662,21 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		auto DotY{FVector::UpVector.Dot(TargetDirection)};
 		if (FMath::Abs(DotY) > 0.7)
 		{
-			if (DotY > 0)
+			if (bFacingUpward)
 			{
-				//TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
-				bFacingUpward = true;
+				if (DotY < -0.2f)
+				{
+					bFacingUpward = false;
+				}
 			}
 			else
 			{
-				//TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::ForwardVector);
-				bFacingUpward = false;
+				if (DotY > 0.2f)
+				{
+					bFacingUpward = true;
+				}
 			}
 		}
-		//const FRotator CurrentRotation = Character->GetActorRotation();
-		//const FRotator RDiff{(TargetDirection.GetSafeNormal2D().Rotation() - CurrentRotation).GetNormalized()};
 	}
 
 	if (IsValid(RagdollingAnimInstance))
@@ -833,23 +788,10 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 
 	// Re-enable capsule collision.
 
-	//Character->GetCapsule()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	auto Capsule{Character->GetCapsule()};
-	//// 全チャンネルを Ignore に初期化
-	//Capsule->SetCollisionResponseToAllChannels(ECR_Ignore);
-
-	//// 必要なチャンネルに Block を設定
-	//Capsule->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);     // 地形
-	//Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);    // 動的オブジェクト
-	//Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);            // 他のPawn
-	//Capsule->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);      // トレース用
-	//Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);         // カメラは無視（任意）
 
 	Character->GetCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 	Character->GetProneCapsule()->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
-
-	Mover->SmoothingMode = EMoverSmoothingMode::VisualComponentOffset;
-	Mover->bSyncInputsForSimProxy = true;
 
 	if (RagdollingAnimInstance && ElapsedTime > Settings->StartBlendTime)
 	{
@@ -887,19 +829,5 @@ void FGarRagdollingState::End(const UGarPhysicalAnimationComponent* PhysicalAnim
 			// We expect the pelvis bone to be the root bone or attached to it, so we can safely use the mesh transform here.
 			FinalRagdollPose.LocalTransforms[TopBoneIndex] = TopTransform.GetRelativeTransform(Character->GetMesh()->GetComponentTransform());
 		}
-	}
-
-	// If the ragdoll is on the ground, set the movement mode to walking and play a get up montage. If not, set
-	// the movement mode to falling and update the character movement velocity to match the last ragdoll velocity.
-
-	//Mover->SetMovementModeLocked(false);
-
-	if (bGrounded)
-	{
-		//Mover->SetMovementMode(MOVE_Walking);
-	}
-	else
-	{
-		//Mover->SetMovementMode(MOVE_Falling);
 	}
 }

@@ -98,13 +98,6 @@ struct GAR_API FGarRagdollingState
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	uint8 bPreviousGrounded : 1{false};
 
-	// SimProxy: Start() で記録した初速。初回物理 Tick で TopBone に注入する (CMC の PostNetReceivePhysicState 相当)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	FVector InitialRagdollVelocity{ForceInit};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	uint8 bPendingInitialVelocity : 1{false};
-
 	// サーバー非ローカルキャラだけ、ラグドール中に一時的に AlwaysTickPoseAndRefreshBones へ切替する。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	uint8 bOverrodeVisibilityBasedAnimTickOption : 1{false};
@@ -139,7 +132,7 @@ UCLASS()
 class GAR_API UGarPhysicalAnimationComponent : public UPhysicalAnimationComponent
 {
 	GENERATED_BODY()
-	
+
 protected:
 	// The blend time Of physics blend Weight on activate physics body.
 	// Not used when ragdolling activate. Ragdolling start with weight 1.0 immediately.
@@ -231,15 +224,16 @@ public:
 		return TopBoneName;
 	}
 
+	// テレポート後にシミュレーション中の物理ボディと PAC の TargetActors を
+	// 現在のアニメーションポーズ位置へ即座にスナップする。
+	UFUNCTION(BlueprintCallable, Category = "GAR|PhysicalAnimation")
+	void TeleportPhysics(bool bUpdateKinematicBones = false);
+
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool HasRagdollingSettings(const FGameplayTag& Tag) const;
 
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool IsRagdolling() const;
-
-	// テレポート後にシミュレーション中の物理ボディと PAC の TargetActors を
-	// 現在のアニメーションポーズ位置へ即座にスナップする。
-	void TeleportPhysics();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool IsRagdollingAndGroundedAndAged() const;

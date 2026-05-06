@@ -94,28 +94,31 @@ void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartD
 	}
 
 	auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
-	auto DotY{FVector::UpVector.Dot(TargetDirection)};
-	if (FMath::Abs(DotY) > 0.7)
+	if (TopBoneBody)
 	{
-		if (DotY > 0)
+		auto TopBoneDirection{TargetTransform.GetRotation().RotateVector(FVector::ForwardVector)};
+		if (TopBoneDirection.Z < 0.7f && TopBoneDirection.Z > -0.7f)
 		{
-			TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::BackwardVector);
-		}
-		else
-		{
-			TargetDirection = TargetTransform.GetRotation().RotateVector(FVector::ForwardVector);
+			if (Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward)
+			{
+				TargetDirection = -TopBoneDirection;
+			}
+			else
+			{
+				TargetDirection = TopBoneDirection;
+			}
 		}
 	}
 	const FRotator CurrentRotation = Character->GetActorRotation();
 	const FRotator RDiff{(TargetDirection.GetSafeNormal2D().Rotation() - CurrentRotation).GetNormalized()};
-	FRotator AngularVelocity{ForceInit};
+	FVector AngularVelocityDegrees{ForceInit};
 	if (DeltaSeconds > 0 && !RDiff.IsNearlyZero(1.0))
 	{
-		AngularVelocity.Yaw = FMath::Clamp((RDiff * (1.0f / DeltaSeconds)).Yaw, 1, 360*2);
+		AngularVelocityDegrees.Y = FMath::Clamp((RDiff * (1.0f / DeltaSeconds)).Yaw, -360.0f * 2.0f, 360.0f * 2.0f);
 	}
 
 	OutProposedMove.LinearVelocity = Velocity;
-	//OutProposedMove.AngularVelocity = AngularVelocity;
+	OutProposedMove.AngularVelocityDegrees = AngularVelocityDegrees;
 }
 
 void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTickParams& Params, FMoverTickEndData& OutputState)

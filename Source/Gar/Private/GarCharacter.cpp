@@ -185,6 +185,10 @@ void AGarCharacter::PostInitializeComponents()
 	if (PhysicalAnimation)
 	{
 		PhysicalAnimation->SetSkeletalMeshComponent(Mesh);
+		if (PhysicalAnimation->PrimaryComponentTick.bCanEverTick)
+		{
+			PhysicalAnimation->PrimaryComponentTick.AddPrerequisite(Mesh, Mesh->PrimaryComponentTick);
+		}
 	}
 
 	if (IsValid(AbilitySystem))
@@ -233,7 +237,7 @@ void AGarCharacter::TeleportSucceeded(bool bIsATest)
 	// TeleportPhysics() でシミュレーション中ボディと TargetActors を即座にスナップして解決する。
 	if (!bIsATest && IsValid(PhysicalAnimation))
 	{
-		PhysicalAnimation->TeleportPhysics();
+		PhysicalAnimation->TeleportPhysics(true);
 	}
 }
 
