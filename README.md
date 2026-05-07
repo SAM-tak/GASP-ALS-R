@@ -2,33 +2,42 @@
 
 ## Introduction
 
-This project integrates the ALS-Refactored Overlay Layering System into the new Unreal Engine Motion Matching Game Animation Sample.
-Advanced Locomotion System (ALS) provides a nice Overlay System that allows us to alter the entire locomotion animation just by applying simple overlay poses.
+This project takes [GASPALS](https://github.com/PolygonHive/GASPALS) as its foundation, replaces the ALS portion with a layering system inspired by [ALS-Refactored](https://github.com/Sixze/ALS-Refactored), rewrites all GASP-originated code in C++, and rebuilds the entire implementation using GAS (Gameplay Ability System) and Modular Gameplay.
 
 ## Features
 
 - Game Animation Sample
 - Modular Overlay layering system built with separate Anim Graphs and Linked Layers and Pawn Component
+- works with Mover
+- works with GameplayCamera
+- Overlay system as Gameplay Ability
 - Travarsal Action as Gameplay Ability
+- Sliding Action as Gameplay Ability
 - All overlays from ALS
 - Basic weapon attach system from ALS
 - Basic overlay switcher widget from ALS
 - Removed Echo and Twinblast characters and Manny/Quinn 4k textures to lower project size
+- Removed Legacy character based on CharacterMovementComponent
 
-## Overview
+## Documentation
 
-An overview of the system is available on my YouTube channel [Polygon Hive](https://www.youtube.com/watch?v=RDWNfIqvWBk&list=PLs9e0eJQMI2aaulgKJzC8feN1UEwDkEnq)
+- [Character](Documents/Character.md) — `AGarCharacter`, components, stance API
+- [Mover](Documents/Mover.md) — `UGarCharacterMoverComponent`, modes, modifiers
+- [Animation](Documents/Animation.md) — `UGarAnimationInstance`, linked layers
+- [Overlay System](Documents/OverlaySystem.md) — overlay / delta-overlay / override components and abilities
+- [Gameplay Abilities](Documents/GameplayAbilities.md) — GAS ability hierarchy, traversal, ragdolling, sliding
+- [Physical Animation & Ragdolling](Documents/PhysicalAnimationRagdolling.md) — `UGarPhysicalAnimationComponent`, ragdoll state machine
+- [Camera](Documents/Camera.md) — `GarCamera` module, `UGarGameplayCameraStateComponent`
+- [Gameplay Tags](Documents/GameplayTags.md) — full tag namespace reference
 
 ## Migrating Plugin
 
-To migrate the GASPALS plugin to your own Unreal Engine project, you can follow these steps:
+To migrate the GASP-ALS-R plugin to your own Unreal Engine project, you can follow these steps:
 
-1. Copy the `Plugins/GASPALS` folder to your project's `Plugins` folder.
-2. Merge the `Plugins/GASPALS/Config` files with your project's `Config` files.
-3. Copy `DefaultEngine.ini` content at the end of your project's `DefaultEngine.ini`.
-4. Copy `Tags/GameplayTags_GASPALS.ini` to your project's `Config/Tags` folder.
-5. Launch the project, an error message will prompt you to add collision settings, click add at the end of the message.
-6. Enjoy :)
+1. Copy the `GASP-ALS-R` folder to your project's `Plugins` folder and build.
+2. In **Project Settings > GameplayTags > Gameplay Tag Table List**, add `/GAR/Example/Core/Data/DT_GarExtra_GameplayTags`.
+3. Launch the project, an error message will prompt you to add collision settings, click add at the end of the message.
+4. Enjoy :)
 
 ## Contributing
 
@@ -49,16 +58,7 @@ Please ensure your code follows the project's coding and naming standards.
 
 [UE-Only Content - Licensed for Use Only with Unreal Engine-based Products](https://www.unrealengine.com/en-US/eula/content)
 
-## Contact
+However, the following exceptions apply to source code files:
 
-For questions, suggestions, or feedback, please contact:
-
-- Anas EL FERACHI - [anas@polygonhive.com](mailto:anas@polygonhive.com)
-
-## Support My Work
-
-- [Buy Me A Coffee](https://buymeacoffee.com/PolygonHive)
-
----
-
-Thanks for checking out the project! I hope it helps you create amazing games.
+- **Original C++ source code** in this project and source code derived from **ALS-Refactored** are licensed under the [MIT License](LICENSE-for-cpp-source-codes).
+- Source code files derived from **Unreal Engine source** are individually marked with a comment to that effect at the top of the file; those files follow the terms of the Unreal Engine EULA instead of the MIT License.
