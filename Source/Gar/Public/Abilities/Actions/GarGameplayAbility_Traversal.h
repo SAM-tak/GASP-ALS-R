@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Abilities/Actions/GarGameplayAbility_MotionMatchBase.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "GarGameplayAbility_Traversal.generated.h"
 
 class UCurveFloat;
@@ -10,6 +11,7 @@ class UPrimitiveComponent;
 class UAnimMontage;
 class UMotionWarpingComponent;
 class UChooserTable;
+class UAbilitySystemComponent;
 
 USTRUCT(BlueprintType)
 struct GAR_API FGarTraversalChooserInputs
@@ -107,6 +109,32 @@ struct GAR_API FGarTraversalParameters
 	FVector BackFloorLocation{FVector::ZeroVector};
 };
 
+/** FGarTraversalParameters をネット越しに運ぶための TargetData。
+ *  AutonomousProxy のクライアントが選定したモンタージュ・トレース結果をサーバーへ転送する。 */
+USTRUCT()
+struct GAR_API FGarTraversalTargetData : public FGameplayAbilityTargetData
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY()
+	FGarTraversalParameters Parameters;
+
+	// TStructOpsTypeTraits による NetSerialize。override 不要（virtual ではなくトレイト経由で呼ばれる）。
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+
+	virtual UScriptStruct* GetScriptStruct() const override
+	{
+		return FGarTraversalTargetData::StaticStruct();
+	}
+	virtual FString ToString() const override { return TEXT("FGarTraversalTargetData"); }
+};
+
+template <>
+struct TStructOpsTypeTraits<FGarTraversalTargetData> : public TStructOpsTypeTraitsBase2<FGarTraversalTargetData>
+{
+	enum { WithNetSerializer = true };
+};
+
 USTRUCT(BlueprintType)
 struct GAR_API FGarTraversalTraceSettings
 {
@@ -131,6 +159,18 @@ class GAR_API UGarGameplayAbility_Traversal : public UGarGameplayAbility_MotionM
 	GENERATED_UCLASS_BODY()
 
 public:
+	/** BP から TryActivateAbilityByClass の代わりに呼ぶ。
+	 *  クライアント側でトレース・モンタージュ選定を行い、EventData に乗せてサーバーへ送る。
+	 *  戻り値: ローカル側でアビリティを起動できた場合 true。 */
+	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|Traversal")
+	static bool TryActivateTraversal(UAbilitySystemComponent* InASC,
+									 TSubclassOf<UGarGameplayAbility_Traversal> AbilityClass);
+
+	/** トラバーサル起動に使うゲームプレイイベントタグ。
+	 *  この能力の AbilityTrigger と一致させること。デフォルト: Gar.Event.Traversal */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
+	FGameplayTag TraversalEventTag;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
 	TObjectPtr<UChooserTable> Chooser;
 

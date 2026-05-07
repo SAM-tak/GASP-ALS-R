@@ -70,7 +70,7 @@ void UGarRagdollingTask::Tick(float DeltaTime)
 			bOnGroundedAndAgedFired = true;
 			K2_OnGroundedAndAged();
 		}
-		Character->SetInputStance(GarStanceTags::Lying);
+		Character->SetInputStance(RagdollingState.bFacingUpward ? GarStanceTags::LyingBack : GarStanceTags::LyingFront);
 
 		// local only. not be replicated.
 		Character->GetGarAbilitySystem()->SetLooseGameplayTagCount(GarStateFlagTags::FacingUpward, RagdollingState.bFacingUpward ? 1 : 0);

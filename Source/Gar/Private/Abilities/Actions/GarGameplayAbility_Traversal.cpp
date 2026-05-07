@@ -9,6 +9,7 @@
 #include "AnimationWarpingLibrary.h"
 #include "MotionWarpingComponent.h"
 #include "AbilitySystemGlobals.h"
+#include "AbilitySystemComponent.h"
 #include "MoveLibrary/FloorQueryUtils.h"
 #include "GarCharacter.h"
 #include "GarCharacterMoverComponent.h"
@@ -41,6 +42,14 @@ UGarGameplayAbility_Traversal::UGarGameplayAbility_Traversal(const FObjectInitia
 	TraversalTraceResponses.WorldStatic = ECR_Block;
 	TraversalTraceResponses.WorldDynamic = ECR_Block;
 	TraversalTraceResponses.Destructible = ECR_Block;
+
+	// デフォルトのイベントタグを設定し、AbilityTrigger として登録する。
+	// BP サブクラスで TraversalEventTag を変更した場合はエディタ側で AbilityTrigger も更新すること。
+	TraversalEventTag = GarEventTags::Traversal;
+	FAbilityTriggerData TriggerData;
+	TriggerData.TriggerTag = GarEventTags::Traversal;
+	TriggerData.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;
+	AbilityTriggers.Add(TriggerData);
 }
 
 bool UGarGameplayAbility_Traversal::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -50,6 +59,20 @@ bool UGarGameplayAbility_Traversal::CanActivateAbility(const FGameplayAbilitySpe
 	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags))
 	{
 		return false;
+	}
+
+	// サーバーが AutonomousProxy のキャラクターを所有している場合（リモートクライアントが操作）、
+	// トレース判定はクライアント側で行い結果を EventData で受け取る。サーバー側で独自選定しない。
+	if (ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled())
+	{
+		return true;
+	}
+
+	// TryActivateTraversal 経由の場合はすでに ParameterMap に結果が入っている。
+	// MotionMatch（ゲームスレッドブロッキング）の二重呼び出しを避けるためスキップする。
+	if (ParameterMap.Contains(Handle))
+	{
+		return true;
 	}
 
 	FGarTraversalParameters Params;
@@ -462,6 +485,103 @@ void UGarGameplayAbility_Traversal::CommitParameters(const FGameplayAbilitySpecH
 	ParameterMap.Add(Handle, Parameters);
 }
 
+// ---- FGarTraversalTargetData ------------------------------------------------
+
+bool FGarTraversalTargetData::NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
+{
+	// UAnimMontage はコンテンツアセット → Map 経由でパス参照をシリアライズする
+	UObject* SelectedAnim = Parameters.Result.SelectedAnim;
+	Map->SerializeObject(Ar, UObject::StaticClass(), SelectedAnim);
+	if (Ar.IsLoading())
+	{
+		Parameters.Result.SelectedAnim = SelectedAnim;
+	}
+
+	Ar << Parameters.Result.WantedPlayRate;
+	Ar << Parameters.Result.SelectedTime;
+
+	// FGameplayTagContainer は自前の NetSerialize を持つ
+	Parameters.ChooserOutput.Tags.NetSerialize(Ar, Map, bOutSuccess);
+
+	// UPrimitiveComponent (ランタイムオブジェクト) → ネット GUID で解決
+	UObject* PrimObj = Parameters.TargetPrimitive.Get();
+	Map->SerializeObject(Ar, UObject::StaticClass(), PrimObj);
+	if (Ar.IsLoading())
+	{
+		Parameters.TargetPrimitive = Cast<UPrimitiveComponent>(PrimObj);
+	}
+
+	Ar << Parameters.FrontWallNormal;
+	Ar << Parameters.FrontLedgeLocation;
+	Ar << Parameters.UpperLedgeNormal;
+	Ar << Parameters.BackLedgeLocation;
+	Ar << Parameters.BackFloorLocation;
+
+	bOutSuccess = true;
+	return true;
+}
+
+// ---- TryActivateTraversal --------------------------------------------------
+
+bool UGarGameplayAbility_Traversal::TryActivateTraversal(UAbilitySystemComponent* InASC,
+	TSubclassOf<UGarGameplayAbility_Traversal> AbilityClass)
+{
+	if (!IsValid(InASC) || !AbilityClass)
+	{
+		return false;
+	}
+
+	// アビリティインスタンスを取得（InstancedPerActor なので常に存在する）
+	FGameplayAbilitySpec* Spec = InASC->FindAbilitySpecFromClass(AbilityClass);
+	if (!Spec)
+	{
+		return false;
+	}
+
+	UGarGameplayAbility_Traversal* AbilityInstance =
+		Cast<UGarGameplayAbility_Traversal>(Spec->GetPrimaryInstance());
+	if (!IsValid(AbilityInstance))
+	{
+		return false;
+	}
+
+	// すでにアクティブなら起動しない
+	if (Spec->IsActive())
+	{
+		return false;
+	}
+
+	// ローカルでトレース・モンタージュ選定を行う
+	FGarTraversalParameters Params;
+	if (!AbilityInstance->CanTraversal(Spec->Handle, *InASC->AbilityActorInfo, Params))
+	{
+		return false;
+	}
+
+	// CanActivateAbility 内での二重 CanTraversal（= 二重 MotionMatch）を防ぐため、
+	// HandleGameplayEvent を呼ぶ前に ParameterMap へ結果を書いておく。
+	// CanActivateAbility は ParameterMap に既エントリがあればスキップする。
+	AbilityInstance->CommitParameters(Spec->Handle, Params);
+
+	// 選定結果を TargetData に格納して EventData に乗せる（サーバー転送用）
+	FGarTraversalTargetData* RawTargetData = new FGarTraversalTargetData();
+	RawTargetData->Parameters = Params;
+
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+	TargetDataHandle.Add(RawTargetData);
+
+	FGameplayEventData EventData;
+	EventData.EventTag = AbilityInstance->TraversalEventTag;
+	EventData.TargetData = TargetDataHandle;
+
+	// HandleGameplayEvent は LocalPredicted 能力に対してクライアント予測 + サーバー RPC を行う
+	InASC->HandleGameplayEvent(AbilityInstance->TraversalEventTag, &EventData);
+
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+
 bool UGarGameplayAbility_Traversal::HasNonTraversalTag(const FHitResult& HitResult) const
 {
 	auto* Actor{HitResult.GetActor()};
@@ -585,7 +705,7 @@ void UGarGameplayAbility_Traversal::UpdateWarpTarget(const FGarTraversalParamete
 	// Update the FrontLedge warp target using the front ledge's location and rotation.
 	MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(FName(TEXTVIEW("FrontLedge")),
 		Parameters.FrontLedgeLocation + FVector(0.f, 0.f, 0.5f),
-		FRotationMatrix::MakeFromXY(-Parameters.FrontWallNormal, Parameters.UpperLedgeNormal).Rotator());
+		FRotationMatrix::MakeFromXZ(-Parameters.FrontWallNormal, Parameters.UpperLedgeNormal).Rotator());
 
 	// If the action type was a hurdle or a vault, we need to also update the BackLedge target. If it is not a hurdle or vault, remove it.
 	if (ActionTags.HasTag(GarTraversalActionTags::Hurdle) || ActionTags.HasTag(GarTraversalActionTags::Vault))
@@ -741,6 +861,28 @@ void UGarGameplayAbility_Traversal::UpdateWarpTargetFromComponent(const FGarTrav
 void UGarGameplayAbility_Traversal::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 													const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
+	// サーバーがリモート AutonomousProxy のキャラクターを扱う場合、
+	// クライアントが TryActivateTraversal で送ってきた EventData からパラメータを復元する。
+	if (ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled())
+	{
+		if (TriggerEventData && TriggerEventData->TargetData.Num() > 0)
+		{
+			const FGarTraversalTargetData* TargetData =
+				static_cast<const FGarTraversalTargetData*>(TriggerEventData->TargetData.Get(0));
+			if (TargetData && IsValid(Cast<UAnimMontage>(TargetData->Parameters.Result.SelectedAnim)))
+			{
+				CommitParameters(Handle, TargetData->Parameters);
+			}
+		}
+
+		if (!ParameterMap.Contains(Handle))
+		{
+			// クライアントからデータが届かなかった場合はアビリティを中断する。
+			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+			return;
+		}
+	}
+
 	const auto& Parameters = ParameterMap[Handle];
 
 	ON_SCOPE_EXIT

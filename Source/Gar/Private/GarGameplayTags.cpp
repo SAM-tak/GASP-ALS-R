@@ -23,6 +23,8 @@ namespace GarDesiredStanceTags
 	UE_DEFINE_GAMEPLAY_TAG(Standing, "Gar.Desired.Stance.Standing")
 	UE_DEFINE_GAMEPLAY_TAG(Crouching, "Gar.Desired.Stance.Crouching")
 	UE_DEFINE_GAMEPLAY_TAG(Lying, "Gar.Desired.Stance.Lying")
+	UE_DEFINE_GAMEPLAY_TAG(LyingFront, "Gar.Desired.Stance.Lying.Front")
+	UE_DEFINE_GAMEPLAY_TAG(LyingBack, "Gar.Desired.Stance.Lying.Back")
 }
 
 namespace GarDesiredGaitTags
@@ -69,6 +71,8 @@ namespace GarStanceTags
 	UE_DEFINE_GAMEPLAY_TAG(Standing, "Gar.Stance.Standing")
 	UE_DEFINE_GAMEPLAY_TAG(Crouching, "Gar.Stance.Crouching")
 	UE_DEFINE_GAMEPLAY_TAG(Lying, "Gar.Stance.Lying")
+	UE_DEFINE_GAMEPLAY_TAG(LyingFront, "Gar.Stance.Lying.Front")
+	UE_DEFINE_GAMEPLAY_TAG(LyingBack, "Gar.Stance.Lying.Back")
 }
 
 namespace GarGaitTags
@@ -105,6 +109,11 @@ namespace GarSlidingActionTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Root, "Gar.SlidingAction")
 	UE_DEFINE_GAMEPLAY_TAG(KneesOut, "Gar.SlidingAction.KneedsOut")
+}
+
+namespace GarEventTags
+{
+	UE_DEFINE_GAMEPLAY_TAG(Traversal, "Gar.Event.Traversal")
 }
 
 namespace GarStateFlagTags

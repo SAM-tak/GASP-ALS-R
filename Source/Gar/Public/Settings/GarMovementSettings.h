@@ -114,7 +114,10 @@ public:
 			{GarGaitTags::Walking, {{180.0, 130.0, 100.0}}},
 			{GarGaitTags::Running, {{225.0, 200.0, 180.0}}}
 		}}},
-		{GarStanceTags::Lying, {{
+		{GarStanceTags::LyingFront, {{
+			{GarGaitTags::Walking, {{120.0, 100.0, 80.0}}}
+		}}},
+		{GarStanceTags::LyingBack, {{
 			{GarGaitTags::Walking, {{120.0, 100.0, 80.0}}}
 		}}}
 	};

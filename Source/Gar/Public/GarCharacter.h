@@ -337,7 +337,10 @@ public:
 	void UnCrouch();
 
 	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
-	void Lie();
+	void Prone();
+
+	UFUNCTION(BlueprintCallable, Category = "GAR|Character")
+	void Supine();
 
 	UFUNCTION(BlueprintPure, Category = "GAR|Character")
 	bool IsCrouching() const;

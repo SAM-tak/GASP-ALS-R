@@ -244,7 +244,8 @@ void UGarCharacterMoverComponent::UpdateStatusesOfSimulatedProxy(const FMoverSyn
 
 void UGarCharacterMoverComponent::UpdatePacOfProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
 {
-	if (Character.IsValid())
+	// まだ効果があるのかないのか不明
+	if (Character.IsValid() && bTeleportPhysicsOnProxy)
 	{
 		auto Pac = Character->GetPhysicalAnimation();
 		if(Pac && Pac->IsActive())

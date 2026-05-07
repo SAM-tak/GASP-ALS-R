@@ -40,7 +40,7 @@ FString FGarMoverCrouchingModifier::ToSimpleString() const
 
 FGarMoverLyingModifier::FGarMoverLyingModifier()
 {
-	ActiveTag = GarStanceTags::Lying;
+	ActiveTag = GarStanceTags::LyingFront;
 }
 
 FMovementModifierBase* FGarMoverLyingModifier::Clone() const

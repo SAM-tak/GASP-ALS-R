@@ -23,6 +23,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
 	FGameplayTagContainer LocomotionModeTags;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
+	uint8 bTeleportPhysicsOnProxy : 1;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
 
@@ -34,6 +37,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
 	FGameplayTag Gait{GarGaitTags::Running};
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient, Replicated)
+	uint8 bFacingUpward : 1{false};
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TObjectPtr<UMoverTrajectoryPredictor> TrajectoryPredictor;
@@ -99,6 +105,7 @@ public:
 	const FGameplayTag& GetStance() const { return Stance; }
 	const FGameplayTag& GetGait() const { return Gait; }
 #endif
+	const bool GetFacingUpward() const { return bFacingUpward; }
 
 private:
 #if GAR_USE_MOVEMENTMODIFIER

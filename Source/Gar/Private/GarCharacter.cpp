@@ -464,7 +464,8 @@ void AGarCharacter::Tick(const float DeltaTime)
 	{
 		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Standing, Stance == GarStanceTags::Standing ? 1 : 0);
 		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Crouching, Stance == GarStanceTags::Crouching ? 1 : 0);
-		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::Lying, Stance == GarStanceTags::Lying ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::LyingFront, Stance == GarStanceTags::LyingFront ? 1 : 0);
+		AbilitySystem->SetLooseGameplayTagCount(GarStanceTags::LyingBack, Stance == GarStanceTags::LyingBack ? 1 : 0);
 	}
 
 	auto& Gait{CharacterMover->GetGait()};
@@ -654,7 +655,9 @@ void AGarCharacter::SetDesiredStance(const FGameplayTag& NewDesiredStance)
 		EGameplayTagReplicationState::TagAndCountToAll);
 	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Crouching, NewDesiredStance == GarDesiredStanceTags::Crouching ? 1 : 0,
 		EGameplayTagReplicationState::TagAndCountToAll);
-	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::Lying, NewDesiredStance == GarDesiredStanceTags::Lying ? 1 : 0,
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::LyingFront, NewDesiredStance == GarDesiredStanceTags::LyingFront ? 1 : 0,
+		EGameplayTagReplicationState::TagAndCountToAll);
+	AbilitySystem->SetLooseGameplayTagCount(GarDesiredStanceTags::LyingBack, NewDesiredStance == GarDesiredStanceTags::LyingBack ? 1 : 0,
 		EGameplayTagReplicationState::TagAndCountToAll);
 }
 
@@ -678,11 +681,18 @@ void AGarCharacter::ApplyDesiredStance()
 					InputStance = GarStanceTags::Crouching;
 				}
 			}
-			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::Lying))
+			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::LyingFront))
 			{
 				if(CanLie())
 				{
-					InputStance = GarStanceTags::Lying;
+					InputStance = GarStanceTags::LyingFront;
+				}
+			}
+			else if (AbilitySystem->HasMatchingGameplayTag(GarDesiredStanceTags::LyingBack))
+			{
+				if(CanLie())
+				{
+					InputStance = GarStanceTags::LyingBack;
 				}
 			}
 		}
@@ -780,9 +790,14 @@ void AGarCharacter::UnCrouch()
 	SetDesiredStance(GarDesiredStanceTags::Standing);
 }
 
-void AGarCharacter::Lie()
+void AGarCharacter::Prone()
 {
-	SetDesiredStance(GarDesiredStanceTags::Lying);
+	SetDesiredStance(GarDesiredStanceTags::LyingFront);
+}
+
+void AGarCharacter::Supine()
+{
+	SetDesiredStance(GarDesiredStanceTags::LyingBack);
 }
 
 bool AGarCharacter::IsCrouching() const

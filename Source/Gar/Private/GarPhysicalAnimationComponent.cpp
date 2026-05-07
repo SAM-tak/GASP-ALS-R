@@ -1,5 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+// Required :
+// Project Settings | Physics | Enable Physics Prediction ... ON (For Multiplay)
+// Project Settings | Physics | Substepping               ... ON
+// Project Settings | Physics | Substepping Async         ... ON (Optional)
 
 #include "GarPhysicalAnimationComponent.h"
 
@@ -350,11 +354,13 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 		auto TopBoneBody{Character->GetMesh()->GetBodyInstance(TopBoneName)};
 		if (TopBoneBody)
 		{
-			auto TargetTransform{TopBoneBody->GetUnrealWorldTransform()};
-			auto TargetLocation{TargetTransform.GetLocation()};
+			auto* Mover{Character->GetMover()};
+			const auto TargetTransform{TopBoneBody->GetUnrealWorldTransform()};
+			const auto TargetLocation{TargetTransform.GetLocation()};
 			auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
-			auto TopBoneDirection{TargetTransform.GetRotation().RotateVector(FVector::ForwardVector)};
-			if (TopBoneDirection.Z < 0.7f && TopBoneDirection.Z > -0.7f)
+			const auto TopBoneDirection{TargetTransform.GetRotation().RotateVector(FVector::ForwardVector)};
+			const auto TopDirDotUp{Mover->GetUpDirection().Dot(TopBoneDirection)};
+			if (TopDirDotUp > 0.7f || TopDirDotUp < -0.7f)
 			{
 				if (Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward)
 				{
@@ -365,7 +371,8 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 					TargetDirection = TopBoneDirection;
 				}
 			}
-			DrawDebugDirectionalArrow(Character->GetWorld(), TargetLocation, TargetLocation + TargetDirection * 150, 150, FColor::Emerald);
+			DrawDebugDirectionalArrow(Character->GetWorld(), TargetLocation, TargetLocation + TargetDirection * 150, 150,
+				Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward ? FColor::Magenta : FColor::Emerald);
 		}
 	}
 
@@ -493,7 +500,7 @@ void FGarRagdollingState::Start(UGarRagdollingSettings* NewSettings, const UGarP
 
 	const auto PoleDirection = Mover->GetVelocity().GetSafeNormal2D();
 
-	if (PoleDirection.SizeSquared2D() > 0.0)
+	if (PoleDirection.SizeSquared2D() > 0.01)
 	{
 		bFacingUpward = Character->GetActorForwardVector().Dot(PoleDirection) < -0.25f;
 		LyingDownYawAngleDelta = UGarMath::DirectionToAngleXY(bFacingUpward ? -PoleDirection : PoleDirection) - Character->GetActorRotation().Yaw;
@@ -599,10 +606,6 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 
 	auto NetMode{Character->GetWorld()->GetNetMode()};
 
-	// just for info.
-	//Mover->GetVelocity() = FMath::VInterpTo(Mover->GetVelocity(),
-	//										DeltaTime > 0.0f ? (Character->GetActorLocation() - PrevActorLocation) / DeltaTime : FVector::Zero(),
-	//										DeltaTime, Settings->VelocityInterpolationSpeed);
 	PrevActorLocation = Mover->GetUpdatedComponentTransform().GetLocation();
 
 	// Prevent the capsule from going through the ground when the ragdoll is lying on the ground.
@@ -632,46 +635,51 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		}
 	}
 
-	if (IsGroundedAndAged() && bHasTopBodyTransform)
+	if (!bFreezing && bHasTopBodyTransform)
 	{
 		// Determine whether the ragdoll is facing upward or downward.
 
+		const auto UpVector{Mover->GetUpDirection()};
+
 		const auto TopRotation{TopBodyTransform.Rotator()};
 
-		const auto TopDirDotUp{TopRotation.RotateVector(FVector::RightVector).Dot(FVector::UpVector)};
+		const auto TopDir{TopRotation.RotateVector(FVector::ForwardVector)};
 
-		if (bFacingUpward)
-		{
-			if (TopDirDotUp < -0.5f)
-			{
-				bFacingUpward = false;
-			}
-		}
-		else
-		{
-			if (TopDirDotUp > 0.5f)
-			{
-				bFacingUpward = true;
-			}
-		}
-	}
+		const auto TopDirDotUp{TopDir.Dot(UpVector)};
 
-	if (bHasTopBodyTransform)
-	{
-		auto TargetDirection{TopBodyTransform.GetRotation().RotateVector(FVector::RightVector)};
-		auto DotY{FVector::UpVector.Dot(TargetDirection)};
-		if (FMath::Abs(DotY) > 0.7)
+		if (TopDirDotUp > 0.7f || TopDirDotUp < -0.7f)
 		{
+			const auto TopFacingDotFront{TopRotation.RotateVector(FVector::RightVector).Dot(Character->GetActorForwardVector())};
+
 			if (bFacingUpward)
 			{
-				if (DotY < -0.2f)
+				if (TopFacingDotFront > 0.2f)
 				{
 					bFacingUpward = false;
 				}
 			}
 			else
 			{
-				if (DotY > 0.2f)
+				if (TopFacingDotFront < -0.2f)
+				{
+					bFacingUpward = true;
+				}
+			}
+		}
+		else
+		{
+			const auto TopDirDotFront{TopDir.Dot(Character->GetActorForwardVector())};
+
+			if (bFacingUpward)
+			{
+				if (TopDirDotFront > 0.2f)
+				{
+					bFacingUpward = false;
+				}
+			}
+			else
+			{
+				if (TopDirDotFront < -0.2f)
 				{
 					bFacingUpward = true;
 				}
@@ -748,12 +756,6 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		{
 			TimeAfterGrounded = TimeAfterGroundedAndStopped = 0.0f;
 		}
-	}
-
-	if (ElapsedTime <= Settings->StartBlendTime && ElapsedTime + DeltaTime > Settings->StartBlendTime)
-	{
-		// Re-initialize bFacingUpward flag by current movement direction. If Velocity is Zero, it is chosen bFacingUpward is true.
-		bFacingUpward = Character->GetActorForwardVector().Dot(Mover->GetVelocity().GetSafeNormal2D()) <= 0.0f;
 	}
 
 	if (bPreviousGrounded != bGrounded)

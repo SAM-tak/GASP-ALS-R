@@ -133,11 +133,6 @@ bool UGarGameplayAbility_MontageBase::PlayMontage(const FGameplayAbilityActivati
 				LayeredMove_AnimRootMotion->MontageState.StartingMontagePosition = StartTime;
 				LayeredMove_AnimRootMotion->MontageState.PlayRate = PlayRate;
 				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
-				auto LayeredMove_RootMotionAttribute = MakeShared<FLayeredMove_RootMotionAttribute>();
-				LayeredMove_RootMotionAttribute->DurationMs = CurrentMotangeDuration * 1000;
-				LayeredMove_RootMotionAttribute->MixMode = MoveMixMode;
-				LayeredMove_RootMotionAttribute->bConstrainWorldRotToMovementPlane = bConstrainWorldRotToMovementPlane;
-				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
 			}
 
 			return true;
