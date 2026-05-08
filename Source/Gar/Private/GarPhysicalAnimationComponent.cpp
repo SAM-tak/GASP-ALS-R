@@ -389,19 +389,6 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 	}
 }
 
-void UGarPhysicalAnimationComponent::TeleportPhysics(bool bUpdateKinematicBones)
-{
-	if (bUpdateKinematicBones)
-	{
-		auto* Mesh{GetSkeletalMesh()};
-		if (IsValid(Mesh))
-		{
-			Mesh->UpdateKinematicBonesToAnim(Mesh->GetComponentSpaceTransforms(), ETeleportType::TeleportPhysics, false);
-		}
-	}
-	UpdateTargetActors(ETeleportType::TeleportPhysics);
-}
-
 bool UGarPhysicalAnimationComponent::HasRagdollingSettings(const FGameplayTag& Tag) const
 {
 	return RagdollingSettingsMap.Contains(Tag);

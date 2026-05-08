@@ -23,9 +23,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
 	FGameplayTagContainer LocomotionModeTags;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GarCharacterMover|Settings")
-	uint8 bTeleportPhysicsOnProxy : 1;
-
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GarCharacterMover|State", Transient)
 	TWeakObjectPtr<AGarCharacter> Character;
 
@@ -79,9 +76,6 @@ protected:
 
 	UFUNCTION()
 	virtual void UpdateStatusesOfSimulatedProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState);
-
-	UFUNCTION()
-	virtual void UpdatePacOfProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState);
 
 public:
 	UFUNCTION(BlueprintPure, Category = "GAR|CharacterMover")

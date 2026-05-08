@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DefaultMovementSet/Modes/SmoothWalkingMode.h"
+#include "MoverModes/GarSmoothWalkingMode.h"
 #include "GarMoverSlidingMode.generated.h"
 
 /**
@@ -10,7 +10,7 @@
  * アクティブ化時に InitialBoost フェーズ(タイマー駆動)で速度・加速度を上書き。
  */
 UCLASS(Blueprintable, BlueprintType)
-class GAR_API UGarMoverSlidingMode : public USmoothWalkingMode
+class GAR_API UGarMoverSlidingMode : public UGarSmoothWalkingMode
 {
 	GENERATED_BODY()
 

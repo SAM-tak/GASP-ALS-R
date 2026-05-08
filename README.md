@@ -13,6 +13,8 @@ This project takes [GASPALS](https://github.com/PolygonHive/GASPALS) as its foun
 - Overlay system as Gameplay Ability
 - Travarsal Action as Gameplay Ability
 - Sliding Action as Gameplay Ability
+- Rolling Action as Gameplay Ability
+- Ragdolling as Gameplay Ability
 - All overlays from ALS
 - Basic weapon attach system from ALS
 - Basic overlay switcher widget from ALS

@@ -224,11 +224,6 @@ public:
 		return TopBoneName;
 	}
 
-	// テレポート後にシミュレーション中の物理ボディと PAC の TargetActors を
-	// 現在のアニメーションポーズ位置へ即座にスナップする。
-	UFUNCTION(BlueprintCallable, Category = "GAR|PhysicalAnimation")
-	void TeleportPhysics(bool bUpdateKinematicBones = false);
-
 	UFUNCTION(BlueprintPure, Category = "GAR|PhysicalAnimation")
 	bool HasRagdollingSettings(const FGameplayTag& Tag) const;
 

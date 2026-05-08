@@ -40,7 +40,6 @@ UGarCharacterMoverComponent::UGarCharacterMoverComponent()
 	SetIsReplicatedByDefault(true);
 #endif
 	bSyncInputsForSimProxy = true;
-	//PersistentSyncStateDataTypes.Add(FMoverDataPersistence(FGarCharacterMoverSyncState::StaticStruct(), true));
 
 	LocomotionModeTags.AddTag(GarLocomotionModeTags::Grounded);
 	LocomotionModeTags.AddTag(GarLocomotionModeTags::InAir);
@@ -128,10 +127,6 @@ void UGarCharacterMoverComponent::BeginPlay()
 	if (GetOwnerRole() == ROLE_SimulatedProxy)
 	{
 		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::UpdateStatusesOfSimulatedProxy);
-	}
-	if (GetOwnerRole() == ROLE_SimulatedProxy || GetOwnerRole() == ROLE_AutonomousProxy)
-	{
-		OnPostFinalize.AddUniqueDynamic(this, &UGarCharacterMoverComponent::UpdatePacOfProxy);
 	}
 }
 
@@ -239,19 +234,6 @@ void UGarCharacterMoverComponent::UpdateStatusesOfSimulatedProxy(const FMoverSyn
 		RotationMode = MySyncState->RotationMode;
 		Stance = MySyncState->Stance;
 		Gait = MySyncState->Gait;
-	}
-}
-
-void UGarCharacterMoverComponent::UpdatePacOfProxy(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
-{
-	// まだ効果があるのかないのか不明
-	if (Character.IsValid() && bTeleportPhysicsOnProxy)
-	{
-		auto Pac = Character->GetPhysicalAnimation();
-		if(Pac && Pac->IsActive())
-		{
-			Pac->TeleportPhysics();
-		}
 	}
 }
 

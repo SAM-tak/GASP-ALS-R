@@ -185,10 +185,6 @@ void AGarCharacter::PostInitializeComponents()
 	if (PhysicalAnimation)
 	{
 		PhysicalAnimation->SetSkeletalMeshComponent(Mesh);
-		if (PhysicalAnimation->PrimaryComponentTick.bCanEverTick)
-		{
-			PhysicalAnimation->PrimaryComponentTick.AddPrerequisite(Mesh, Mesh->PrimaryComponentTick);
-		}
 	}
 
 	if (IsValid(AbilitySystem))
@@ -214,12 +210,12 @@ void AGarCharacter::PostInitializeComponents()
 
 bool AGarCharacter::TeleportTo(const FVector& DestLocation, const FRotator& DestRotation, bool bIsATest, bool bNoCheck)
 {
-	// PAC は常にオンのためメッシュボディが常に QueryAndPhysics + WorldStatic Block 状態にある。
-	// そのため FindTeleportSpot の EncroachingBlockingGeometry がメッシュボディを拾い、
-	// 通常のテレポート先でも常に失敗する。
-	// bIsATest=false（実テレポート）では bNoCheck=true を強制して FindTeleportSpot をスキップし、
-	// SetWorldLocationAndRotation（常に成功）で移動させる。
-	// bIsATest=true（スポット探索の仮チェック）は元の bNoCheck を維持する。
+	// PAC is always active, so mesh bodies are always in QueryAndPhysics + WorldStatic Block state.
+	// As a result, FindTeleportSpot's EncroachingBlockingGeometry picks up the mesh bodies,
+	// causing it to always fail even for valid teleport destinations.
+	// When bIsATest=false (actual teleport), force bNoCheck=true to skip FindTeleportSpot
+	// and move via SetWorldLocationAndRotation (which always succeeds).
+	// When bIsATest=true (provisional spot-search check), preserve the original bNoCheck value.
 	if (!bIsATest)
 	{
 		bNoCheck = true;
@@ -231,13 +227,23 @@ void AGarCharacter::TeleportSucceeded(bool bIsATest)
 {
 	Super::TeleportSucceeded(bIsATest);
 
-	// Actor.TeleportTo(bNoCheck=true) は SetWorldLocationAndRotation(ETeleportType::None) を使うため、
-	// メッシュの OnUpdateTransform が None で呼ばれ、シミュレーション中ボディはスキップされる。
-	// → PAC コンストレイントがスプリングで引っ張り、遅れてついてくる挙動が発生。
-	// TeleportPhysics() でシミュレーション中ボディと TargetActors を即座にスナップして解決する。
-	if (!bIsATest && IsValid(PhysicalAnimation))
+	if (!bIsATest)
 	{
-		PhysicalAnimation->TeleportPhysics(true);
+		if (Mesh)
+		{
+			// Passing a zero delta to SetWorldTransform causes UPrimitiveComponent::MoveComponentImpl
+			// to return early, never reaching OnSkelMeshPhysicsTeleported.Broadcast().
+			// Apply a tiny offset with TeleportPhysics first, then immediately restore the correct transform.
+			// This fires the Broadcast twice within the same frame, ensuring
+			// PAC::OnTeleport -> UpdateTargetActors(TeleportPhysics) runs correctly.
+			const FTransform CorrectTransform = Mesh->GetComponentTransform();
+			FTransform TinyOffsetTransform = CorrectTransform;
+			TinyOffsetTransform.AddToTranslation(FVector(1.f, 0.f, 0.f));
+			// First call: move only to create a non-zero delta. No physics snap or Broadcast needed.
+			Mesh->SetWorldTransform(TinyOffsetTransform, false, nullptr, ETeleportType::None);
+			// Second call: snap to the correct position. TeleportPhysics fires Broadcast -> PAC::OnTeleport runs.
+			Mesh->SetWorldTransform(CorrectTransform, false, nullptr, ETeleportType::TeleportPhysics);
+		}
 	}
 }
 
