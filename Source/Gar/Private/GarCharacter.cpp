@@ -905,10 +905,26 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
-			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed);
-		if (!ProneCapsule->IsWelded())
+		bool bUpdated = UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		if(UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed))
+		{
+			bUpdated = true;
+		}
+		if (bUpdated)
+		{
+			if (ProneCapsule->IsWelded())
+			{
+				// Notify welded component size update
+				ProneCapsule->UnWeldFromParent();
+			}
+			else
+			{
+				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			}
+			ProneCapsule->WeldTo(Capsule, NAME_None, true);
+		}
+		else if (!ProneCapsule->IsWelded())
 		{
 			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 			ProneCapsule->WeldTo(Capsule, NAME_None, true);
