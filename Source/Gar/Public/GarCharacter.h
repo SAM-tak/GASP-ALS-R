@@ -380,6 +380,9 @@ private:
 	bool bCrouchBlocked = false;
 	bool bLieBlocked = false;
 
+	// Signal to force SimulationTick to run even with zero move delta during stance changes
+	bool bDuringStanceChange = false;
+
 	// Desired Gait
 
 private:

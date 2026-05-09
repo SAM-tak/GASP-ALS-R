@@ -376,7 +376,15 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 
 	CharacterInputs.ControlRotation = GetControlRotation();
 
-	CharacterInputs.SetMoveInput(EMoveInputType::DirectionalIntent, MovementInputVector);
+	if (bDuringStanceChange && MovementInputVector.Size2D() < 0.01f)
+	{
+		CharacterInputs.SetMoveInput(EMoveInputType::DirectionalIntent, MovementInputVector + GetActorForwardVector() * 0.02f);
+	}
+	else
+	{
+		CharacterInputs.SetMoveInput(EMoveInputType::DirectionalIntent, MovementInputVector);
+	}
+	bDuringStanceChange = false;
 
 	static float RotationMagMin(1e-3);
 
@@ -898,6 +906,10 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 		return;
 	}
 
+	bool bMainUpdated = false;
+	bool bSubUpdated = false;
+	bool bNeedsWeld = false;
+
 	// Update capsule height and radius
 	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
 	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
@@ -905,57 +917,54 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
 		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		bool bUpdated = UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		if(UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
-			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed))
+		bMainUpdated = UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		bSubUpdated = UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed);
+		bNeedsWeld = true;
+	}
+	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
+	{
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		bMainUpdated = UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX, OffsetSpeed);
+		bNeedsWeld = bSubUpdated;
+	}
+	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
+	{
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		bMainUpdated = UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
+		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+			InitialProneCapsuleX, OffsetSpeed);
+		bNeedsWeld = bSubUpdated;
+	}
+
+	// Signal Mover to re-check collision with updated ProneCapsule
+	bDuringStanceChange = bMainUpdated || bSubUpdated;
+
+	if (bDuringStanceChange)
+	{
+		if (ProneCapsule->IsWelded())
 		{
-			bUpdated = true;
+			// Notify welded component size update
+			ProneCapsule->UnWeldFromParent();
 		}
-		if (bUpdated)
-		{
-			if (ProneCapsule->IsWelded())
-			{
-				// Notify welded component size update
-				ProneCapsule->UnWeldFromParent();
-			}
-			else
-			{
-				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			}
-			ProneCapsule->WeldTo(Capsule, NAME_None, true);
-		}
-		else if (!ProneCapsule->IsWelded())
+	}
+
+	if (bNeedsWeld)
+	{
+		if (!ProneCapsule->IsWelded())
 		{
 			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 			ProneCapsule->WeldTo(Capsule, NAME_None, true);
 		}
 	}
-	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
+	else
 	{
-		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
-			InitialProneCapsuleX, OffsetSpeed))
+		if (ProneCapsule->IsWelded())
 		{
-			if (ProneCapsule->IsWelded())
-			{
-				ProneCapsule->UnWeldFromParent();
-				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			}
-		}
-	}
-	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
-	{
-		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-		UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		if (!UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
-			InitialProneCapsuleX, OffsetSpeed))
-		{
-			if (ProneCapsule->IsWelded())
-			{
-				ProneCapsule->UnWeldFromParent();
-				ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			}
+			ProneCapsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			ProneCapsule->UnWeldFromParent();
 		}
 	}
 }
