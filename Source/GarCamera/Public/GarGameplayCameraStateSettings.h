@@ -71,7 +71,6 @@ struct GARCAMERA_API FGarThirdPersonCameraStateSettings
 		Meta = (EditCondition = "AutoFPPStartDistance > 0.0f && bAllowAutoShoulderSwitching", ClampMin = 0, ForceUnits = "cm"))
 	bool bAllowPermanentSwitching{false};
 
-	// The horizontal field of view (in degrees) in panoramic rendering.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR", Meta = (ClampMin = 0, ForceUnits = "cm"))
 	float FocusTraceStartOffset{10.0f};
 

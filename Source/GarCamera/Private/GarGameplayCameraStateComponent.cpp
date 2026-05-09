@@ -258,13 +258,6 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 		if (IsValid(PlayerController))
 		{
 			TanHalfVfov = FMath::Tan(FMath::DegreesToRadians(Result.CameraPose.GetEffectiveFieldOfView()) * 0.5f);
-			if (Result.CameraPose.GetPanoramic())
-			{
-				int32 SizeX, SizeY;
-				PlayerController->GetViewportSize(SizeX, SizeY);
-				float AspectRatio{SizeX * (1 - Result.CameraPose.GetPanoramaSideViewRate() * 2 / 3) / (float)SizeY};
-				TanHalfVfov /= AspectRatio;
-			}
 		}
 
 		if(FirstPersonFactorVariableId.IsValid())
@@ -302,14 +295,7 @@ void UGarGameplayCameraStateComponent::TickComponent(float DeltaTime, enum ELeve
 			CameraRotation = NewCameraRotation;
 
 			auto MinimalViewInfo{PlayerController->PlayerCameraManager->GetCameraCacheView()};
-			TanHalfVfov = FMath::Tan(FMath::DegreesToRadians(MinimalViewInfo.PanoramaFOV) * 0.5f);
-			if (MinimalViewInfo.bPanoramic)
-			{
-				int32 SizeX, SizeY;
-				PlayerController->GetViewportSize(SizeX, SizeY);
-				float AspectRatio{SizeX * (1 - MinimalViewInfo.PanoramaSideViewRate * 2 / 3) / (float)SizeY};
-				TanHalfVfov /= AspectRatio;
-			}
+			TanHalfVfov = FMath::Tan(FMath::DegreesToRadians(MinimalViewInfo.FOV) * 0.5f);
 
 			auto* GameplayCamerasPlayerCameraManager{Cast<AGameplayCamerasPlayerCameraManager>(PlayerController->PlayerCameraManager)};
 			if (GameplayCamerasPlayerCameraManager)
