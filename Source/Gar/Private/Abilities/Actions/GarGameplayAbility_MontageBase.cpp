@@ -126,13 +126,42 @@ bool UGarGameplayAbility_MontageBase::PlayMontage(const FGameplayAbilityActivati
 			if (Montage->HasRootMotion())
 			{
 				auto Character{Cast<AGarCharacter>(ActorInfo->OwnerActor.Get())};
-				auto LayeredMove_AnimRootMotion = MakeShared<FLayeredMove_AnimRootMotion>();
-				LayeredMove_AnimRootMotion->DurationMs = CurrentMotangeDuration * 1000;
-				LayeredMove_AnimRootMotion->MixMode = MoveMixMode;
-				LayeredMove_AnimRootMotion->MontageState.Montage = Montage;
-				LayeredMove_AnimRootMotion->MontageState.StartingMontagePosition = StartTime;
-				LayeredMove_AnimRootMotion->MontageState.PlayRate = PlayRate;
-				Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
+
+				if (FAnimMontageInstance* MontageInstance = AnimInstance->GetActiveInstanceForMontage(Montage))
+				{
+					// Disable animation-driven root motion and let Mover consume it via LayeredMove.
+					MontageInstance->PushDisableRootMotion();
+
+					const float StartingMontagePosition = MontageInstance->GetPosition();
+
+					auto LayeredMove_AnimRootMotion = MakeShared<FLayeredMove_AnimRootMotion>();
+					LayeredMove_AnimRootMotion->MixMode = MoveMixMode;
+					LayeredMove_AnimRootMotion->MontageState.Montage = Montage;
+					LayeredMove_AnimRootMotion->MontageState.PlayRate = PlayRate;
+					LayeredMove_AnimRootMotion->MontageState.StartingMontagePosition = StartingMontagePosition;
+					LayeredMove_AnimRootMotion->MontageState.CurrentPosition = StartingMontagePosition;
+
+					float RemainingUnscaledMontageSeconds = 0.f;
+					if (PlayRate > 0.f)
+					{
+						RemainingUnscaledMontageSeconds = Montage->GetPlayLength() - StartingMontagePosition;
+					}
+					else if (PlayRate < 0.f)
+					{
+						RemainingUnscaledMontageSeconds = StartingMontagePosition;
+					}
+					else
+					{
+						RemainingUnscaledMontageSeconds = CurrentMotangeDuration;
+					}
+
+					LayeredMove_AnimRootMotion->DurationMs =
+						(PlayRate != 0.f)
+							? (RemainingUnscaledMontageSeconds / FMath::Abs(PlayRate)) * 1000.f
+							: CurrentMotangeDuration * 1000.f;
+
+					Character->GetMover()->QueueLayeredMove(LayeredMove_AnimRootMotion);
+				}
 			}
 
 			return true;

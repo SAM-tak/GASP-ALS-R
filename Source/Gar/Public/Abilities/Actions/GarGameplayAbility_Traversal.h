@@ -109,8 +109,8 @@ struct GAR_API FGarTraversalParameters
 	FVector BackFloorLocation{FVector::ZeroVector};
 };
 
-/** FGarTraversalParameters をネット越しに運ぶための TargetData。
- *  AutonomousProxy のクライアントが選定したモンタージュ・トレース結果をサーバーへ転送する。 */
+/** TargetData used to send FGarTraversalParameters over the network.
+ *  Transfers montage/trace results selected by an AutonomousProxy client to the server. */
 USTRUCT()
 struct GAR_API FGarTraversalTargetData : public FGameplayAbilityTargetData
 {
@@ -119,7 +119,7 @@ struct GAR_API FGarTraversalTargetData : public FGameplayAbilityTargetData
 	UPROPERTY()
 	FGarTraversalParameters Parameters;
 
-	// TStructOpsTypeTraits による NetSerialize。override 不要（virtual ではなくトレイト経由で呼ばれる）。
+	// NetSerialize via TStructOpsTypeTraits. No override needed (called through traits, not virtual dispatch).
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
 
 	virtual UScriptStruct* GetScriptStruct() const override
@@ -159,15 +159,15 @@ class GAR_API UGarGameplayAbility_Traversal : public UGarGameplayAbility_MotionM
 	GENERATED_UCLASS_BODY()
 
 public:
-	/** BP から TryActivateAbilityByClass の代わりに呼ぶ。
-	 *  クライアント側でトレース・モンタージュ選定を行い、EventData に乗せてサーバーへ送る。
-	 *  戻り値: ローカル側でアビリティを起動できた場合 true。 */
+	/** Call this from BP instead of TryActivateAbilityByClass.
+	 *  Performs trace/montage selection on the client and sends it to the server via EventData.
+	 *  Returns true when the ability can be started locally. */
 	UFUNCTION(BlueprintCallable, Category = "GAR|Ability|Traversal")
 	static bool TryActivateTraversal(UAbilitySystemComponent* InASC,
 									 TSubclassOf<UGarGameplayAbility_Traversal> AbilityClass);
 
-	/** トラバーサル起動に使うゲームプレイイベントタグ。
-	 *  この能力の AbilityTrigger と一致させること。デフォルト: Gar.Event.Traversal */
+	/** Gameplay event tag used to trigger traversal.
+	 *  Must match this ability's AbilityTrigger. Default: Gar.Event.Traversal */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GarAbility|Traversal")
 	FGameplayTag TraversalEventTag;
 
