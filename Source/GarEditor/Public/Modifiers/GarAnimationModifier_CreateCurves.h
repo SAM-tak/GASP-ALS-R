@@ -50,8 +50,8 @@ protected:
 		{UGarConstants::PoseMovingCurveName()},
 		{UGarConstants::PoseStandingCurveName()},
 		{UGarConstants::PoseCrouchingCurveName()},
-		{UGarConstants::PoseInAirCurveName()},
 		{UGarConstants::PoseGroundedCurveName()},
+		{UGarConstants::PoseInAirCurveName()},
 
 		{UGarConstants::FootLeftIkCurveName()},
 		{UGarConstants::FootRightIkCurveName()},

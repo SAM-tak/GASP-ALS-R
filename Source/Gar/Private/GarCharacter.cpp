@@ -963,6 +963,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 			// Notify welded component size update
 			ProneCapsule->UnWeldFromParent();
 		}
+
+		UE_LOG(LogGar, Log, TEXT("DuringStanceChange"));
 	}
 
 	if (bNeedsWeld)
