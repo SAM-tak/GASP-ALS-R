@@ -20,7 +20,10 @@ struct GAR_API FGarPAProfileChooserResult
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
-	TArray<FName> ProfileNames;
+	FName ProfileName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GAR")
+	FName ConstraintProfileName;
 };
 
 USTRUCT(BlueprintType)
@@ -165,6 +168,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
 	FName TopBoneName{TEXTVIEW("pelvis")};
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PhysicalAnimation|Settings")
+	uint8 bInterpolatesWeights : 1{false};
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|Settings")
 	TMap<FGameplayTag, TObjectPtr<UGarRagdollingSettings>> RagdollingSettingsMap;
 
@@ -174,11 +180,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|State", Transient)
 	TEnumAsByte<ECollisionEnabled::Type> PrevCollisionEnabled{ECollisionEnabled::QueryOnly};
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "PhysicalAnimation|State", Transient)
-	TEnumAsByte<EPhysicsTransformUpdateMode::Type> OriginalUpdateMode;
+	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
+	FName CurrentProfileName;
 
 	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
-	TArray<FName> CurrentProfileNames;
+	FName CurrentConstraintProfileName;
 
 	UPROPERTY(VisibleAnywhere, Category = "PhysicalAnimation|State", Transient)
 	FGameplayTagContainer CurrentGameplayTags;
@@ -248,7 +254,9 @@ public:
 private:
 	void ClearGameplayTags();
 
-	void RefreshBodyState(float DelaTime);
+	void RefreshBodyStates(float DelaTime);
+
+	void RefreshBodies();
 
 	bool IsProfileExist(const FName& ProfileName) const;
 
