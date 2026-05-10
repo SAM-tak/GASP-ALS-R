@@ -8,6 +8,7 @@
 #include "GarPhysicalAnimationComponent.h"
 
 #include "PhysicsEngine/PhysicalAnimationComponent.h"
+#include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/SkeletalBodySetup.h"
@@ -611,14 +612,24 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		bHasTopBodyTransform = true;
 	}
 
+	auto Mesh{Character->GetMesh()};
+
 	// Clip velocity each body
 
-	if (Settings->MaxBodySpeed > 0.0f)
+	if(Settings->MaxBodySpeed > 0.0f)
 	{
-		for (auto& Body : Character->GetMesh()->Bodies)
+		for (auto& Body : Mesh->Bodies)
 		{
-			auto Vel{Body->GetUnrealWorldVelocity()};
-			Body->SetLinearVelocity(Vel.GetClampedToMaxSize(Settings->MaxBodySpeed) - Vel, true);
+			if (!Body || !Body->IsInstanceSimulatingPhysics())
+			{
+				continue;
+			}
+
+			const FVector Vel = Body->GetUnrealWorldVelocity_AssumesLocked();
+			if (Vel.Size() > Settings->MaxBodySpeed)
+			{
+				Body->SetLinearVelocity(Vel.GetClampedToMaxSize(Settings->MaxBodySpeed), false);
+			}
 		}
 	}
 
@@ -715,7 +726,8 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 					{
 						MaxBoneSpeed = 0.0f;
 						MaxBoneAngularSpeed = 0.0f;
-						Character->GetMesh()->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body) {
+						Mesh->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body)
+						{
 							float Speed = Body->GetUnrealWorldVelocity().Size();
 							if(Speed > MaxBoneSpeed) MaxBoneSpeed = Speed;
 							Speed = FMath::RadiansToDegrees(Body->GetUnrealWorldAngularVelocityInRadians().Size());
