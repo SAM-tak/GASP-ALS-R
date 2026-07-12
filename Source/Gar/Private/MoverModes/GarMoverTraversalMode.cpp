@@ -28,7 +28,7 @@ UGarMoverTraversalMode::UGarMoverTraversalMode(const FObjectInitializer& ObjectI
 	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
 }
 
-void UGarMoverTraversalMode::GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
+void UGarMoverTraversalMode::GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
 {
 	const UMoverComponent* MoverComp = GetMoverComponent();
 	const FCharacterDefaultInputs* CharacterInputs = StartState.InputCmd.InputCollection.FindDataByType<FCharacterDefaultInputs>();
@@ -140,7 +140,8 @@ void UGarMoverTraversalMode::SimulationTick_Implementation(const FSimulationTick
 
 	// If we are very close to a walkable surface, make sure we maintain a small gap over it
 	FFloorCheckResult FloorUnderActor;
-	UFloorQueryUtils::FindFloor(Params.MovingComps, CommonLegacySettings->FloorSweepDistance, CommonLegacySettings->MaxWalkSlopeCosine, CommonLegacySettings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
+	const FFloorCheckSettings FloorCheckSettings{CommonLegacySettings->FloorSweepDistance, CommonLegacySettings->MaxWalkSlopeCosine, CommonLegacySettings->bUseFlatBaseForFloorChecks};
+	UFloorQueryUtils::FindFloor(Params.MovingComps, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 	if (FloorUnderActor.IsWalkableFloor())
 	{
@@ -178,18 +179,18 @@ void UGarMoverTraversalMode::CaptureFinalState(USceneComponent* UpdatedComponent
 	UpdatedComponent->ComponentVelocity = FinalVelocity;
 }
 
-void UGarMoverTraversalMode::OnRegistered(const FName ModeName)
+void UGarMoverTraversalMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
 {
-	Super::OnRegistered(ModeName);
+	Super::OnRegistered(ModeName, SimContext);
 
 	CommonLegacySettings = GetMoverComponent()->FindSharedSettings<UCommonLegacyMovementSettings>();
 	ensureMsgf(CommonLegacySettings,
 		TEXT("Failed to find instance of UCommonLegacyMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
 }
 
-void UGarMoverTraversalMode::OnUnregistered()
+void UGarMoverTraversalMode::OnUnregistered(const FMoverSimContext& SimContext)
 {
 	CommonLegacySettings = nullptr;
 
-	Super::OnUnregistered();
+	Super::OnUnregistered(SimContext);
 }

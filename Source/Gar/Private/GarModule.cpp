@@ -8,6 +8,7 @@
 #include "Engine/Console.h"
 #endif
 
+#include "HAL/IConsoleManager.h"
 #include "Utility/GarLog.h"
 
 IMPLEMENT_MODULE(FGarModule, GAR)
@@ -17,6 +18,15 @@ IMPLEMENT_MODULE(FGarModule, GAR)
 void FGarModule::StartupModule()
 {
 	FDefaultModuleImpl::StartupModule();
+
+	// p.EnableDynamicPerBodyFilterHacks is ECVF_ReadOnly but must be 1 for
+	// bHACK_DisableCollisionResponse to take effect in BuildBodyFilterData().
+	if (IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(TEXT("p.EnableDynamicPerBodyFilterHacks")))
+	{
+		CVar->SetFlags((EConsoleVariableFlags)(CVar->GetFlags() & ~ECVF_ReadOnly));
+		CVar->Set(1, ECVF_SetByCode);
+		CVar->SetFlags((EConsoleVariableFlags)(CVar->GetFlags() | ECVF_ReadOnly));
+	}
 
 #if ALLOW_CONSOLE
 	UConsole::RegisterConsoleAutoCompleteEntries.AddRaw(this, &FGarModule::Console_OnRegisterAutoCompleteEntries);

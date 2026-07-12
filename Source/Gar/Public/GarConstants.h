@@ -281,13 +281,13 @@ inline const FName& UGarConstants::HandRightIkCurveName()
 
 inline const FName& UGarConstants::PoseGroundedCurveName()
 {
-	static const FName Name{ TEXTVIEW("pose_grounded") };
+	static const FName Name{TEXTVIEW("pose_onground")};
 	return Name;
 }
 
 inline const FName& UGarConstants::PoseInAirCurveName()
 {
-	static const FName Name{ TEXTVIEW("pose_inair") };
+	static const FName Name{TEXTVIEW("pose_inair")};
 	return Name;
 }
 

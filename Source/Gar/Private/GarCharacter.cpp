@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 #include "MoveLibrary/BasedMovementUtils.h"
+#include "PhysicsEngine/PhysicsSettings.h"
 #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
 #include "Components/GarOverlayModeComponent.h"
 #include "Components/GarDeltaOverlayModeComponent.h"
@@ -172,10 +173,9 @@ void AGarCharacter::PostInitializeComponents()
 			UpdatedComponent->SetCanEverAffectNavigation(bCanAffectNavigationGeneration);
 		}
 
-		// ACharacter と同様に、メッシュのアニメーションティックが Mover の
-		// FinalizeFrame / FinalizeSmoothingFrame より後に実行されるよう依存を設定。
-		// これにより SimProxy の VisualComponentOffset スムージング後の位置を
-		// OffsetRootBone が正しく参照できる。
+		// Like ACharacter, force mesh animation ticking to run after Mover's
+		// FinalizeFrame / FinalizeSmoothingFrame so SimProxy smoothing has already
+		// updated VisualComponentOffset when animation reads it.
 		if (Mesh && Mesh->PrimaryComponentTick.bCanEverTick)
 		{
 			Mesh->PrimaryComponentTick.AddPrerequisite(CharacterMover, CharacterMover->PrimaryComponentTick);
@@ -386,7 +386,7 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	}
 	bDuringStanceChange = false;
 
-	static float RotationMagMin(1e-3);
+	static float RotationMagMin(1e-3f);
 
 	const bool bHasAffirmativeMoveInput = (CharacterInputs.GetMoveInput().Size() >= RotationMagMin);
 	
@@ -851,8 +851,12 @@ bool AGarCharacter::UpdateMainCapsule(float DeltaTime, float TargetHalfHeight, f
 		{
 			if (Mesh)
 			{
-				Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ
+				//Mesh->GetRelativeLocation_DirectMutable().Z = InitialMeshZ
+				//	+ (HalfHeight < Radius ? InitialCapsuleRadius - Radius : InitialCapsuleHalfHeight - HalfHeight) * Scale;
+				auto Loc{Mesh->GetRelativeLocation()};
+				Loc.Z = InitialMeshZ
 					+ (HalfHeight < Radius ? InitialCapsuleRadius - Radius : InitialCapsuleHalfHeight - HalfHeight) * Scale;
+				Mesh->SetRelativeLocation(Loc);
 			}
 		}
 		else
@@ -911,30 +915,40 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 	bool bNeedsWeld = false;
 
 	// Update capsule height and radius
-	auto CapsuleUpdateSpeed{Settings->CapsuleUpdateSpeed};
-	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
-	auto OffsetSpeed{CapsuleUpdateSpeed > 0 ? LiedProneCapsuleZOffset / CapsuleUpdateSpeed : .0f};
+	// async physcis ではカプセルアニメーションがうまくいかないので強制即変更
+	auto CapsuleUpdateSpeed{UPhysicsSettings::Get()->bTickPhysicsAsync ? 0.f : Settings->CapsuleUpdateSpeed};
+
+	auto ProneHalfHeightSpeed{CapsuleUpdateSpeed > 0
+		? FMath::Abs(InitialProneCapsuleHalfHeight - LiedProneCapsuleHalfHeight) / CapsuleUpdateSpeed
+		: UE_MAX_FLT};
+	auto OffsetSpeed{CapsuleUpdateSpeed > 0 ? LiedProneCapsuleZOffset / CapsuleUpdateSpeed : UE_MAX_FLT};
 	if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Lying))
 	{
-		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0
+			? FMath::Abs(CrouchedCapsuleHalfHeight - LiedCapsuleHalfHeight) / CapsuleUpdateSpeed
+			: UE_MAX_FLT};
 		bMainUpdated = UpdateMainCapsule(DeltaTime, LiedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		bSubUpdated = UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+		bSubUpdated = UpdateProneCapsule(DeltaTime, LiedProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.f,
 			InitialProneCapsuleX + LiedProneCapsuleZOffset, OffsetSpeed);
 		bNeedsWeld = true;
 	}
 	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Crouching))
 	{
-		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0
+			? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed
+			: UE_MAX_FLT};
 		bMainUpdated = UpdateMainCapsule(DeltaTime, CrouchedCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.f,
 			InitialProneCapsuleX, OffsetSpeed);
 		bNeedsWeld = bSubUpdated;
 	}
 	else if (AbilitySystem->HasMatchingGameplayTag(GarStanceTags::Standing))
 	{
-		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0 ? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed : .0f};
+		auto HalfHeightSpeed{CapsuleUpdateSpeed > 0
+			? FMath::Abs(InitialCapsuleHalfHeight - CrouchedCapsuleHalfHeight) / CapsuleUpdateSpeed
+			: UE_MAX_FLT};
 		bMainUpdated = UpdateMainCapsule(DeltaTime, InitialCapsuleHalfHeight, HalfHeightSpeed, InitialCapsuleRadius, 0.f);
-		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.0f,
+		bSubUpdated = UpdateProneCapsule(DeltaTime, InitialProneCapsuleHalfHeight, ProneHalfHeightSpeed, InitialProneCapsuleRadius, 0.f,
 			InitialProneCapsuleX, OffsetSpeed);
 		bNeedsWeld = bSubUpdated;
 	}
@@ -949,6 +963,8 @@ void AGarCharacter::RefreshCapsuleSize(float DeltaTime)
 			// Notify welded component size update
 			ProneCapsule->UnWeldFromParent();
 		}
+
+		UE_LOG(LogGar, Log, TEXT("DuringStanceChange"));
 	}
 
 	if (bNeedsWeld)

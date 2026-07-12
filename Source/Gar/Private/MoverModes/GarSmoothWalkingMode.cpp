@@ -3,7 +3,7 @@
 #include "MoverModes/GarSmoothWalkingMode.h"
 #include "GarSmoothWalkingState.h"
 
-#include "Animation/SpringMath.h"
+#include "Math/SpringMath.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarSmoothWalkingMode)
 
@@ -20,8 +20,8 @@ void UGarSmoothWalkingMode::SimulationTick_Implementation(const FSimulationTickP
 	}
 }
 
-void UGarSmoothWalkingMode::GenerateWalkMove_Implementation(FMoverTickStartData& StartState, float DeltaSeconds, const FVector& DesiredVelocity,
-	const FQuat& DesiredFacing, const FQuat& CurrentFacing, FVector& InOutAngularVelocityDegrees, FVector& InOutVelocity)
+void UGarSmoothWalkingMode::GenerateWalkMove_Implementation(FMoverTickStartData& StartState, float DeltaSeconds, const FMoverSimContext& SimContext,
+	const FVector& DesiredVelocity, const FQuat& DesiredFacing, const FQuat& CurrentFacing, FVector& InOutAngularVelocityDegrees, FVector& InOutVelocity)
 {
 	if (DeltaSeconds <= FLT_EPSILON)
 	{

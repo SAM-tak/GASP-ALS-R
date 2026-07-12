@@ -32,7 +32,7 @@ UGarMoverFallingMode::UGarMoverFallingMode(const FObjectInitializer& ObjectIniti
 	GameplayTags.AddTag(Mover_SkipVerticalAnimRootMotion);	// allows combination of gravity falling and root motion
 }
 
-void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
+void UGarMoverFallingMode::GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
 {
 	UGarCharacterMoverComponent* MoverComp = Cast<UGarCharacterMoverComponent>(GetMoverComponent());
 	const FGarCharacterMoverInputs* CharacterInputs = StartState.InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
@@ -168,7 +168,9 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 
 	FMovementRecord MoveRecord;
 	MoveRecord.SetDeltaSeconds(DeltaSeconds);
-	
+
+	const FFloorCheckSettings FloorCheckSettings{Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks};
+
 	UMoverBlackboard* SimBlackboard = MoverComponent->GetSimBlackboard_Mutable();
 
 	SimBlackboard->Invalidate(CommonBlackboard::LastFloorResult);	// falling = no valid floor
@@ -190,7 +192,7 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 	{
 		// If we are very close to a walkable floor, make sure we're maintaining the correct distance from it
 		FFloorCheckResult FloorUnderActor;
-		UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
+		UFloorQueryUtils::FindFloor(Params.MovingComps, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 		if (FloorUnderActor.IsWalkableFloor())
 		{
@@ -225,7 +227,7 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 
 		// Check for hitting a landing surface
 		if (UAirMovementUtils::IsValidLandingSpot(Params.MovingComps, UpdatedComponent->GetComponentLocation(),
-			Hit, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, OUT LandingFloor))
+			Hit, FloorCheckSettings, OUT LandingFloor))
 		{
 			UGroundMovementUtils::TryMoveToKeepMinHeightAboveFloor(MoverComponent, LandingFloor, Settings->MaxWalkSlopeCosine, MoveRecord); // make sure we maintain a small gap over walking surfaces
 			CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
@@ -241,7 +243,7 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 		// We didn't land on a walkable surface, so let's try to slide along it
 		UAirMovementUtils::TryMoveToFallAlongSurface(Params.MovingComps, MoveDelta,
 			(1.f - Hit.Time), TargetOrientQuat, Hit.Normal, Hit, true,
-			Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, LandingFloor, MoveRecord);
+			FloorCheckSettings, LandingFloor, MoveRecord);
 
 		PctTimeApplied += Hit.Time * (1.f - PctTimeApplied);
 
@@ -261,19 +263,19 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 	CaptureFinalState(UpdatedComponent, *StartingSyncState, LandingFloor, DeltaSeconds, DeltaSeconds * PctTimeApplied, ProposedMove.AngularVelocityDegrees, OutputSyncState, OutputState, MoveRecord);
 }
 
-void UGarMoverFallingMode::OnRegistered(const FName ModeName)
+void UGarMoverFallingMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
 {
-	Super::OnRegistered(ModeName);
+	Super::OnRegistered(ModeName, SimContext);
 
 	Settings = GetMoverComponent()->FindSharedSettings<UGarMovementSettings>();
 	ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
 }
 
-void UGarMoverFallingMode::OnUnregistered()
+void UGarMoverFallingMode::OnUnregistered(const FMoverSimContext& SimContext)
 {
 	Settings = nullptr;
 
-	Super::OnUnregistered();
+	Super::OnUnregistered(SimContext);
 }
 
 void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, FVector& Velocity, FRelativeBaseInfo& BaseInfo, FMoverTickEndData& TickEndData) const
@@ -302,7 +304,7 @@ void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, F
 
 		if (UBasedMovementUtils::IsADynamicBase(FloorResult.HitResult.GetComponent()))
 		{
-			BaseInfo.SetFromFloorResult(FloorResult);
+			BaseInfo.SetFromFloorResult(FloorResult, MoverComp->GetTransform().GetLocation(), MoverComp->GetUpDirection());
 		}
 	}
 	// we could check for other surfaces here (i.e. when swimming is implemented we can check the floor hit here and see if we need to go into swimming)

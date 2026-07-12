@@ -5,15 +5,18 @@
 #include "Units/RigUnit.h"
 #include "GarRigUnits.generated.h"
 
+// Clamps a float value between 0 and 1.
 USTRUCT(DisplayName = "Clamp 01", Meta = (Category = "GAR"))
 struct GAR_API FGarRigVMFunction_Clamp01Float : public FRigVMFunction_MathFloatBase
 {
 	GENERATED_BODY()
 
 public:
+	// The value to clamp.
 	UPROPERTY(Meta = (Input))
 	float Value{0.0f};
 
+	// The clamped result.
 	UPROPERTY(Meta = (Output))
 	float Result{0.0f};
 
@@ -22,18 +25,22 @@ public:
 	virtual void Execute() override;
 };
 
+// Smoothly moves Current towards Target using exponential decay.
 USTRUCT(DisplayName = "Exponential Decay (Vector)", Meta = (Category = "GAR"))
 struct GAR_API FGarRigVMFunction_ExponentialDecayVector : public FRigVMFunction_SimBase
 {
 	GENERATED_BODY()
 
 public:
+	// The target value to decay towards.
 	UPROPERTY(Meta = (Input))
 	FVector Target{ForceInit};
 
+	// The decay rate. Higher values decay faster.
 	UPROPERTY(Meta = (Input, ClampMin = 0))
 	float Lambda{1.0f};
 
+	// The current decayed value.
 	UPROPERTY(Transient, Meta = (Output))
 	FVector Current{ForceInit};
 

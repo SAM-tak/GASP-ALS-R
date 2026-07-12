@@ -8,6 +8,7 @@
 #include "GarPhysicalAnimationComponent.h"
 
 #include "PhysicsEngine/PhysicalAnimationComponent.h"
+#include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/PhysicsAsset.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/SkeletalBodySetup.h"
@@ -54,17 +55,14 @@ bool UGarPhysicalAnimationComponent::IsProfileExist(const FName& ProfileName) co
 
 bool UGarPhysicalAnimationComponent::HasAnyProfile(const USkeletalBodySetup* BodySetup) const
 {
-	if (CurrentProfileNames.IsEmpty())
+	if (!CurrentProfileName.IsValid())
 	{
 		return bRagdolling && BodySetup->PhysicsType != EPhysicsType::PhysType_Kinematic;
 	}
 
-	for (const auto& ProfileName : CurrentProfileNames)
+	if (BodySetup->FindPhysicalAnimationProfile(CurrentProfileName))
 	{
-		if (BodySetup->FindPhysicalAnimationProfile(ProfileName))
-		{
-			return true;
-		}
+		return true;
 	}
 
 	return false;
@@ -83,17 +81,19 @@ void UGarPhysicalAnimationComponent::ClearGameplayTags()
 	PreviousGameplayTags.Reset();
 }
 
-void UGarPhysicalAnimationComponent::RefreshBodyState(float DeltaTime)
+void UGarPhysicalAnimationComponent::RefreshBodyStates(float DeltaTime)
 {
 	auto* Mesh{GetSkeletalMesh()};
 
+	const bool bProfileValid = CurrentProfileName.IsValid();
+
 	bool bNeedUpdate = bActive;
 
-	if (!bActive && (!CurrentProfileNames.IsEmpty() || bRagdolling))
+	if (!bActive && (bProfileValid || bRagdolling))
 	{
 		for (auto Body : Mesh->Bodies)
 		{
-			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->BodySetup.Get()))
+			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->GetBodySetup()))
 			{
 				if (CurveValues.GetLockedValue(BodySetup->BoneName, CurveBoneMappings) <= 0.0f && HasAnyProfile(BodySetup))
 				{
@@ -110,7 +110,7 @@ void UGarPhysicalAnimationComponent::RefreshBodyState(float DeltaTime)
 	{
 		for (auto Body : Mesh->Bodies)
 		{
-			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->BodySetup.Get()))
+			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->GetBodySetup()))
 			{
 				float LockedValue{CurveValues.GetLockedValue(BodySetup->BoneName, CurveBoneMappings)};
 				if (!FAnimWeight::IsRelevant(LockedValue) && HasAnyProfile(BodySetup))
@@ -176,9 +176,6 @@ void UGarPhysicalAnimationComponent::RefreshBodyState(float DeltaTime)
 		Mesh->SetCollisionObjectType(ECC_PhysicsBody);
 		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		bActive = true;
-
-		OriginalUpdateMode = Mesh->PhysicsTransformUpdateMode;
-		Mesh->PhysicsTransformUpdateMode = EPhysicsTransformUpdateMode::ComponentTransformIsKinematic; // avoid feedback loop
 	}
 
 	if (!bActiveAny && bActive)
@@ -186,7 +183,95 @@ void UGarPhysicalAnimationComponent::RefreshBodyState(float DeltaTime)
 		Mesh->SetCollisionObjectType(PrevCollisionObjectType);
 		Mesh->SetCollisionEnabled(PrevCollisionEnabled);
 		bActive = false;
-		Mesh->PhysicsTransformUpdateMode = OriginalUpdateMode;
+	}
+}
+
+void UGarPhysicalAnimationComponent::RefreshBodies()
+{
+	auto* Mesh{GetSkeletalMesh()};
+
+	bool bNeedUpdate = bActive;
+
+	const bool bProfileValid = CurrentProfileName.IsValid();
+
+	if (!bActive && (bProfileValid || bRagdolling))
+	{
+		for (auto Body : Mesh->Bodies)
+		{
+			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->GetBodySetup()))
+			{
+				if (HasAnyProfile(BodySetup))
+				{
+					bNeedUpdate = true;
+					break;
+				}
+			}
+		}
+	}
+
+	bool bActiveAny = false;
+
+	if (bNeedUpdate)
+	{
+		for(auto Body : Mesh->Bodies)
+		{
+			USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->GetBodySetup());
+			if (HasAnyProfile(BodySetup))
+			{
+				bActiveAny = true;
+				Mesh->SetBodySimulatePhysics(BodySetup->BoneName, true);
+			}
+			else if (Body->IsInstanceSimulatingPhysics())
+			{
+				Mesh->SetBodySimulatePhysics(BodySetup->BoneName, false);
+			}
+		}
+	}
+	
+	if (bActiveAny && !bActive)
+	{
+		PrevCollisionObjectType = TEnumAsByte(Mesh->GetCollisionObjectType());
+		PrevCollisionEnabled = TEnumAsByte(Mesh->GetCollisionEnabled());
+		Mesh->SetCollisionObjectType(ECC_PhysicsBody);
+		Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		bActive = true;
+	}
+
+	if (!bActiveAny && bActive)
+	{
+		Mesh->SetCollisionObjectType(PrevCollisionObjectType);
+		Mesh->SetCollisionEnabled(PrevCollisionEnabled);
+		bActive = false;
+	}
+
+	if (bActive)
+	{
+		for(auto Body : Mesh->Bodies)
+		{
+			if (!Body->IsInstanceSimulatingPhysics())
+			{
+				continue;
+			}
+			if (USkeletalBodySetup* BodySetup = Cast<USkeletalBodySetup>(Body->GetBodySetup()))
+			{
+				if (CurveValues.GetLockedValue(BodySetup->BoneName, CurveBoneMappings) > 0.5f)
+	 			{
+					if (!Body->bHACK_DisableCollisionResponse)
+					{
+						Body->bHACK_DisableCollisionResponse = true;
+						Body->UpdatePhysicsFilterData();
+					}
+	 			}
+	 			else
+	 			{
+					if (Body->bHACK_DisableCollisionResponse)
+					{
+						Body->bHACK_DisableCollisionResponse = false;
+						Body->UpdatePhysicsFilterData();
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -212,16 +297,16 @@ void UGarPhysicalAnimationComponent::SelectProfile()
 	FGarPAProfileChooserResult Choosen;
 	ChooseProfile(Choosen);
 
-	if (Choosen.ProfileNames != CurrentProfileNames)
+	if (Choosen.ProfileName != CurrentProfileName)
 	{
-		bool bFirst = true;
-		for (const auto& NextProfileName : Choosen.ProfileNames)
-		{
-			ApplyPhysicalAnimationProfileBelow(NAME_None, NextProfileName);
-			GetSkeletalMesh()->SetConstraintProfileForAll(NextProfileName, bFirst);
-			bFirst = false;
-		}
-		CurrentProfileNames = Choosen.ProfileNames;
+		ApplyPhysicalAnimationProfileBelow(NAME_None, Choosen.ProfileName, true, true);
+		CurrentProfileName = Choosen.ProfileName;
+	}
+
+	if (Choosen.ConstraintProfileName != CurrentConstraintProfileName)
+	{
+		GetSkeletalMesh()->SetConstraintProfileForAll(Choosen.ConstraintProfileName, true);
+		CurrentConstraintProfileName = Choosen.ConstraintProfileName;
 	}
 }
 
@@ -247,6 +332,13 @@ void UGarPhysicalAnimationComponent::BeginPlay()
 
 void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+	// workaround for crash since 5.6
+	const TArray<FTransform>& SpaceBases = GetSkeletalMesh()->GetEditableComponentSpaceTransforms();
+	if (SpaceBases.IsEmpty())
+	{
+		return;
+	}
+
 	auto* Character{Cast<AGarCharacter>(GetOwner())};
 
 	// Apply special behaviour when changed Ragdolling state
@@ -280,7 +372,6 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 
 			RagdollingState.End(this);
 
-			CurrentProfileNames.Reset();
 			ClearGameplayTags();
 
 			if (bActive)
@@ -305,14 +396,14 @@ void UGarPhysicalAnimationComponent::TickComponent(float DeltaTime, enum ELevelT
 
 	if (!bRagdolling || !RagdollingState.bFreezing)
 	{
-		RefreshBodyState(DeltaTime);
-	}
-
-	// workaround for crash since 5.6
-	const TArray<FTransform>& SpaceBases = GetSkeletalMesh()->GetEditableComponentSpaceTransforms();
-	if (SpaceBases.IsEmpty())
-	{
-		return;
+		if (bInterpolatesWeights)
+		{
+			RefreshBodyStates(DeltaTime);
+		}
+		else
+		{
+			RefreshBodies();
+		}
 	}
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -339,15 +430,27 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 	
 	TStringBuilder<256> DebugStringBuilder;
 
-	for (const auto& ProfileName : CurrentProfileNames)
-	{
-		DebugStringBuilder.Appendf(TEXT("%s "), *ProfileName.ToString());
-	}
+	DebugStringBuilder.Appendf(TEXT("%s %s "), *CurrentProfileName.ToString(), *CurrentConstraintProfileName.ToString());
 
 	Text.Text = FText::AsCultureInvariant(DebugStringBuilder.ToString());
 	Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
 
 	VerticalLocation += RowOffset;
+
+	if (bInterpolatesWeights)
+	{
+		for (auto Body : GetSkeletalMesh()->Bodies)
+		{
+			Text.SetColor(FMath::Lerp(FLinearColor::Gray, FLinearColor::Red, UGarMath::Clamp01(Body->PhysicsBlendWeight)));
+
+			Text.Text = FText::AsCultureInvariant(FString::Printf(TEXT("%s %s %1.2f"), *Body->GetBodySetup()->BoneName.ToString(),
+				Body->IsInstanceSimulatingPhysics() ? TEXT("ON") : TEXT("OFF"),
+				Body->PhysicsBlendWeight));
+			Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
+
+			VerticalLocation += RowOffset;
+		}
+	}
 
 	{
 		const AGarCharacter* Character{Cast<AGarCharacter>(GetOwner())};
@@ -360,7 +463,7 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 			auto TargetDirection{TargetTransform.GetRotation().RotateVector(FVector::RightVector)};
 			const auto TopBoneDirection{TargetTransform.GetRotation().RotateVector(FVector::ForwardVector)};
 			const auto TopDirDotUp{Mover->GetUpDirection().Dot(TopBoneDirection)};
-			if (TopDirDotUp > 0.7f || TopDirDotUp < -0.7f)
+			if (TopDirDotUp <= 0.7f && TopDirDotUp > -0.7f)
 			{
 				if (Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward)
 				{
@@ -374,18 +477,6 @@ void UGarPhysicalAnimationComponent::DisplayDebug(UCanvas* Canvas, const FDebugD
 			DrawDebugDirectionalArrow(Character->GetWorld(), TargetLocation, TargetLocation + TargetDirection * 150, 150,
 				Character->GetPhysicalAnimation()->GetRagdollingState().bFacingUpward ? FColor::Magenta : FColor::Emerald);
 		}
-	}
-
-	for (auto Body : GetSkeletalMesh()->Bodies)
-	{
-		Text.SetColor(FMath::Lerp(FLinearColor::Gray, FLinearColor::Red, UGarMath::Clamp01(Body->PhysicsBlendWeight)));
-
-		Text.Text = FText::AsCultureInvariant(FString::Printf(TEXT("%s %s %1.2f"), *Body->GetBodySetup()->BoneName.ToString(),
-			Body->IsInstanceSimulatingPhysics() ? TEXT("ON") : TEXT("OFF"),
-			Body->PhysicsBlendWeight));
-		Text.Draw(Canvas->Canvas, {HorizontalLocation, VerticalLocation});
-
-		VerticalLocation += RowOffset;
 	}
 }
 
@@ -611,14 +702,24 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 		bHasTopBodyTransform = true;
 	}
 
+	auto Mesh{Character->GetMesh()};
+
 	// Clip velocity each body
 
-	if (Settings->MaxBodySpeed > 0.0f)
+	if(Settings->MaxBodySpeed > 0.0f)
 	{
-		for (auto& Body : Character->GetMesh()->Bodies)
+		for (auto& Body : Mesh->Bodies)
 		{
-			auto Vel{Body->GetUnrealWorldVelocity()};
-			Body->SetLinearVelocity(Vel.GetClampedToMaxSize(Settings->MaxBodySpeed) - Vel, true);
+			if (!Body || !Body->IsInstanceSimulatingPhysics())
+			{
+				continue;
+			}
+
+			const FVector Vel = Body->GetUnrealWorldVelocity_AssumesLocked();
+			if (Vel.Size() > Settings->MaxBodySpeed)
+			{
+				Body->SetLinearVelocity(Vel.GetClampedToMaxSize(Settings->MaxBodySpeed), false);
+			}
 		}
 	}
 
@@ -715,7 +816,8 @@ void FGarRagdollingState::Tick(float DeltaTime, const UGarPhysicalAnimationCompo
 					{
 						MaxBoneSpeed = 0.0f;
 						MaxBoneAngularSpeed = 0.0f;
-						Character->GetMesh()->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body) {
+						Mesh->ForEachBodyBelow(PhysicalAnimation->GetTopBoneName(), true, false, [&](FBodyInstance* Body)
+						{
 							float Speed = Body->GetUnrealWorldVelocity().Size();
 							if(Speed > MaxBoneSpeed) MaxBoneSpeed = Speed;
 							Speed = FMath::RadiansToDegrees(Body->GetUnrealWorldAngularVelocityInRadians().Size());
