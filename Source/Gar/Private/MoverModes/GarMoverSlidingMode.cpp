@@ -15,17 +15,17 @@ UGarMoverSlidingMode::UGarMoverSlidingMode()
 	GameplayTags.AddTag(GarLocomotionActionTags::Sliding);
 }
 
-void UGarMoverSlidingMode::OnRegistered(const FName ModeName)
+void UGarMoverSlidingMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
 {
-	Super::OnRegistered(ModeName);
+	Super::OnRegistered(ModeName, SimContext);
 }
 
-void UGarMoverSlidingMode::OnUnregistered()
+void UGarMoverSlidingMode::OnUnregistered(const FMoverSimContext& SimContext)
 {
-	Super::OnUnregistered();
+	Super::OnUnregistered(SimContext);
 }
 
-void UGarMoverSlidingMode::Activate()
+void UGarMoverSlidingMode::Activate(const FMoverEventContext& Context, FName PrevModeName, const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, FMoverSyncState* OutSyncState, FMoverAuxStateContext* OutAuxState)
 {
 	bInitialBoost = true;
 
@@ -38,10 +38,10 @@ void UGarMoverSlidingMode::Activate()
 			false);
 	}
 
-	Super::Activate();
+	Super::Activate(Context, PrevModeName, SimContext, StartState, OutSyncState, OutAuxState);
 }
 
-void UGarMoverSlidingMode::Deactivate()
+void UGarMoverSlidingMode::Deactivate(const FMoverEventContext& Context, FName NextModeName, const FMoverSimContext& SimContext)
 {
 	if (UWorld* World = GetWorld())
 	{
@@ -49,7 +49,7 @@ void UGarMoverSlidingMode::Deactivate()
 	}
 	bInitialBoost = false;
 
-	Super::Deactivate();
+	Super::Deactivate(Context, NextModeName, SimContext);
 }
 
 void UGarMoverSlidingMode::OnInitialBoostExpired()
@@ -88,6 +88,7 @@ void UGarMoverSlidingMode::SimulationTick_Implementation(const FSimulationTickPa
 void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
 	FMoverTickStartData& StartState,
 	float DeltaSeconds,
+	const FMoverSimContext& SimContext,
 	const FVector& DesiredVelocity,
 	const FQuat& DesiredFacing,
 	const FQuat& CurrentFacing,
@@ -161,7 +162,7 @@ void UGarMoverSlidingMode::GenerateWalkMove_Implementation(
 	}
 
 	Super::GenerateWalkMove_Implementation(
-		StartState, DeltaSeconds,
+		StartState, DeltaSeconds, SimContext,
 		ModifiedDesiredVelocity, DesiredFacing, CurrentFacing,
 		InOutAngularVelocityDegrees, InOutVelocity);
 }

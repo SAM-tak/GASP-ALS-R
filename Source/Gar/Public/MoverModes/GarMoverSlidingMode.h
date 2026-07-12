@@ -22,18 +22,19 @@ public:
 	virtual void GenerateWalkMove_Implementation(
 		FMoverTickStartData& StartState,
 		float DeltaSeconds,
+		const FMoverSimContext& SimContext,
 		const FVector& DesiredVelocity,
 		const FQuat& DesiredFacing,
 		const FQuat& CurrentFacing,
 		FVector& InOutAngularVelocityDegrees,
 		FVector& InOutVelocity) override;
 
-	virtual void Activate() override;
-	virtual void Deactivate() override;
+	virtual void Activate(const FMoverEventContext& Context, FName PrevModeName, const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, FMoverSyncState* OutSyncState, FMoverAuxStateContext* OutAuxState) override;
+	virtual void Deactivate(const FMoverEventContext& Context, FName NextModeName, const FMoverSimContext& SimContext) override;
 
 protected:
-	virtual void OnRegistered(const FName ModeName) override;
-	virtual void OnUnregistered() override;
+	virtual void OnRegistered(const FName ModeName, const FMoverSimContext& SimContext) override;
+	virtual void OnUnregistered(const FMoverSimContext& SimContext) override;
 
 	// ---- Initial Boost ----
 

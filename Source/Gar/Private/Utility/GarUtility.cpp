@@ -51,13 +51,13 @@ float UGarUtility::GetFirstPlayerPingSeconds(const UObject* WorldContext)
 
 bool UGarUtility::TryGetMovementBaseRotationSpeed(const FBasedMovementInfo& BasedMovement, FRotator& RotationSpeed)
 {
-	if (!MovementBaseUtility::IsDynamicBase(BasedMovement.MovementBase))
+	if (!MovementBaseUtility::IsDynamicBase(&BasedMovement.MovementBaseInterfaceData))
 	{
 		RotationSpeed = FRotator::ZeroRotator;
 		return false;
 	}
 
-	const auto* Body{BasedMovement.MovementBase->GetBodyInstance(BasedMovement.BoneName)};
+	const auto* Body{BasedMovement.MovementBaseInterfaceData->GetBodyInstance(BasedMovement.BoneName)};
 	if (Body == nullptr)
 	{
 		RotationSpeed = FRotator::ZeroRotator;

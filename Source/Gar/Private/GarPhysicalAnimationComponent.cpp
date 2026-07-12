@@ -246,9 +246,8 @@ void UGarPhysicalAnimationComponent::RefreshBodies()
 
 	if (bActive)
 	{
-		for (int32 BodyIndex = 0; BodyIndex < Mesh->Bodies.Num(); ++BodyIndex)
+		for(auto Body : Mesh->Bodies)
 		{
-			auto* Body = Mesh->Bodies[BodyIndex];
 			if (!Body->IsInstanceSimulatingPhysics())
 			{
 				continue;

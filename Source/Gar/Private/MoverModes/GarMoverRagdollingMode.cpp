@@ -27,7 +27,7 @@ UGarMoverRagdollingMode::UGarMoverRagdollingMode(const FObjectInitializer& Objec
 	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
 }
 
-void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
+void UGarMoverRagdollingMode::GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
 {
 	const UMoverComponent* MoverComp = GetMoverComponent();
 	const FMoverDefaultSyncState* StartingSyncState = StartState.SyncState.SyncStateCollection.FindDataByType<FMoverDefaultSyncState>();
@@ -186,7 +186,8 @@ void UGarMoverRagdollingMode::SimulationTick_Implementation(const FSimulationTic
 
 	// If we are very close to a walkable surface, make sure we maintain a small gap over it
 	FFloorCheckResult FloorUnderActor;
-	UFloorQueryUtils::FindFloor(Params.MovingComps, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
+	const FFloorCheckSettings FloorCheckSettings{Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks};
+	UFloorQueryUtils::FindFloor(Params.MovingComps, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), OUT FloorUnderActor);
 
 	if (FloorUnderActor.IsWalkableFloor())
 	{
@@ -224,17 +225,17 @@ void UGarMoverRagdollingMode::CaptureFinalState(USceneComponent* UpdatedComponen
 	UpdatedComponent->ComponentVelocity = FinalVelocity;
 }
 
-void UGarMoverRagdollingMode::OnRegistered(const FName ModeName)
+void UGarMoverRagdollingMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
 {
-	Super::OnRegistered(ModeName);
+	Super::OnRegistered(ModeName, SimContext);
 
 	Settings = GetMoverComponent()->FindSharedSettings<UGarMovementSettings>();
 	ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
 }
 
-void UGarMoverRagdollingMode::OnUnregistered()
+void UGarMoverRagdollingMode::OnUnregistered(const FMoverSimContext& SimContext)
 {
 	Settings = nullptr;
 
-	Super::OnUnregistered();
+	Super::OnUnregistered(SimContext);
 }

@@ -386,7 +386,7 @@ void AGarCharacter::ProduceInput_Implementation(int32 SimTimeMs, FMoverInputCmdC
 	}
 	bDuringStanceChange = false;
 
-	static float RotationMagMin(1e-3);
+	static float RotationMagMin(1e-3f);
 
 	const bool bHasAffirmativeMoveInput = (CharacterInputs.GetMoveInput().Size() >= RotationMagMin);
 	

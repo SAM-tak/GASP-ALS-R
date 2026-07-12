@@ -29,7 +29,7 @@ UGarMoverWalkingMode::UGarMoverWalkingMode(const FObjectInitializer& ObjectIniti
 	GameplayTags.AddTag(GarLocomotionModeTags::Grounded);
 }
 
-void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
+void UGarMoverWalkingMode::GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
 {
 	UGarCharacterMoverComponent* MoverComp = Cast<UGarCharacterMoverComponent>(GetMoverComponent());
 	const FGarCharacterMoverInputs* CharacterInputs = StartState.InputCmd.InputCollection.FindDataByType<FGarCharacterMoverInputs>();
@@ -153,11 +153,13 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 
 	const FVector UpDirection = MoverComp->GetUpDirection();
 	FMovingComponentSet MovingComponents(MoverComp);
-	
+
+	const FFloorCheckSettings FloorCheckSettings{Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks};
+
 	// If we don't have cached floor information, we need to search for it again
 	if (!SimBlackboard->TryGet(CommonBlackboard::LastFloorResult, CurrentFloor))
 	{
-		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+		UFloorQueryUtils::FindFloor(MovingComponents, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 	}
 
 	OutputSyncState.MoveDirectionIntent = (ProposedMove.bHasDirIntent ? ProposedMove.DirectionIntent : FVector::ZeroVector);
@@ -225,7 +227,7 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 					const FVector PreStepUpLocation = UpdatedComponent->GetComponentLocation();
 					const FVector DownwardDir = -MoverComp->GetUpDirection();
 
-					if (!UGroundMovementUtils::TryMoveToStepUp(Params.MovingComps, DownwardDir, Settings->MaxStepHeight, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, Settings->FloorSweepDistance, OrigMoveDelta * (1.f - PercentTimeAppliedSoFar), MoveHitResult, CurrentFloor, false, &StepUpFloorResult, MoveRecord))
+					if (!UGroundMovementUtils::TryMoveToStepUp(Params.MovingComps, DownwardDir, Settings->MaxStepHeight, FloorCheckSettings, OrigMoveDelta * (1.f - PercentTimeAppliedSoFar), MoveHitResult, CurrentFloor, false, &StepUpFloorResult, MoveRecord))
 					{
 						FMoverOnImpactParams ImpactParams(DefaultModeNames::Walking, MoveHitResult, OrigMoveDelta);
 						MoverComp->HandleImpact(ImpactParams);
@@ -246,7 +248,7 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 		}
 
 		// Search for the floor we've ended up on
-		UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+		UFloorQueryUtils::FindFloor(MovingComponents, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 
 		if (CurrentFloor.IsWalkableFloor())
 		{
@@ -269,7 +271,7 @@ void UGarMoverWalkingMode::SimulationTick_Implementation(const FSimulationTickPa
 		if ((FloorCheckPolicy == EGarStaticFloorCheckPolicy::Always) ||
 		    (FloorCheckPolicy == EGarStaticFloorCheckPolicy::OnDynamicBaseOnly && StartingSyncState->GetMovementBase()))
 		{
-			UFloorQueryUtils::FindFloor(MovingComponents, Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, UpdatedComponent->GetComponentLocation(), CurrentFloor);
+			UFloorQueryUtils::FindFloor(MovingComponents, FloorCheckSettings, UpdatedComponent->GetComponentLocation(), CurrentFloor);
 		
 			FHitResult Hit(CurrentFloor.HitResult);
 			if (Hit.bStartPenetrating)
@@ -318,19 +320,19 @@ void UGarMoverWalkingMode::SetTurnGeneratorClass(TSubclassOf<UObject> TurnGenera
 	}
 }
 
-void UGarMoverWalkingMode::OnRegistered(const FName ModeName)
+void UGarMoverWalkingMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
 {
-	Super::OnRegistered(ModeName);
+	Super::OnRegistered(ModeName, SimContext);
 
 	Settings = GetMoverComponent()->FindSharedSettings<UGarMovementSettings>();
 	ensureMsgf(Settings, TEXT("Failed to find instance of GarMovementSettings on %s. Movement may not function properly."), *GetPathNameSafe(this));
 }
 
-void UGarMoverWalkingMode::OnUnregistered()
+void UGarMoverWalkingMode::OnUnregistered(const FMoverSimContext& SimContext)
 {
 	Settings = nullptr;
 
-	Super::OnUnregistered();
+	Super::OnUnregistered(SimContext);
 }
 
 void UGarMoverWalkingMode::CaptureFinalState(USceneComponent* UpdatedComponent, bool bDidAttemptMovement, const FFloorCheckResult& FloorResult, const FMovementRecord& Record, const FVector& AngularVelocityDegrees, FMoverDefaultSyncState& OutputSyncState) const
@@ -392,7 +394,7 @@ FRelativeBaseInfo UGarMoverWalkingMode::UpdateFloorAndBaseInfo(const FFloorCheck
 
 	if (FloorResult.IsWalkableFloor() && UBasedMovementUtils::IsADynamicBase(FloorResult.HitResult.GetComponent()))
 	{
-		ReturnBaseInfo.SetFromFloorResult(FloorResult);
+		ReturnBaseInfo.SetFromFloorResult(FloorResult, MoverComp->GetTransform().GetLocation(), MoverComp->GetUpDirection());
 	}
 
 	return ReturnBaseInfo;
