@@ -37,7 +37,12 @@ void UGarSmoothWalkingMode::GenerateWalkMove_Implementation(FMoverTickStartData&
 	bool bSmoothWalkingStateAdded = false;
 	FGarSmoothWalkingState& SpringState = StartState.SyncState.SyncStateCollection.FindOrAddMutableDataByType<FGarSmoothWalkingState>(bSmoothWalkingStateAdded);
 
-	if (bSmoothWalkingStateAdded)
+	bool bDidGenerateMoveSinceLastFrame = false;
+	SimContext.Blackboard.TryGet(DidGenerateMoveEntry, bDidGenerateMoveSinceLastFrame);
+
+	// ステートが新規、または前フレームで GenerateWalkMove が走っていない (= 他モードから復帰直後で stale) 場合、
+	// 不連続を避けるため中間ステートを現在値で初期化する。UE5.8 USmoothWalkingMode の stale reset 修正相当。
+	if (bSmoothWalkingStateAdded || !bDidGenerateMoveSinceLastFrame)
 	{
 		SpringState.SpringVelocity = InOutVelocity;
 		SpringState.SpringAcceleration = FVector::ZeroVector;

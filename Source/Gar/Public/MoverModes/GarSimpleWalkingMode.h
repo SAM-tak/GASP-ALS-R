@@ -15,6 +15,7 @@ class GAR_API UGarSimpleWalkingMode : public UWalkingMode
 	GENERATED_BODY()
 
 public:
+	virtual void OnRegistered(const FName ModeName, const FMoverSimContext& SimContext) override;
 	virtual void GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const override;
 
 	UFUNCTION(BlueprintNativeEvent, meta = (DisplayName = "Generate Simple Walk Move"))
@@ -24,4 +25,8 @@ public:
 	/** ≥0 の場合 CommonLegacyMovementSettings の MaxSpeed を上書きする (cm/s) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Mover|Walking Settings", meta = (ForceUnits = "cm/s"))
 	float MaxSpeedOverride = -1.0f;
+
+protected:
+	/** GenerateWalkMove 完了時に true をセットする単一フレーム blackboard エントリ名 (次フレームまで有効)。UE5.8 USimpleWalkingMode::DidGenerateMoveEntry 相当 */
+	static const FName DidGenerateMoveEntry;
 };
