@@ -5,8 +5,22 @@
 #include "MoverComponent.h"
 #include "MoverDataModelTypes.h"
 #include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
+#include "MoveLibrary/RollbackBlackboardLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GarSimpleWalkingMode)
+
+// エンジン側 USimpleWalkingMode の "DidGenerateMove" と衝突しないよう Gar 固有名を使用
+const FName UGarSimpleWalkingMode::DidGenerateMoveEntry = TEXT("GarDidGenerateMove");
+
+void UGarSimpleWalkingMode::OnRegistered(const FName ModeName, const FMoverSimContext& SimContext)
+{
+	Super::OnRegistered(ModeName, SimContext);
+
+	URollbackBlackboard::EntrySettings DidGenerateMoveEntrySettings = URollbackBlackboardLibrary::MakeSingleFrameEntrySettings();
+	DidGenerateMoveEntrySettings.PersistencePolicy = EBlackboardPersistencePolicy::ThroughNextFrame;
+
+	SimContext.Blackboard.CreateEntry<bool>(DidGenerateMoveEntry, DidGenerateMoveEntrySettings);
+}
 
 void UGarSimpleWalkingMode::GenerateMove_Implementation(const FMoverSimContext& SimContext, const FMoverTickStartData& StartState, const FMoverTimeStep& TimeStep, FProposedMove& OutProposedMove) const
 {
@@ -91,6 +105,8 @@ void UGarSimpleWalkingMode::GenerateMove_Implementation(const FMoverSimContext& 
 	MutableSelf->GenerateWalkMove(const_cast<FMoverTickStartData&>(StartState), DeltaSeconds, SimContext, DesiredVelocity, DesiredFacing, CurrentFacing, AngularVelocityDegrees, OutProposedMove.LinearVelocity);
 
 	OutProposedMove.AngularVelocityDegrees = AngularVelocityDegrees;
+
+	SimContext.Blackboard.TrySet(DidGenerateMoveEntry, true);
 }
 
 void UGarSimpleWalkingMode::GenerateWalkMove_Implementation(FMoverTickStartData& StartState, float DeltaSeconds, const FMoverSimContext& SimContext,

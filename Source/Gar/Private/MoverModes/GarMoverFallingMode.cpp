@@ -169,7 +169,7 @@ void UGarMoverFallingMode::SimulationTick_Implementation(const FSimulationTickPa
 	FMovementRecord MoveRecord;
 	MoveRecord.SetDeltaSeconds(DeltaSeconds);
 
-	const FFloorCheckSettings FloorCheckSettings{Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks};
+	const FFloorCheckSettings FloorCheckSettings{Settings->FloorSweepDistance, Settings->MaxWalkSlopeCosine, Settings->bUseFlatBaseForFloorChecks, Settings->PerchRadiusThreshold};
 
 	UMoverBlackboard* SimBlackboard = MoverComponent->GetSimBlackboard_Mutable();
 
@@ -278,25 +278,27 @@ void UGarMoverFallingMode::OnUnregistered(const FMoverSimContext& SimContext)
 	Super::OnUnregistered(SimContext);
 }
 
-void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, FVector& Velocity, FRelativeBaseInfo& BaseInfo, FMoverTickEndData& TickEndData) const
+void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, FVector Location, FVector& Velocity, FRelativeBaseInfo& BaseInfo, FMoverTickEndData& TickEndData) const
 {
 	const UMoverComponent* MoverComp = GetMoverComponent();
 	UMoverBlackboard* SimBlackboard = MoverComp->GetSimBlackboard_Mutable();
 
-	FName NextMovementMode = NAME_None; 
+	FName NextMovementMode = NAME_None;
 	// if we can walk on the floor we landed on
 	if (FloorResult.IsWalkableFloor())
 	{
+		const FVector UpDir = MoverComp->GetUpDirection();
+
 		if (bCancelVerticalSpeedOnLanding)
 		{
-			const FPlane MovementPlane(FVector::ZeroVector, MoverComp->GetUpDirection());
+			const FPlane MovementPlane(FVector::ZeroVector, UpDir);
 			Velocity = UMovementUtils::ConstrainToPlane(Velocity, MovementPlane, false);
 		}
 		else
 		{
 			Velocity = FVector::VectorPlaneProject(Velocity, FloorResult.HitResult.Normal);
 		}
-		
+
 		// Transfer to LandingMovementMode (usually walking), and cache any floor / movement base info
 		NextMovementMode = Settings->GroundMovementModeName;
 
@@ -304,7 +306,7 @@ void UGarMoverFallingMode::ProcessLanded(const FFloorCheckResult& FloorResult, F
 
 		if (UBasedMovementUtils::IsADynamicBase(FloorResult.HitResult.GetComponent()))
 		{
-			BaseInfo.SetFromFloorResult(FloorResult, MoverComp->GetTransform().GetLocation(), MoverComp->GetUpDirection());
+			BaseInfo.SetFromFloorResult(FloorResult, Location, UpDir);
 		}
 	}
 	// we could check for other surfaces here (i.e. when swimming is implemented we can check the floor hit here and see if we need to go into swimming)
@@ -345,7 +347,7 @@ void UGarMoverFallingMode::CaptureFinalState(USceneComponent* UpdatedComponent, 
 	// TODO: Update Main/large movement record with substeps from our local record
 
 	FRelativeBaseInfo MovementBaseInfo;
-	ProcessLanded(FloorResult, EffectiveVelocity, MovementBaseInfo, TickEndData);
+	ProcessLanded(FloorResult, FinalLocation, EffectiveVelocity, MovementBaseInfo, TickEndData);
 
 	if (MovementBaseInfo.HasRelativeInfo())
 	{

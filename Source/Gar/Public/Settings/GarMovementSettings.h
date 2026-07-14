@@ -169,6 +169,11 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ground Movement", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
 	float MaxStepHeight = 40.0f;
 
+	/** Distance from the capsule edge within which floor surface contact is rejected for perching purposes.
+	  * A value of 0 means the character can stand right at the capsule edge (no perch restriction). Increasing values make a character fall from a ledge earlier as it is approached.*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ground Movement", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
+	float PerchRadiusThreshold = 0.f;
+
 	/** Whether the actor ignores changes in rotation of the base it is standing on when using based movement.
 	 * If true, the actor maintains its current world rotation.
 	 * If false, the actor rotates with the moving base.
