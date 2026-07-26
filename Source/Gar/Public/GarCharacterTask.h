@@ -1,6 +1,5 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "GarCharacterTask.generated.h"
 
 class UWorld;
